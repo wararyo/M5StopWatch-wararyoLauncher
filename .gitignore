@@ -3,3 +3,6 @@
 sdkconfig
 sdkconfig.*
 !sdkconfig.defaults
+__pycache__/
+.multifirm/
+.backup/

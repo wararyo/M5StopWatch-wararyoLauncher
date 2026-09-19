@@ -1,0 +1,13 @@
+# MultiFirm f5a8fd88f50dfb50c6e6e1e82bccc491a936bd47: docs/partitions.multifirm.csv
+# Name, Type, SubType, Offset, Size, Flags
+nvs, data, nvs, 0x9000, 0x10000,
+otadata, data, ota, 0x19000, 0x2000,
+phy_init, data, phy, 0x1b000, 0x1000,
+multifirm_meta, data, 0x40, 0x1c000, 0x4000,
+ota_0, app, ota_0, 0x20000, 0x400000,
+ota_1, app, ota_1, 0x420000, 0x1f0000,
+ota_2, app, ota_2, 0x610000, 0x1f0000,
+ota_3, app, ota_3, 0x800000, 0x1f0000,
+multifirm_nvs, data, nvs, 0x9f0000, 0x10000,
+storage, data, fat, 0xa00000, 0x400000,
+coredump, data, coredump, 0xe00000, 0x10000,

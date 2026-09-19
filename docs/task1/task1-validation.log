@@ -1,0 +1,313 @@
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 inspect C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin --role host
+C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin (host, 上限 4,194,304 bytes)
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 474,592 bytes
+  file: 474,592 bytes, SHA-256 b1ab250734799bff01b9c8626b4a467cef08442aee4937a9a643bf772f0848cd
+  appended digest: f33b10df3aaf3b1a80aab99e33dc01e37c39076d21e1557fc4b3c0e20dde4745 [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 20 2026 01:32:01
+  elf_sha256: 3bc00bf780715b981ff51458cd68690fdfe17417282b31930bc894f5f021d349
+  ゲスト上限 0x1f0000: 可 / ホスト上限 0x400000: 可
+  表示名候補: wararyoLauncher (project_name)
+結果: 受け付け可能
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 install-host C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin            
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 474,592 bytes
+  file: 474,592 bytes, SHA-256 b1ab250734799bff01b9c8626b4a467cef08442aee4937a9a643bf772f0848cd
+  appended digest: f33b10df3aaf3b1a80aab99e33dc01e37c39076d21e1557fc4b3c0e20dde4745 [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 20 2026 01:32:01
+  elf_sha256: 3bc00bf780715b981ff51458cd68690fdfe17417282b31930bc894f5f021d349
+書き込み計画:
+  1. 全体バックアップを確認 (現状と一致しなければ新規取得)
+  2. ota_0 全域消去 0x020000-0x420000 (4,194,304 bytes)
+  3. ホスト書き込み・読み戻し検証 0x020000-0x093de0 (474,592 bytes)
+  4. ブートローダ・表・メタデータ・ゲスト3スロットがバックアップと一致することを確認
+  書き込まない: ブートローダ / NVS / multifirm_nvs / otadata / ゲスト
+DRY RUN: 実機には接続していません。実機のレイアウトは未検証です。
+  --check-device で実機を読み取り検証、--execute で実行します。
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 install-host C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin --check-device
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 474,592 bytes
+  file: 474,592 bytes, SHA-256 b1ab250734799bff01b9c8626b4a467cef08442aee4937a9a643bf772f0848cd
+  appended digest: f33b10df3aaf3b1a80aab99e33dc01e37c39076d21e1557fc4b3c0e20dde4745 [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 20 2026 01:32:01
+  elf_sha256: 3bc00bf780715b981ff51458cd68690fdfe17417282b31930bc894f5f021d349
+書き込み計画:
+  1. 全体バックアップを確認 (現状と一致しなければ新規取得)
+  2. ota_0 全域消去 0x020000-0x420000 (4,194,304 bytes)
+  3. ホスト書き込み・読み戻し検証 0x020000-0x093de0 (474,592 bytes)
+  4. ブートローダ・表・メタデータ・ゲスト3スロットがバックアップと一致することを確認
+  書き込まない: ブートローダ / NVS / multifirm_nvs / otadata / ゲスト
+失敗: --port が必要です
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 install-host C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin --check-device --port COM11
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 474,592 bytes
+  file: 474,592 bytes, SHA-256 b1ab250734799bff01b9c8626b4a467cef08442aee4937a9a643bf772f0848cd
+  appended digest: f33b10df3aaf3b1a80aab99e33dc01e37c39076d21e1557fc4b3c0e20dde4745 [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 20 2026 01:32:01
+  elf_sha256: 3bc00bf780715b981ff51458cd68690fdfe17417282b31930bc894f5f021d349
+書き込み計画:
+  1. 全体バックアップを確認 (現状と一致しなければ新規取得)
+  2. ota_0 全域消去 0x020000-0x420000 (4,194,304 bytes)
+  3. ホスト書き込み・読み戻し検証 0x020000-0x093de0 (474,592 bytes)
+  4. ブートローダ・表・メタデータ・ゲスト3スロットがバックアップと一致することを確認
+  書き込まない: ブートローダ / NVS / multifirm_nvs / otadata / ゲスト
+MultiFirm 0.1.0 / Python 3.11.7
+ログ: C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\logs\20260920-015259-install-host.log
+リセット方針: 接続時は default_reset でダウンロードモードへ入り、各操作の間は no_reset でダウンロードモードのまま続ける。成功時だけ hard_reset でアプリへ戻す
+接続: COM11 ESP32-S3 (QFN56) (revision v0.2) MAC 28:84:85:43:a7:c0 flash 16MB esptool 4.12.0
+パーティション表: other (SHA-256 e14d6ffcef835862ad449c4bcde3da8b1fe0439c45730e44c116d616924960d6)
+失敗: 実機の表が MultiFirm v1 ではありません (other)。書き込みません。新配置の導入は initial を使います
+書き込み・消去の前に中止しました。hard reset でアプリへ戻しました
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> multifirm.ps1 initial --host-build C:\Users\wararyo\Git\M5StopWatch-UserDemo\build                                                           
+multifirm.ps1 : 用語 'multifirm.ps1' は、コマンドレット、関数、スクリプト ファイル、または操作可能なプログラムの名前として認識されません。名前が正しく記述されていることを確認し、パスが含まれてい
+る場合はそのパスが正しいことを確認してから、再試行してください。
+発生場所 行:1 文字:1
++ multifirm.ps1 initial --host-build C:\Users\wararyo\Git\M5StopWatch-U ...
++ ~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (multifirm.ps1:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+Suggestion [3,General]: コマンド multifirm.ps1 は見つかりませんでしたが、現在の場所に存在します。Windows PowerShell は、既定では、現在の場所からコマンドを読み込みません。このコマンドを信頼する場合は、".\multifirm.ps1" と入力してください。詳細については、"get-help about_Command_Precedence" と入力してヘルプを参照してください。
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 initial --host-build C:\Users\wararyo\Git\M5StopWatch-UserDemo\build
+ホストビルド: C:\Users\wararyo\Git\M5StopWatch-UserDemo\build
+  bootloader:
+    kind: bootloader  chip_id: 9  segments: 3
+    flash header: DIO/80m/16MB
+    chip rev: v0.0 .. v0.99
+    image size: 20,832 bytes
+    file: 20,832 bytes, SHA-256 76f02fbf13873f60e527352928563164c127326546a5753c1039d28aa4a74bd8
+    appended digest: 9ae574fdb2f93ed6a8b28a98e7e884cdb74c2c72e2e8709734c47c2c86694e0e [valid]
+    idf_ver: v5.5.4  built: Sep  7 2026 17:31:17
+  partition-table: MultiFirm v1 と一致 (3072 bytes)
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-UserDemo\build\StopWatch-UserDemo.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v0.99
+  image size: 3,747,312 bytes
+  file: 3,747,312 bytes, SHA-256 0bb0f9fc7c1c04d6ea566d4b98775495d2abfd7d68dc366f0692646d7cbe47ea
+  appended digest: df73c681787d18e1867677d404caa059a0ec3d41fa353863723c5b8369e65cc5 [valid]
+  project_name: 'StopWatch-UserDemo'  version: 'V0.5-5-g41ad270-dirty'
+  idf_ver: v5.5.4  built: Sep 20 2026 00:57:24
+  elf_sha256: 9366f72c1f19d1455d3512a3b3a32e9be732f2d37114779280e498d3c249172b
+  phy_init: パーティション不使用の設定のため消去する
+書き込み計画:
+  0. 16 MiB 全体バックアップを保存し実機 MD5 と照合 (完了前は書かない)
+  消去 otadata 0x019000-0x01b000 (8,192 bytes)
+  消去 ota_1 0x420000-0x610000 (2,031,616 bytes)
+  消去 ota_2 0x610000-0x800000 (2,031,616 bytes)
+  消去 ota_3 0x800000-0x9f0000 (2,031,616 bytes)
+  消去 multifirm_nvs 0x9f0000-0xa00000 (65,536 bytes)
+  消去 multifirm_meta 0x01c000-0x020000 (16,384 bytes)
+  消去 nvs 0x009000-0x019000 (65,536 bytes)
+  消去 phy_init 0x01b000-0x01c000 (4,096 bytes)
+  消去して書き込み ota_0 (ホスト) 0x020000-0x3b2df0 (3,747,312 bytes)
+  書き込み パーティション表 0x008000-0x008c00 (3,072 bytes)
+  消去して書き込み ブートローダ 0x000000-0x005160 (20,832 bytes)
+  書き込まない: storage 0xa00000-0xe00000 (4,194,304 bytes), coredump 0xe00000-0xe10000 (65,536 bytes)
+  NVS 設定と BLE ボンドは初期化されます。ゲストは空になり再インストールが必要です
+DRY RUN: 実機には接続していません。実機のレイアウトは未検証です。
+  --check-device で実機を読み取り検証、--execute で実行します。
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 initial --host-build C:\Users\wararyo\Git\M5StopWatch-UserDemo\build --check-device --post COM11
+usage: multifirm.py [-h] [--version] {status,inspect,install,install-host,recover,backup,initial} ...
+multifirm.py: error: unrecognized arguments: --post COM11
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 initial --host-build C:\Users\wararyo\Git\M5StopWatch-UserDemo\build --check-device --port COM11
+ホストビルド: C:\Users\wararyo\Git\M5StopWatch-UserDemo\build
+  bootloader:
+    kind: bootloader  chip_id: 9  segments: 3
+    flash header: DIO/80m/16MB
+    chip rev: v0.0 .. v0.99
+    image size: 20,832 bytes
+    file: 20,832 bytes, SHA-256 76f02fbf13873f60e527352928563164c127326546a5753c1039d28aa4a74bd8
+    appended digest: 9ae574fdb2f93ed6a8b28a98e7e884cdb74c2c72e2e8709734c47c2c86694e0e [valid]
+    idf_ver: v5.5.4  built: Sep  7 2026 17:31:17
+  partition-table: MultiFirm v1 と一致 (3072 bytes)
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-UserDemo\build\StopWatch-UserDemo.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v0.99
+  image size: 3,747,312 bytes
+  file: 3,747,312 bytes, SHA-256 0bb0f9fc7c1c04d6ea566d4b98775495d2abfd7d68dc366f0692646d7cbe47ea
+  appended digest: df73c681787d18e1867677d404caa059a0ec3d41fa353863723c5b8369e65cc5 [valid]
+  project_name: 'StopWatch-UserDemo'  version: 'V0.5-5-g41ad270-dirty'
+  idf_ver: v5.5.4  built: Sep 20 2026 00:57:24
+  elf_sha256: 9366f72c1f19d1455d3512a3b3a32e9be732f2d37114779280e498d3c249172b
+  phy_init: パーティション不使用の設定のため消去する
+書き込み計画:
+  0. 16 MiB 全体バックアップを保存し実機 MD5 と照合 (完了前は書かない)
+  消去 otadata 0x019000-0x01b000 (8,192 bytes)
+  消去 ota_1 0x420000-0x610000 (2,031,616 bytes)
+  消去 ota_2 0x610000-0x800000 (2,031,616 bytes)
+  消去 ota_3 0x800000-0x9f0000 (2,031,616 bytes)
+  消去 multifirm_nvs 0x9f0000-0xa00000 (65,536 bytes)
+  消去 multifirm_meta 0x01c000-0x020000 (16,384 bytes)
+  消去 nvs 0x009000-0x019000 (65,536 bytes)
+  消去 phy_init 0x01b000-0x01c000 (4,096 bytes)
+  消去して書き込み ota_0 (ホスト) 0x020000-0x3b2df0 (3,747,312 bytes)
+  書き込み パーティション表 0x008000-0x008c00 (3,072 bytes)
+  消去して書き込み ブートローダ 0x000000-0x005160 (20,832 bytes)
+  書き込まない: storage 0xa00000-0xe00000 (4,194,304 bytes), coredump 0xe00000-0xe10000 (65,536 bytes)
+  NVS 設定と BLE ボンドは初期化されます。ゲストは空になり再インストールが必要です
+MultiFirm 0.1.0 / Python 3.11.7
+ログ: C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\logs\20260920-015418-initial.log
+リセット方針: 接続時は default_reset でダウンロードモードへ入り、各操作の間は no_reset でダウンロードモードのまま続ける。成功時だけ hard_reset でアプリへ戻す
+接続: COM11 ESP32-S3 (QFN56) (revision v0.2) MAC 28:84:85:43:a7:c0 flash 16MB esptool 4.12.0
+現在の表: other (SHA-256 e14d6ffcef835862ad449c4bcde3da8b1fe0439c45730e44c116d616924960d6)
+hard reset でアプリへ戻しました
+--check-device: 読み取り検証のみ行いました。書き込み・消去はしていません
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 initial --host-build C:\Users\wararyo\Git\M5StopWatch-UserDemo\build --check-device --port COM11 --execute
+usage: multifirm.py initial [-h] --host-build HOST_BUILD [--backup BACKUP] [--port PORT] [--baud BAUD] [--allow-untested-esptool] [--execute | --check-device]
+multifirm.py initial: error: argument --execute: not allowed with argument --check-device
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 initial --host-build C:\Users\wararyo\Git\M5StopWatch-UserDemo\build --port COM11 --execute               
+ホストビルド: C:\Users\wararyo\Git\M5StopWatch-UserDemo\build
+  bootloader:
+    kind: bootloader  chip_id: 9  segments: 3
+    flash header: DIO/80m/16MB
+    chip rev: v0.0 .. v0.99
+    image size: 20,832 bytes
+    file: 20,832 bytes, SHA-256 76f02fbf13873f60e527352928563164c127326546a5753c1039d28aa4a74bd8
+    appended digest: 9ae574fdb2f93ed6a8b28a98e7e884cdb74c2c72e2e8709734c47c2c86694e0e [valid]
+    idf_ver: v5.5.4  built: Sep  7 2026 17:31:17
+  partition-table: MultiFirm v1 と一致 (3072 bytes)
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-UserDemo\build\StopWatch-UserDemo.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v0.99
+  image size: 3,747,312 bytes
+  file: 3,747,312 bytes, SHA-256 0bb0f9fc7c1c04d6ea566d4b98775495d2abfd7d68dc366f0692646d7cbe47ea
+  appended digest: df73c681787d18e1867677d404caa059a0ec3d41fa353863723c5b8369e65cc5 [valid]
+  project_name: 'StopWatch-UserDemo'  version: 'V0.5-5-g41ad270-dirty'
+  idf_ver: v5.5.4  built: Sep 20 2026 00:57:24
+  elf_sha256: 9366f72c1f19d1455d3512a3b3a32e9be732f2d37114779280e498d3c249172b
+  phy_init: パーティション不使用の設定のため消去する
+書き込み計画:
+  0. 16 MiB 全体バックアップを保存し実機 MD5 と照合 (完了前は書かない)
+  消去 otadata 0x019000-0x01b000 (8,192 bytes)
+  消去 ota_1 0x420000-0x610000 (2,031,616 bytes)
+  消去 ota_2 0x610000-0x800000 (2,031,616 bytes)
+  消去 ota_3 0x800000-0x9f0000 (2,031,616 bytes)
+  消去 multifirm_nvs 0x9f0000-0xa00000 (65,536 bytes)
+  消去 multifirm_meta 0x01c000-0x020000 (16,384 bytes)
+  消去 nvs 0x009000-0x019000 (65,536 bytes)
+  消去 phy_init 0x01b000-0x01c000 (4,096 bytes)
+  消去して書き込み ota_0 (ホスト) 0x020000-0x3b2df0 (3,747,312 bytes)
+  書き込み パーティション表 0x008000-0x008c00 (3,072 bytes)
+  消去して書き込み ブートローダ 0x000000-0x005160 (20,832 bytes)
+  書き込まない: storage 0xa00000-0xe00000 (4,194,304 bytes), coredump 0xe00000-0xe10000 (65,536 bytes)
+  NVS 設定と BLE ボンドは初期化されます。ゲストは空になり再インストールが必要です
+MultiFirm 0.1.0 / Python 3.11.7
+ログ: C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\logs\20260920-015440-initial.log
+リセット方針: 接続時は default_reset でダウンロードモードへ入り、各操作の間は no_reset でダウンロードモードのまま続ける。成功時だけ hard_reset でアプリへ戻す
+接続: COM11 ESP32-S3 (QFN56) (revision v0.2) MAC 28:84:85:43:a7:c0 flash 16MB esptool 4.12.0
+現在の表: other (SHA-256 e14d6ffcef835862ad449c4bcde3da8b1fe0439c45730e44c116d616924960d6)
+全体バックアップを読み取り中: 0x000000-0x1000000 (16,777,216 bytes)
+バックアップ: C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\backups\backup-28848543a7c0-20260920-015802.bin
+  SHA-256 da8d928790944b23a3306bed5e7890202f9f8717c3860d4327f4ff9d25157c43、実機 MD5 と一致
+実行:
+  消去 otadata: 0x019000-0x01b000 (8,192 bytes)
+    消去済みを確認
+  消去 ota_1: 0x420000-0x610000 (2,031,616 bytes)
+    消去済みを確認
+  消去 ota_2: 0x610000-0x800000 (2,031,616 bytes)
+    消去済みを確認
+  消去 ota_3: 0x800000-0x9f0000 (2,031,616 bytes)
+    消去済みを確認
+  消去 multifirm_nvs: 0x9f0000-0xa00000 (65,536 bytes)
+    消去済みを確認
+  消去 multifirm_meta: 0x01c000-0x020000 (16,384 bytes)
+    消去済みを確認
+  消去 nvs: 0x009000-0x019000 (65,536 bytes)
+    消去済みを確認
+  消去 phy_init: 0x01b000-0x01c000 (4,096 bytes)
+    消去済みを確認
+  消去 ota_0: 0x020000-0x420000 (4,194,304 bytes)
+    消去済みを確認
+  書き込み ota_0: 0x020000-0x3b2df0 (3,747,312 bytes) SHA-256 0bb0f9fc7c1c04d6ea566d4b98775495d2abfd7d68dc366f0692646d7cbe47ea
+    読み戻し一致
+  書き込み パーティション表: 0x008000-0x008c00 (3,072 bytes) SHA-256 6c92c0cb61094b26574e11fd087c959531a3ddb270259f0aed069d7cbcae0079
+    読み戻し一致
+  消去 ブートローダ領域: 0x000000-0x008000 (32,768 bytes)
+    消去済みを確認
+  書き込み ブートローダ: 0x000000-0x005160 (20,832 bytes) SHA-256 76f02fbf13873f60e527352928563164c127326546a5753c1039d28aa4a74bd8
+    読み戻し一致
+パーティション表: multifirm-v1 (SHA-256 6c92c0cb61094b26574e11fd087c959531a3ddb270259f0aed069d7cbcae0079)
+hard reset でアプリへ戻しました
+initial 完了: ホストのみの新配置になりました。ゲストを install してください
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 install-host C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin --check-device --port COM11
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 474,592 bytes
+  file: 474,592 bytes, SHA-256 b1ab250734799bff01b9c8626b4a467cef08442aee4937a9a643bf772f0848cd
+  appended digest: f33b10df3aaf3b1a80aab99e33dc01e37c39076d21e1557fc4b3c0e20dde4745 [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 20 2026 01:32:01
+  elf_sha256: 3bc00bf780715b981ff51458cd68690fdfe17417282b31930bc894f5f021d349
+書き込み計画:
+  1. 全体バックアップを確認 (現状と一致しなければ新規取得)
+  2. ota_0 全域消去 0x020000-0x420000 (4,194,304 bytes)
+  3. ホスト書き込み・読み戻し検証 0x020000-0x093de0 (474,592 bytes)
+  4. ブートローダ・表・メタデータ・ゲスト3スロットがバックアップと一致することを確認
+  書き込まない: ブートローダ / NVS / multifirm_nvs / otadata / ゲスト
+MultiFirm 0.1.0 / Python 3.11.7
+ログ: C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\logs\20260920-020108-install-host.log
+リセット方針: 接続時は default_reset でダウンロードモードへ入り、各操作の間は no_reset でダウンロードモードのまま続ける。成功時だけ hard_reset でアプリへ戻す
+接続: COM11 ESP32-S3 (QFN56) (revision v0.2) MAC 28:84:85:43:a7:c0 flash 16MB esptool 4.12.0
+パーティション表: multifirm-v1 (SHA-256 6c92c0cb61094b26574e11fd087c959531a3ddb270259f0aed069d7cbcae0079)
+バックアップ C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\backups\backup-28848543a7c0-20260920-015802.bin: 現状と不一致 (bootloader, partition table, multifirm_meta, ota_1, ota_2, ota_3)
+実行時は全体バックアップを新規取得します
+hard reset でアプリへ戻しました
+--check-device: 読み取り検証のみ行いました。書き込み・消去はしていません
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> ./multifirm.ps1 install-host C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin --port COM11 --execute     
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch\firmware.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 474,592 bytes
+  file: 474,592 bytes, SHA-256 b1ab250734799bff01b9c8626b4a467cef08442aee4937a9a643bf772f0848cd
+  appended digest: f33b10df3aaf3b1a80aab99e33dc01e37c39076d21e1557fc4b3c0e20dde4745 [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 20 2026 01:32:01
+  elf_sha256: 3bc00bf780715b981ff51458cd68690fdfe17417282b31930bc894f5f021d349
+書き込み計画:
+  1. 全体バックアップを確認 (現状と一致しなければ新規取得)
+  2. ota_0 全域消去 0x020000-0x420000 (4,194,304 bytes)
+  3. ホスト書き込み・読み戻し検証 0x020000-0x093de0 (474,592 bytes)
+  4. ブートローダ・表・メタデータ・ゲスト3スロットがバックアップと一致することを確認
+  書き込まない: ブートローダ / NVS / multifirm_nvs / otadata / ゲスト
+MultiFirm 0.1.0 / Python 3.11.7
+ログ: C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\logs\20260920-020136-install-host.log
+リセット方針: 接続時は default_reset でダウンロードモードへ入り、各操作の間は no_reset でダウンロードモードのまま続ける。成功時だけ hard_reset でアプリへ戻す
+接続: COM11 ESP32-S3 (QFN56) (revision v0.2) MAC 28:84:85:43:a7:c0 flash 16MB esptool 4.12.0
+パーティション表: multifirm-v1 (SHA-256 6c92c0cb61094b26574e11fd087c959531a3ddb270259f0aed069d7cbcae0079)
+バックアップ C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\backups\backup-28848543a7c0-20260920-015802.bin: 現状と不一致 (bootloader, partition table, multifirm_meta, ota_1, ota_2, ota_3)
+全体バックアップを読み取り中: 0x000000-0x1000000 (16,777,216 bytes)
+バックアップ: C:\Users\wararyo\Git\M5StopWatch-MultiFirm\.multifirm\backups\backup-28848543a7c0-20260920-020844.bin
+  SHA-256 9923a77b9f9affbc5450ee9343f215c183fdecfe88fce0321798a8a441e9e92f、実機 MD5 と一致
+実行:
+  消去 ota_0: 0x020000-0x420000 (4,194,304 bytes)
+    消去済みを確認
+  書き込み ota_0: 0x020000-0x093de0 (474,592 bytes) SHA-256 b1ab250734799bff01b9c8626b4a467cef08442aee4937a9a643bf772f0848cd
+    読み戻し一致
+    イメージ検証 OK (digest f33b10df3aaf3b1a80aab99e33dc01e37c39076d21e1557fc4b3c0e20dde4745)
+  ブートローダ・表・メタデータ・ゲストがバックアップと一致
+  不変を確認: nvs, otadata, phy_init, multifirm_nvs
+hard reset でアプリへ戻しました
+install-host 完了
+PS C:\Users\wararyo\Git\M5StopWatch-MultiFirm\tools> 

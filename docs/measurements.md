@@ -78,7 +78,7 @@
 
 部分再描画はフレームバッファを毎フレーム消さないため、結果が
 それ以前の全フレームに依存する。目視では気付けない破綻が起きるので、
-`src/ui/RepaintCheck.cpp` に自己検証を置いた。スクロールと遷移を
+`measurement/src/ui/RepaintCheck.cpp` に自己検証を置いた。スクロールと遷移を
 台本通りに動かしてからフレームバッファを読み戻し、同じ状態を
 全面再描画した結果と 1 ピクセル単位で比較する。
 
@@ -96,7 +96,7 @@
 
 遷移値を 0.05 刻みで舐めた 24 パターンで不一致ゼロ。
 
-有効化するには `platformio.ini` の `-DLAUNCHER_BENCH` を有効にする。
+有効化するには `measurement/platformio.ini` の `-DLAUNCHER_BENCH` を有効にする。
 
 ---
 
@@ -104,9 +104,9 @@
 
 ### 測定方法
 
-`src/power/PowerProfile.cpp` が台本通りに条件を切り替え、各条件を
+`measurement/src/power/PowerProfile.cpp` が台本通りに条件を切り替え、各条件を
 120 秒保持してシリアルに開始と終了を出す。USB テスターの表示を
-条件ごとに読む。ログは `power-measurement.log`。
+条件ごとに読む。ログは `docs/power-measurement.log`。
 
 今回のテスターは mAh 積算が整数表示だったため、積算値の差分ではなく
 **表示上最も頻繁に現れた mA 値を目視で採用**した。したがって各値の
@@ -195,7 +195,7 @@ PMIC (PM1, I2C 0x6E) に電流レジスタは **ない**。0x00 から 0x4F ま�
 
 ## ウォッチドッグの問題 (未修正)
 
-`src/main.cpp:146` に問題がある。
+`measurement/src/main.cpp:146` に問題がある。
 
 ```cpp
 vTaskDelayUntil(&last, pdMS_TO_TICKS(dragging ? 16 : 10));
@@ -228,7 +228,7 @@ if (!xTaskDelayUntil(&last, pdMS_TO_TICKS(dragging ? 16 : 10))) {
 }
 ```
 
-`src/power/PowerProfile.cpp` の計測ループには同じ対策を入れてある。
+`measurement/src/power/PowerProfile.cpp` の計測ループには同じ対策を入れてある。
 
 ---
 
@@ -258,7 +258,7 @@ USB Serial JTAG は生きているので復旧は容易。
 
 ## 再現方法
 
-`platformio.ini` の `build_flags` で切り替える。どちらも既定では無効。
+`measurement/platformio.ini` の `build_flags` で切り替える。どちらも既定では無効。
 
 | フラグ | 内容 | 所要 |
 |---|---|---|

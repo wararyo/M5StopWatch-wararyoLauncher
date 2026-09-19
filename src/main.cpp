@@ -6,6 +6,7 @@
 #include "time/TimeService.h"
 #include "ui/Renderer.h"
 #include "ui/RepaintCheck.h"
+#include "power/PowerProfile.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -47,6 +48,13 @@ extern "C" void app_main() {
 #ifdef LAUNCHER_BENCH
     ui::runRepaintCheck(renderer, M5.Display);
 #endif
+#ifdef LAUNCHER_POWER_PROFILE
+#ifdef LAUNCHER_POWER_PROFILE_HOLD
+    power::runPowerProfile(renderer, M5.Display, LAUNCHER_POWER_PROFILE_HOLD);
+#else
+    power::runPowerProfile(renderer, M5.Display);
+#endif
+#endif
 
     bool redraw = true;
     bool dragging = false;
@@ -56,6 +64,8 @@ extern "C" void app_main() {
     uint32_t frameCount = 0;
     uint32_t missedFrames = 0;
     int64_t maximumFrameUs = 0;
+    int64_t renderUs = 0;
+    uint32_t reportWindowStart = 0;
     ui::WatchData watch{};
     auto last = xTaskGetTickCount();
 
@@ -111,17 +121,26 @@ extern "C" void app_main() {
             const int64_t elapsed = esp_timer_get_time() - start;
             if (painted) {
                 ++frameCount;
+                renderUs += elapsed;
                 if (elapsed > 33333) ++missedFrames;
                 if (elapsed > maximumFrameUs) maximumFrameUs = elapsed;
             }
             redraw = false;
         }
         if (now >= nextFrameReport) {
-            std::printf("[FrameStats] frames=%lu missed_33ms=%lu max_us=%lld dragging=%d\n",
+            const uint32_t windowMs = now - reportWindowStart;
+            // Share of wall time spent rendering. Unlike a current reading it
+            // cannot be polluted by charging or by USB, and it repeats exactly,
+            // so it is the cheap stand-in for power once calibrated against a
+            // couple of meter readings.
+            const int duty = windowMs ? static_cast<int>(renderUs / (windowMs * 10)) : 0;
+            std::printf("[FrameStats] frames=%lu missed_33ms=%lu max_us=%lld duty=%d%% dragging=%d\n",
                         static_cast<unsigned long>(frameCount),
-                        static_cast<unsigned long>(missedFrames), maximumFrameUs, dragging);
+                        static_cast<unsigned long>(missedFrames), maximumFrameUs, duty, dragging);
             frameCount = missedFrames = 0;
             maximumFrameUs = 0;
+            renderUs = 0;
+            reportWindowStart = now;
             nextFrameReport = now + 5000;
         }
         vTaskDelayUntil(&last, pdMS_TO_TICKS(dragging ? 16 : 10));

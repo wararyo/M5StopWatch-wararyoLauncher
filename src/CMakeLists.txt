@@ -4,6 +4,7 @@ idf_component_register(
         "app/LauncherApp.cpp"
         "input/InputController.cpp"
         "power/PowerManager.cpp"
+        "power/PowerProfile.cpp"
         "time/TimeService.cpp"
         "ui/DigitalWatchFace.cpp"
         "ui/Element.cpp"

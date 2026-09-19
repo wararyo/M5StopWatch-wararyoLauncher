@@ -14,15 +14,31 @@ constexpr const char* Months[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 
 const lgfx::IFont* const TimeFont = &fonts::FreeSansBold24pt7b;
 constexpr float TimeScale = 2.15f;
-constexpr int TimeCenterY = 270;
-constexpr int SpriteMargin = 8;
+constexpr int CenterX = 234;
+constexpr int BatteryY = 86;
+constexpr int DateY = 145;
+constexpr int TimeY = 270;
+constexpr int DotsY = 367;
+constexpr int AppsY = 425;
+/// Slack around measured geometry, so an erase always covers what was inked.
+constexpr int Margin = 8;
+
+enum Slot { SlotBattery, SlotDate, SlotTime, SlotDots, SlotApps };
+
+/// Box a middle_center string occupies, using the font currently set on `g`.
+Rect centeredBox(Gfx& g, const char* text, int cx, int cy) {
+    const int w = g.textWidth(text) + Margin;
+    const int h = g.fontHeight() + Margin;
+    return Rect{static_cast<int16_t>(cx - w / 2), static_cast<int16_t>(cy - h / 2),
+                static_cast<int16_t>(w), static_cast<int16_t>(h)};
 }
+}  // namespace
 
 bool DigitalWatchFace::begin(Gfx& gfx) {
     gfx.setFont(TimeFont);
     gfx.setTextSize(TimeScale);
-    const int w = gfx.textWidth("00:00") + SpriteMargin;
-    const int h = gfx.fontHeight() + SpriteMargin;
+    const int w = gfx.textWidth("00:00") + Margin;
+    const int h = gfx.fontHeight() + Margin;
     gfx.setTextSize(1.0f);
 
     timeText_.setPsram(false);  // internal SRAM, not the PSRAM heap
@@ -34,19 +50,74 @@ bool DigitalWatchFace::begin(Gfx& gfx) {
     return true;
 }
 
-void DigitalWatchFace::drawTime(Gfx& gfx, const char* text, int centerY) {
+void DigitalWatchFace::plan(FramePlan& frame, Gfx& gfx, const WatchData& data, int y) {
+    const int screenW = gfx.width();
+    const int screenH = gfx.height();
+    originY_ = y;
+    gfx.setTextSize(1.0f);
+
+    std::snprintf(batteryText_, sizeof(batteryText_), data.charging ? "+ %d%%" : "%d%%",
+                  data.batteryPercent < 0 ? 0 : data.batteryPercent);
+    gfx.setFont(&fonts::FreeSans18pt7b);
+    handles_[SlotBattery] = frame.add(
+        battery_, clipToScreen(centeredBox(gfx, batteryText_, CenterX, y + BatteryY), screenW, screenH),
+        hashString(batteryText_));
+
+    if (data.timeValid) {
+        std::snprintf(dateText_, sizeof(dateText_), "%s, %s %02d", Weekdays[data.localTime.tm_wday],
+                      Months[data.localTime.tm_mon], data.localTime.tm_mday);
+    } else {
+        std::snprintf(dateText_, sizeof(dateText_), "SET TIME");
+    }
+    gfx.setFont(&fonts::FreeSans18pt7b);
+    handles_[SlotDate] = frame.add(
+        date_, clipToScreen(centeredBox(gfx, dateText_, CenterX, y + DateY), screenW, screenH),
+        hashString(dateText_));
+
+    if (data.timeValid) {
+        std::snprintf(timeString_, sizeof(timeString_), "%02d:%02d", data.localTime.tm_hour,
+                      data.localTime.tm_min);
+    } else {
+        std::snprintf(timeString_, sizeof(timeString_), "--:--");
+    }
+    if (timeTextReady_) {
+        timeBox_ = Rect{static_cast<int16_t>(CenterX - timeText_.width() / 2),
+                        static_cast<int16_t>(y + TimeY - timeText_.height() / 2),
+                        static_cast<int16_t>(timeText_.width()),
+                        static_cast<int16_t>(timeText_.height())};
+    } else {
+        gfx.setFont(TimeFont);
+        gfx.setTextSize(TimeScale);
+        timeBox_ = centeredBox(gfx, timeString_, CenterX, y + TimeY);
+        gfx.setTextSize(1.0f);
+    }
+    handles_[SlotTime] =
+        frame.add(time_, clipToScreen(timeBox_, screenW, screenH), hashString(timeString_));
+
+    handles_[SlotDots] = frame.add(
+        dots_, clipToScreen(Rect{218, static_cast<int16_t>(y + DotsY), 30, 30}, screenW, screenH),
+        hashValue(0xd075u));
+
+    gfx.setFont(&fonts::FreeSans12pt7b);
+    handles_[SlotApps] = frame.add(
+        appsLabel_, clipToScreen(centeredBox(gfx, "APPS", CenterX, y + AppsY), screenW, screenH),
+        hashString("APPS"));
+}
+
+void DigitalWatchFace::paintTime(Gfx& gfx) {
     if (!timeTextReady_) {
         gfx.setTextDatum(middle_center);
         gfx.setTextColor(White, Black);
         gfx.setFont(TimeFont);
         gfx.setTextSize(TimeScale);
-        gfx.drawString(text, 234, centerY);
+        gfx.drawString(timeString_, CenterX, timeBox_.y + timeBox_.h / 2);
         gfx.setTextSize(1.0f);
         return;
     }
-
-    if (std::strncmp(text, cachedTime_, sizeof(cachedTime_) - 1) != 0) {
-        std::snprintf(cachedTime_, sizeof(cachedTime_), "%s", text);
+    // Only re-rasterise when the digits themselves changed. Moving the clock,
+    // as the app list drags it off screen, is then just a blit.
+    if (std::strncmp(timeString_, cachedTime_, sizeof(cachedTime_) - 1) != 0) {
+        std::snprintf(cachedTime_, sizeof(cachedTime_), "%s", timeString_);
         timeText_.fillScreen(Black);
         timeText_.setTextDatum(middle_center);
         timeText_.setTextColor(White, Black);
@@ -55,67 +126,40 @@ void DigitalWatchFace::drawTime(Gfx& gfx, const char* text, int centerY) {
         timeText_.drawString(cachedTime_, timeText_.width() / 2, timeText_.height() / 2);
         timeText_.setTextSize(1.0f);
     }
-    timeText_.pushSprite(&gfx, 234 - timeText_.width() / 2, centerY - timeText_.height() / 2);
+    timeText_.pushSprite(&gfx, timeBox_.x, timeBox_.y);
 }
 
-void DigitalWatchFace::draw(Gfx& c, const WatchData& data, int y) {
-    char text[32];
-    const int screenHeight = c.height();
-    // Skip anything that has scrolled past an edge. Without this the whole face
-    // is still rasterised and clipped away while the app list is being dragged
-    // in over it.
-    auto onScreen = [screenHeight](int centerY, int halfHeight) {
-        return centerY + halfHeight > 0 && centerY - halfHeight < screenHeight;
-    };
+void DigitalWatchFace::paint(Gfx& gfx, const FramePlan& frame) {
+    gfx.setTextSize(1.0f);
+    gfx.setTextDatum(middle_center);
 
-    c.setTextDatum(middle_center);
-
-    if (onScreen(y + 86, 32)) {
-        std::snprintf(text, sizeof(text), data.charging ? "+ %d%%" : "%d%%",
-                      data.batteryPercent < 0 ? 0 : data.batteryPercent);
-        c.setTextColor(Lime, Black);
-        c.setFont(&fonts::FreeSans18pt7b);
-        c.drawString(text, 234, y + 86);
+    if (frame.shouldPaint(handles_[SlotBattery])) {
+        gfx.setFont(&fonts::FreeSans18pt7b);
+        gfx.setTextColor(Lime, Black);
+        gfx.drawString(batteryText_, CenterX, originY_ + BatteryY);
     }
-
-    if (onScreen(y + 145, 32)) {
-        c.setTextColor(Muted, Black);
-        c.setFont(&fonts::FreeSans18pt7b);
-        if (data.timeValid) {
-            std::snprintf(text, sizeof(text), "%s, %s %02d", Weekdays[data.localTime.tm_wday],
-                          Months[data.localTime.tm_mon], data.localTime.tm_mday);
-        } else {
-            std::snprintf(text, sizeof(text), "SET TIME");
-        }
-        c.drawString(text, 234, y + 145);
+    if (frame.shouldPaint(handles_[SlotDate])) {
+        gfx.setFont(&fonts::FreeSans18pt7b);
+        gfx.setTextColor(Muted, Black);
+        gfx.drawString(dateText_, CenterX, originY_ + DateY);
     }
-
-    const int timeHalfHeight = timeTextReady_ ? timeText_.height() / 2 + 4 : 80;
-    if (onScreen(y + TimeCenterY, timeHalfHeight)) {
-        if (data.timeValid) {
-            std::snprintf(text, sizeof(text), "%02d:%02d", data.localTime.tm_hour,
-                          data.localTime.tm_min);
-        } else {
-            std::snprintf(text, sizeof(text), "--:--");
-        }
-        drawTime(c, text, y + TimeCenterY);
+    if (frame.shouldPaint(handles_[SlotTime])) {
+        paintTime(gfx);
     }
-
-    // Colour is passed explicitly: the four dots are lime in the reference
-    // design, and with the culling above there is no reliable preceding draw
-    // to inherit a colour from.
-    if (onScreen(y + 382, 26)) {
-        c.fillRect(218, y + 367, 10, 10, Lime);
-        c.fillRect(238, y + 367, 10, 10, Lime);
-        c.fillRect(218, y + 387, 10, 10, Lime);
-        c.fillRect(238, y + 387, 10, 10, Lime);
+    if (frame.shouldPaint(handles_[SlotDots])) {
+        // Colour passed explicitly: the dots are lime in the reference design,
+        // and elements paint in isolation so there is no preceding draw to
+        // inherit a colour from.
+        gfx.fillRect(218, originY_ + DotsY, 10, 10, Lime);
+        gfx.fillRect(238, originY_ + DotsY, 10, 10, Lime);
+        gfx.fillRect(218, originY_ + DotsY + 20, 10, 10, Lime);
+        gfx.fillRect(238, originY_ + DotsY + 20, 10, 10, Lime);
     }
-
-    if (onScreen(y + 425, 20)) {
-        c.setTextDatum(middle_center);
-        c.setTextColor(Muted, Black);
-        c.setFont(&fonts::FreeSans12pt7b);
-        c.drawString("APPS", 234, y + 425);
+    if (frame.shouldPaint(handles_[SlotApps])) {
+        gfx.setTextDatum(middle_center);
+        gfx.setFont(&fonts::FreeSans12pt7b);
+        gfx.setTextColor(Muted, Black);
+        gfx.drawString("APPS", CenterX, originY_ + AppsY);
     }
 }
 

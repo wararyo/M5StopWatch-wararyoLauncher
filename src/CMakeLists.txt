@@ -6,6 +6,8 @@ idf_component_register(
         "power/PowerManager.cpp"
         "time/TimeService.cpp"
         "ui/DigitalWatchFace.cpp"
+        "ui/Element.cpp"
+        "ui/RepaintCheck.cpp"
         "ui/Renderer.cpp"
     INCLUDE_DIRS "."
 )

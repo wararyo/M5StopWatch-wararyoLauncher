@@ -5,6 +5,7 @@
 #include "power/PowerManager.h"
 #include "time/TimeService.h"
 #include "ui/Renderer.h"
+#include "ui/RepaintCheck.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -43,6 +44,10 @@ extern "C" void app_main() {
     power::PowerManager power;
     power.begin(nowMs());
 
+#ifdef LAUNCHER_BENCH
+    ui::runRepaintCheck(renderer, M5.Display);
+#endif
+
     bool redraw = true;
     bool dragging = false;
     uint32_t nextClockUpdate = 0;
@@ -60,7 +65,12 @@ extern "C" void app_main() {
         const bool wasOff = power.screenOff();
         const auto touch = M5.Touch.getDetail();
         const bool rawActivity = M5.BtnA.isPressed() || M5.BtnB.isPressed() || touch.isPressed();
-        if (power.update(now, rawActivity, M5.Power.getVBUSVoltage() > 4000)) redraw = true;
+        if (power.update(now, rawActivity, M5.Power.getVBUSVoltage() > 4000)) {
+            redraw = true;
+            // Waking the panel leaves its contents unrelated to what the
+            // renderer believes it painted, so the next frame repaints in full.
+            if (wasOff && !power.screenOff()) renderer.invalidate();
+        }
         const auto events = input.update(now, touch, wasOff && touch.wasPressed());
 
         if (events.home) { app.home(); redraw = true; }
@@ -95,11 +105,15 @@ extern "C" void app_main() {
         }
         if (redraw && !power.screenOff()) {
             const int64_t start = esp_timer_get_time();
-            renderer.draw(app.state(), watch);
+            // A frame in which no element changed paints nothing and is not
+            // counted, so the stats describe real repaints only.
+            const bool painted = renderer.draw(app.state(), watch);
             const int64_t elapsed = esp_timer_get_time() - start;
-            ++frameCount;
-            if (elapsed > 33333) ++missedFrames;
-            if (elapsed > maximumFrameUs) maximumFrameUs = elapsed;
+            if (painted) {
+                ++frameCount;
+                if (elapsed > 33333) ++missedFrames;
+                if (elapsed > maximumFrameUs) maximumFrameUs = elapsed;
+            }
             redraw = false;
         }
         if (now >= nextFrameReport) {

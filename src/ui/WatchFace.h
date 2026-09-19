@@ -20,7 +20,18 @@ struct WatchData {
 class WatchFace {
 public:
     virtual ~WatchFace() = default;
-    virtual void draw(Gfx& gfx, const WatchData& data, int yOffset) const = 0;
+
+    /// Allocates cached resources. Called once, after the display is up.
+    /// Returning false means the face cannot draw at all; a face that merely
+    /// failed to build a cache should return true and fall back to drawing
+    /// everything each frame.
+    virtual bool begin(Gfx& gfx) { (void)gfx; return true; }
+
+    /// Draws the face with its content origin at yOffset. A face occupies one
+    /// screen height, so the caller skips it entirely once it has scrolled off.
+    /// Not const: faces may carry rasterisation caches.
+    virtual void draw(Gfx& gfx, const WatchData& data, int yOffset) = 0;
+
     virtual uint32_t nextUpdateDelayMs(const WatchData& data) const = 0;
 };
 

@@ -1,0 +1,31 @@
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+CONFIG_ESP_MAIN_TASK_AFFINITY_CPU1=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+
+
+# --- Rendering throughput ---
+# The panel framebuffer lives in octal PSRAM and the per-frame flush streams it
+# line by line, so a 64KB data cache with 64-byte lines measurably shortens the
+# worst-case frame (27.7ms -> 26.1ms). Costs 32KB of internal heap.
+CONFIG_ESP32S3_DATA_CACHE_64KB=y
+CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
+
+# Do NOT enable these on M5StopWatch. Both were measured on hardware and both
+# leave the board resetting roughly every 6 seconds with no console output at
+# all, i.e. it dies before the second stage bootloader prints:
+#   CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y   (16KB is the only size that boots)
+#   CONFIG_ESPTOOLPY_FLASHMODE_QIO=y          (keep DIO)
+# Kconfig accepts both, so nothing warns you. Recovery is a normal esptool
+# flash, the USB-serial-JTAG bridge stays alive through the reset loop.

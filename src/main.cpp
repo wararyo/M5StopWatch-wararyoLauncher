@@ -14,6 +14,10 @@
 #include <cstring>
 #include "app/AppRuntime.h"
 #include "hal/M5Hal.h"
+#include "ui/Renderer.h"
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#include "ui/RenderDiagnostics.h"
+#endif
 
 #if !defined(MULTIFIRM_HOST) || MULTIFIRM_HOST != 1
 #error "The product firmware must be built as a MultiFirm host"
@@ -69,25 +73,29 @@ extern "C" void app_main() {
                 running ? static_cast<unsigned long>(running->size) : 0UL,
                 hostOk ? "valid" : "MISMATCH");
 
-    M5.Display.fillScreen(TFT_BLACK);
-    M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
-    const int cx = M5.Display.width() / 2;
-    const int cy = M5.Display.height() / 2;
-    M5.Display.setTextSize(2);
-    M5.Display.drawCenterString("wararyoLauncher", cx, cy - 48);
-    M5.Display.drawCenterString(app->version, cx, cy - 16);
-    M5.Display.setTextColor(layoutOk && hostOk ? TFT_GREEN : TFT_RED, TFT_BLACK);
-    M5.Display.drawCenterString(layoutOk && hostOk ? "MultiFirm host ready" :
-                               "MultiFirm mismatch", cx, cy + 24);
-    M5.Display.display();
     std::printf("[Launcher] startup complete; starting single-task runtime\n");
     launcher::M5Hal hal;
-    launcher::AppRuntime runtime(hal, std::min(M5.Display.width(), M5.Display.height()));
+    // Keep framebuffer metadata / font cache objects off the 8KiB UI stack.
+    static launcher::Renderer renderer(M5.Display);
+    if (!renderer.begin()) { std::printf("[Renderer] initialization failed\n"); return; }
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+    launcher::runRepaintCheck(renderer, M5.Display);
+    static launcher::DiagnosticDataSource data;
+    std::printf("[RenderDiag] synthetic JST time / battery; no RTC read\n");
+#else
+    static launcher::DisplayDataSource data; // unavailable until task 4
+#endif
+    launcher::AppRuntime runtime(hal, renderer, data, M5.Display.width(), M5.Display.height());
+    logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     runtime.begin();
     launcher::beginRuntimeDiagnostics();
     while (true) {
         runtime.step();
         launcher::runtimeDiagnostics();
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+        launcher::reportRenderDiagnostics(renderer, hal.now());
+#endif
         runtime.wait();
     }
 }

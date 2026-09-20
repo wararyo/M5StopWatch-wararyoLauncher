@@ -1,46 +1,21 @@
 #pragma once
-#include "input/InputController.h"
+#include "ui/DisplayModel.h"
 namespace launcher {
-enum class ScreenId { Home, InputCheck };
-struct ScreenModel {
-    ScreenId screen = ScreenId::Home;
-    int selection = 0;
-    uint32_t homeCount = 0;
-    bool dragging = false;
-    const char* lastEvent = "Ready";
-};
-// Screens only receive semantic events and produce immutable display snapshots.
-class Screen {
-public:
-    virtual ~Screen() = default;
-    virtual void enter() = 0;
-    virtual void leave() = 0;
-    virtual bool handle(const Events&) = 0;
-    virtual ScreenModel model() const = 0;
-    virtual bool active() const { return false; }
-    virtual TimeUs nextUpdate() const { return INT64_MAX; }
-};
-class DiagnosticScreen final : public Screen {
-public:
-    explicit DiagnosticScreen(ScreenId id) { model_.screen = id; }
-    void enter() override { model_.selection = 0; model_.dragging = false; model_.lastEvent = "Ready"; }
-    void leave() override { model_.selection = 0; model_.dragging = false; }
-    bool handle(const Events& e) override;
-    ScreenModel model() const override { return model_; }
-    bool active() const override { return model_.dragging; }
-private:
-    ScreenModel model_{};
-};
 class ScreenManager {
 public:
-    bool handle(const Events& e);
-    ScreenModel model() const { auto m = current_->model(); m.homeCount = homeCount_; return m; }
-    TimeUs nextUpdate() const { return current_->nextUpdate(); }
-    bool active() const { return current_->active(); }
+    ScreenManager(int width=468,int height=468) { model_.width=width; model_.height=height; }
+    bool handle(const Events& e,TimeUs now);
+    bool update(TimeUs now);
+    ScreenModel model() const { auto m=model_; m.animating=animating_; return m; }
+    TimeUs nextUpdate() const;
+    bool active() const { return model_.dragging || animating_; }
 private:
-    void switchTo(Screen& next) { current_->leave(); current_ = &next; current_->enter(); }
-    DiagnosticScreen home_{ScreenId::Home}, check_{ScreenId::InputCheck};
-    Screen* current_ = &home_;
-    uint32_t homeCount_ = 0;
+    void animate(float transition,float scroll,TimeUs now);
+    ScreenModel model_{};
+    enum class Drag { None,Watch,List,Return } drag_=Drag::None;
+    bool animating_=false;
+    float fromTransition_=0,toTransition_=0,fromScroll_=0,toScroll_=0;
+    float dragScroll_=0,dragTransition_=0;
+    TimeUs animationStart_=0,nextFrame_=INT64_MAX,toastUntil_=INT64_MAX;
 };
 }

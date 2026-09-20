@@ -51,7 +51,7 @@ def require(condition, message):
 def main():
     global BUILD, MULTIFIRM
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--environment", choices=("m5stopwatch", "m5stopwatch-diagnostics"),
+    parser.add_argument("--environment", choices=("m5stopwatch", "m5stopwatch-diagnostics", "m5stopwatch-render-check"),
                         default="m5stopwatch")
     environment = parser.parse_args().environment
     BUILD = ROOT / ".pio/build" / environment
@@ -84,6 +84,14 @@ def main():
 
     image = BUILD / "firmware.bin"
     check_size(image)
+    image_bytes = image.read_bytes()
+    require((b"[RuntimeDiag] enabled" in image_bytes) == (environment == "m5stopwatch-diagnostics"),
+            "Runtime overload diagnostics do not match the selected environment")
+    require((b"[RenderDiag] synthetic" in image_bytes) == (environment == "m5stopwatch-render-check"),
+            "Synthetic clock data do not match the selected environment")
+    require((b"[Verify] checks=" in image_bytes) == (environment == "m5stopwatch-render-check"),
+            "Pixel checks do not match the selected environment")
+    print("[OK] overload diagnostics / synthetic clock / pixel checks isolated by environment")
     print(f"[OK] firmware SHA-256={hashlib.sha256(image.read_bytes()).hexdigest()}")
     print(f"[Build] project={description['project_name']} "
           f"version={description['project_version']} IDF={description['git_revision']}")

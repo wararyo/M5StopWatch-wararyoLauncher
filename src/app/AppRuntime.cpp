@@ -1,6 +1,9 @@
 #include "AppRuntime.h"
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#include "ui/RenderDiagnostics.h"
+#endif
 namespace launcher {
-void AppRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal_.now(); }
+void AppRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal_.now(); renderer_.invalidate(); }
 void AppRuntime::step() {
     const TimeUs now = hal_.now();
     const bool wasOff = power_.screenOff();
@@ -9,19 +12,37 @@ void AppRuntime::step() {
         const auto e = input_.update(now, raw, wasOff && raw.touching);
         // Release edges also count as activity. Process home before screen events.
         power_.update(now, e.activity, screens_.active());
-        dirty_ = screens_.handle(e) || dirty_;
+        if (e.home || e.next || e.decide || e.gesture != Gesture::None) {
+            const bool changed = screens_.handle(e, now);
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+            if (changed) recordInput(now);
+#endif
+            dirty_ = changed || dirty_;
+        }
         nextInput_ = now + 10000;
     } else power_.update(now, false, screens_.active());
     if (now >= nextUsb_) {
         const auto usb = hal_.sampleUsb();
-        if (usb.vbusValid != power_.usb.vbusValid || usb.powered() != power_.usb.powered() ||
-            usb.dataConnected != power_.usb.dataConnected) dirty_ = true;
         power_.usb = usb;
         nextUsb_ = now + 1000000;
     }
-    if (wasOff != power_.screenOff()) { hal_.setScreenOff(power_.screenOff()); dirty_ = true; }
-    if (!power_.screenOff() && (dirty_ || now >= screens_.nextUpdate())) {
-        hal_.draw(screens_.model(), power_.usb);
+    if (wasOff != power_.screenOff()) {
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+        if (wasOff) recordWake(now);
+#endif
+        hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
+    }
+    if (!power_.screenOff()) {
+        dirty_ = screens_.update(now) || dirty_;
+    }
+    if (!power_.screenOff() && (dirty_ || now >= nextDisplay_)) {
+        const auto model = screens_.model();
+        const auto watch = data_.sample(now);
+        renderer_.draw(model, watch);
+        nextDisplay_ = model.transition < 1 ?
+            std::min(renderer_.nextUpdate(now, watch), data_.nextUpdate(now)) : INT64_MAX;
+        // A misbehaving display provider must not make an overdue busy loop.
+        if (nextDisplay_ <= now) nextDisplay_ = now + 16000;
         dirty_ = false;
     }
 }
@@ -33,7 +54,7 @@ void AppRuntime::wait() {
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
     auto deadline = std::min(nextInput_, std::min(nextUsb_, power_.deadline()));
-    if (!power_.screenOff()) deadline = std::min(deadline, screens_.nextUpdate());
+    if (!power_.screenOff()) deadline = std::min(deadline, std::min(screens_.nextUpdate(), nextDisplay_));
     hal_.waitUs(waitDelay(now, deadline));
 }
 }

@@ -1,10 +1,11 @@
 #include "app/AppRuntime.h"
 #include "app/AppRegistry.h"
+#include "ui/ListLayout.h"
 #include <cstdlib>
 #include <iostream>
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
 using namespace launcher;
-struct FakeHal : Hal {
+struct FakeHal : Hal, RenderPort, DisplayDataSource {
     TimeUs time = 0, waited = 0, earlyWakeUs = 0;
     InputSnapshot input{};
     UsbState usb{};
@@ -14,7 +15,9 @@ struct FakeHal : Hal {
     InputSnapshot sampleInput() override { ++inputSamples; return input; }
     UsbState sampleUsb() override { ++usbSamples; return usb; }
     void setScreenOff(bool off) override { off ? ++sleeps : ++wakes; }
-    void draw(const ScreenModel& m, const UsbState&) override { ++draws; rendered = m; }
+    void invalidate() override {}
+    void draw(const ScreenModel& m, const WatchData&) override { ++draws; rendered = m; }
+    TimeUs nextUpdate(TimeUs now, const WatchData& d) const override { return nextMinute(now,d); }
     void waitUs(TimeUs delay) override { waited = delay; time += delay - earlyWakeUs; }
 };
 void buttons() {
@@ -90,33 +93,35 @@ void power() {
 void screens() {
     ScreenManager s;
     Events e{}; e.next = true;
-    CHECK(s.handle(e) && s.model().screen == ScreenId::InputCheck);
-    s.handle(e); CHECK(s.model().selection == 1);
-    e = {}; e.decide = true;
-    s.handle(e); CHECK(s.model().screen == ScreenId::Home);
-    s.handle(e); CHECK(s.model().screen == ScreenId::InputCheck && s.model().selection == 0);
-    e = {}; e.gesture = Gesture::DragStart;
-    s.handle(e); CHECK(s.active());
-    e.home = e.next = e.decide = true;
-    s.handle(e); CHECK(s.model().screen == ScreenId::Home && !s.active() && s.model().homeCount == 1);
-    e = {}; e.gesture = Gesture::Tap;
-    s.handle(e); CHECK(s.model().screen == ScreenId::InputCheck && s.model().selection == 0);
+    CHECK(s.handle(e,0) && s.model().screen==ScreenId::AppList);
+    CHECK(s.active()); s.update(180000); CHECK(!s.active() && s.model().transition==1);
+    s.handle(e,200000); s.update(380000); CHECK(s.model().selection==1);
+    e={}; e.decide=true; s.handle(e,400000);
+    CHECK(s.model().screen==ScreenId::AppList && s.model().toast);
+    s.update(1800000); CHECK(!s.model().toast);
+    e={}; e.gesture=Gesture::DragStart; e.totalY=-40;
+    s.handle(e,1900000); CHECK(s.active());
+    e.home=e.next=e.decide=true;
+    s.handle(e,2000000); CHECK(s.model().screen==ScreenId::Home && !s.active() && s.model().homeCount==1);
+    e={}; e.gesture=Gesture::Tap; e.x=234; e.y=390;
+    s.handle(e,2100000); CHECK(s.model().screen==ScreenId::AppList && s.model().selection==0);
 }
 void runtime() {
     FakeHal h;
-    AppRuntime r(h, 468); r.begin(); r.step(); CHECK(h.draws == 1);
+    AppRuntime r(h, h, h, 468, 468); r.begin(); r.step(); CHECK(h.draws == 1);
     for (int i = 0; i < 100; ++i) { r.wait(); r.step(); }
     CHECK(h.draws == 1); // USB sampling and idle polling do not redraw.
     h.input.a = true; r.wait(); r.step();
     h.input.a = false; r.wait(); r.step();
-    CHECK(r.model().screen == ScreenId::InputCheck);
+    CHECK(r.model().screen == ScreenId::AppList);
+    h.time += 200000; r.step();
     const auto last = h.time;
     h.time = last + 30000000; r.step(); CHECK(r.power().screenOff() && h.sleeps == 1);
     const int draws = h.draws;
     h.time += 1000000; h.usb = {true, 5000, true}; r.step();
     CHECK(h.draws == draws && r.power().screenOff());
     h.time += 10000; h.input = {false, false, true, 100, 100}; r.step();
-    CHECK(h.wakes == 1 && r.model().screen == ScreenId::InputCheck);
+    CHECK(h.wakes == 1 && r.model().screen == ScreenId::AppList);
     CHECK(h.draws == draws + 1);
     h.time += 10000; h.input = {}; r.step(); CHECK(h.draws == draws + 1);
     h.time += 30000000; r.step(); CHECK(r.power().screenOff());
@@ -126,7 +131,7 @@ void runtime() {
     // A wake press still acts normally on release.
     h.time += 30000000; r.step();
     h.time += 10000; h.input.a = true; r.step();
-    h.time += 10000; h.input.a = false; r.step(); CHECK(r.model().screen == ScreenId::InputCheck);
+    h.time += 10000; h.input.a = false; r.step(); CHECK(r.model().screen == ScreenId::AppList);
     h.time += 40000; r.wait(); CHECK(h.waited >= 1000 && h.waited <= 10000);
     CHECK(AppRuntime::waitDelay(100000, 90000) == 1000);
     CHECK(AppRuntime::waitDelay(100000, 105000) == 5000);
@@ -138,7 +143,7 @@ void overload() {
     // the requested tick count by nearly one tick. Exercise that phase error.
     for (TimeUs early : {0, 1, 500, 999}) {
         FakeHal h; h.earlyWakeUs = early;
-        AppRuntime r(h, 468); r.begin(); r.step();
+        AppRuntime r(h, h, h, 468, 468); r.begin(); r.step();
         auto cycle = [&] {
             h.time += 40000;
             r.wait(); CHECK(h.waited >= 1000);
@@ -150,7 +155,7 @@ void overload() {
         for (int i = 0; i < 5; ++i) cycle();
         h.input = {};
         for (int i = 0; i < 5; ++i) cycle();
-        CHECK(r.model().screen == ScreenId::InputCheck);
+        CHECK(r.model().screen == ScreenId::AppList);
         h.input = {true, true};
         for (int i = 0; i < 20; ++i) cycle();
         CHECK(r.model().homeCount == 1);

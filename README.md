@@ -22,12 +22,12 @@ M5StopWatch-MultiFirm の軽量ホストを目指すランチャーです。User
 | 場所 | 内容 |
 |---|---|
 | `measurement/` | 測定用の試作。描画性能と消費電力を実機で測るためのもの |
-| `src/`、ルートの `platformio.ini` | MultiFirmホスト用の製品構成。Runtime・共通入力・消灯復帰と診断画面 |
+| `src/`、ルートの `platformio.ini` | MultiFirmホスト用の製品構成。Runtime・共通入力・消灯復帰、時計と5項目一覧 |
 | `tools/`、`tests/` | 製品用書き込み保護、ビルド検証、PC上のテスト |
 | `docs/plan.md` | 測定結果と合意事項を統合した製品版設計書・実装計画 |
 | `docs/measurements.md` | 実機測定の結果と、踏んだ罠の記録 |
 
-本体は作業2のRuntime・入力・電源基盤まで実装し、2026-09-20に修正版の実機確認を完了しました。[設計書・実装計画](docs/plan.md) に、初版の範囲、責務分離、
+本体は作業3の時計・一覧・差分描画まで実装し、2026-09-20にユーザーによる実機確認を完了しました。性能基準の達成判定は、操作区間を分けた再測定を作業7で行います。作業2は2026-09-20に修正版の実機確認を完了しました。[設計書・実装計画](docs/plan.md) に、初版の範囲、責務分離、
 入力・描画・電源・MultiFirm連携、受け入れ基準をまとめています。
 
 ## 現状
@@ -61,6 +61,10 @@ CPU は 240 MHz のまま light sleep に入っていません。
 作業2のPCテストは `python tools/test_runtime.py`。過負荷診断版は
 `pio run -e m5stopwatch-diagnostics` でビルドします。
 [作業2の構成・実機手順](docs/task2/runtime.md)と[検証記録](docs/task2/task2-validation.md)を参照してください。
+
+作業3の描画検証版は `pio run -e m5stopwatch-render-check`。通常版では時刻・電池を不明表示とし、
+描画検証版だけに合成データを注入します。[構成・操作・実機手順](docs/task3/rendering.md)と
+[検証記録](docs/task3/task3-validation.md)を参照してください。
 
 試作のビルドと書き込み手順、測定モードの使い方は
 [measurement/README.md](measurement/README.md) にあります。

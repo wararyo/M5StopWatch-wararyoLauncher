@@ -7,7 +7,6 @@ public:
     InputSnapshot sampleInput() override;
     UsbState sampleUsb() override;
     void setScreenOff(bool off) override;
-    void draw(const ScreenModel&, const UsbState&) override;
     void waitUs(TimeUs delay) override;
 };
 void beginRuntimeDiagnostics();

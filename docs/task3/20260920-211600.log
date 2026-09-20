@@ -1,0 +1,59 @@
+I (270) esp_image: segment 3: paddr=000d04ec vaddr=3fc96dd4 sizeI (646) esp_psram: SPI SRAM memory test OK
+I (654) cpu_start: Pro cpu start user code
+I (655) cpu_start: cpu freq: 240000000 Hz
+I (655) app_init: Application information:
+I (655) app_init: Project name:     wararyoLauncher
+I (655) app_init: App version:      0.1.0-dev
+I (655) app_init: Compile time:     Sep 20 2026 20:29:43
+I (655) app_init: ELF file SHA256:  5d424aed7...
+I (655) app_init: ESP-IDF:          5.5.0
+I (656) efuse_init: Min chip rev:     v0.0
+I (656) efuse_init: Max chip rev:     v0.99 
+I (656) efuse_init: Chip rev:         v0.2
+I (656) heap_init: Initializing. RAM available for dynamic allocation:
+I (656) heap_init: At 3FC9B5F8 len 0004E118 (312 KiB): RAM
+I (656) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (657) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (657) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (658) spi_flash: detected chip: generic
+I (658) spi_flash: flash io: dio
+I (659) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (659) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (187) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=382979 free=321675 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[WatchFace] digital cache=ready bytes=51728 internal
+[Memory] ui-internal total=382979 free=268559 largest=212992 bytes
+[Memory] ui-psram total=8388608 free=7942728 largest=7864320 bytes
+[RuntimeDiag] enabled: 40ms busy work each cycle; CPU1 idle hook
+[RuntimeDiag] idle_cpu1=134 window_us=5042937
+[RuntimeDiag] idle_cpu1=135 window_us=5064284
+[RuntimeDiag] idle_cpu1=147 window_us=5040774
+[RuntimeDiag] idle_cpu1=134 window_us=5012276
+[RuntimeDiag] idle_cpu1=135 window_us=5007993
+[RuntimeDiag] idle_cpu1=128 window_us=5025732
+[RuntimeDiag] idle_cpu1=155 window_us=5040700
+[RuntimeDiag] idle_cpu1=135 window_us=5015602
+[RuntimeDiag] idle_cpu1=147 window_us=5022002
+[RuntimeDiag] idle_cpu1=141 window_us=5041011
+[RuntimeDiag] idle_cpu1=142 window_us=5059419
+[RuntimeDiag] idle_cpu1=135 window_us=5014343
+[RuntimeDiag] idle_cpu1=124 window_us=5059045
+[RuntimeDiag] idle_cpu1=114 window_us=5008638
+[RuntimeDiag] idle_cpu1=115 window_us=5014691
+[RuntimeDiag] idle_cpu1=123 window_us=5028824
+[RuntimeDiag] idle_cpu1=120 window_us=5030223
+[RuntimeDiag] idle_cpu1=125 window_us=5013777
+[RuntimeDiag] idle_cpu1=123 window_us=5008000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000

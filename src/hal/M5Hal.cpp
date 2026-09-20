@@ -32,34 +32,6 @@ void M5Hal::setScreenOff(bool off) {
     else { M5.Display.wakeup(); M5.Display.setBrightness(90); }
     std::printf("[Power] screen=%s\n", off ? "off" : "on");
 }
-void M5Hal::draw(const ScreenModel& m, const UsbState& usb) {
-    auto& d = M5.Display;
-    d.fillScreen(TFT_BLACK);
-    d.setTextSize(2);
-    d.setTextColor(TFT_WHITE, TFT_BLACK);
-    const int cx = d.width() / 2, cy = d.height() / 2;
-    d.drawCenterString(m.screen == ScreenId::Home ? "Launcher home" : "Input check", cx, cy - 110);
-    d.drawCenterString("TASK 2 DIAGNOSTICS", cx, cy - 80);
-    if (m.screen == ScreenId::Home) {
-        d.drawCenterString("A / B / tap: open", cx, cy - 35);
-    } else {
-        d.drawCenterString(m.selection == 0 ? "> Test event" : "Test event", cx, cy - 45);
-        d.drawCenterString(m.selection == 1 ? "> Back" : "Back", cx, cy - 15);
-        d.drawCenterString(m.lastEvent, cx, cy + 15);
-    }
-    char line[64];
-    std::snprintf(line, sizeof(line), "Home count: %lu", static_cast<unsigned long>(m.homeCount));
-    d.drawCenterString(line, cx, cy + 50);
-    std::snprintf(line, sizeof(line), "VBUS:%s  USB:%s", !usb.vbusValid ? "?" : usb.powered() ? "on" : "off",
-                  usb.dataConnected ? "PC" : "--");
-    d.drawCenterString(line, cx, cy + 80);
-    d.drawCenterString("A+B 600ms: home", cx, cy + 110);
-    d.display();
-    std::printf("[UI] screen=%s selection=%d event=%s homes=%lu vbus=%s usb=%d\n",
-        m.screen == ScreenId::Home ? "home" : "input", m.selection, m.lastEvent,
-        static_cast<unsigned long>(m.homeCount), !usb.vbusValid ? "unknown" : usb.powered() ? "on" : "off",
-        int(usb.dataConnected));
-}
 void M5Hal::waitUs(TimeUs delay) {
     constexpr TimeUs tickUs = 1000000 / configTICK_RATE_HZ;
     const auto ticks = static_cast<TickType_t>((delay + tickUs - 1) / tickUs);

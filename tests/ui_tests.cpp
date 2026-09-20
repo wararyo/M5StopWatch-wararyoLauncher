@@ -58,15 +58,26 @@ void navigation() {
     rapid.update(200000); CHECK(rapid.model().transition==1 && rapid.model().scroll==2*rowSpacing(rapid.model()));
     for(int side: {400,466,468}) {
         ScreenModel m; m.width=m.height=side; m.transition=1;
+        int previousX=side,previousDy=-side,highest=side,lowest=0;
         for(int scroll=0;scroll<=4*rowSpacing(m);scroll+=3) {
             m.scroll=scroll;
             for(int i=0;i<5;++i) {
                 const auto r=layoutRow(m,i); const auto box=r.box;
                 if(box.empty()) continue;
                 CHECK(box.x>=0 && box.y>=0 && box.x+box.w<=side && box.y+box.h<=side);
-                for(int x: {box.x,box.x+box.w-1}) for(int y: {box.y,box.y+box.h-1})
-                    CHECK((x-side/2)*(x-side/2)+(y-side/2)*(y-side/2)<=side*side/4);
+                // The box reaches the right edge so it covers a name the bezel
+                // cuts off; only the icon has to stay on the panel.
+                CHECK(box.x+box.w==side && box.x<=r.iconX-r.radius);
+                CHECK(r.iconX-r.radius>=0 && r.iconX+r.radius<=side);
                 CHECK(hitRow(m,box.x+box.w/2,box.y+box.h/2)==i);
+                const int dy=r.centerY-side/2;
+                // A vertically centred row stops `listMargin` clear of the
+                // bezel; every other row swings right of it, without steps.
+                CHECK(r.iconX>=iconHomeX(m));
+                CHECK(iconHomeX(m)-r.radius==listMargin(m));
+                if(std::abs(dy)<std::abs(previousDy)) CHECK(r.iconX<=previousX);
+                previousX=r.iconX; previousDy=dy;
+                highest=std::min(highest,box.y); lowest=std::max(lowest,box.y+box.h);
                 // The mask is pushed as a rectangle, so it has to stay inside
                 // the smaller unselected circle and clear of the name.
                 const int mask=scaled(m,IconMaskPx),small=r.radius-selectionGrowth(m);
@@ -76,6 +87,9 @@ void navigation() {
                 CHECK(icon.y>=r.centerY-r.radius && icon.y+icon.h<=r.centerY+r.radius);
             }
         }
+        // Rows reach both edges of the panel: no horizontal clip of their own
+        // leaves a black strip that the round bezel would not have hidden.
+        CHECK(highest==0 && lowest==side);
     }
 }
 struct Platform : Hal,RenderPort,DisplayDataSource {

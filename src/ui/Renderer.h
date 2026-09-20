@@ -29,10 +29,10 @@ private:
     const lgfx::IFont* nameFont_=&fonts::lgfxJapanGothic_24;
     FramePlan frame_;
     std::array<Element,5> rows_{};
-    Element hint_,toast_;
+    Element toast_;
     std::array<Row,5> plannedRows_{};
-    Rect hintBox_{},toastBox_{};
-    int hintHandle_=-1,toastHandle_=-1;
+    Rect toastBox_{};
+    int toastHandle_=-1;
     bool full_=true,overflowReported_=false;
     ScreenId previousScreen_=ScreenId::Home;
     const char* previousToast_=nullptr;

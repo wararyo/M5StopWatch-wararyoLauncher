@@ -11,7 +11,7 @@
 #endif
 namespace launcher {
 namespace {
-constexpr uint16_t White=0xf7be,Muted=0xad75,Lime=0xb7e0;
+constexpr uint16_t White=0xf7be,Lime=0xb7e0;
 constexpr uint16_t Colors[]={0x349f,0x632c,0x2e17,0x2e17,0x2e17};
 }
 bool Renderer::registerFace(WatchFace& face) {
@@ -49,14 +49,13 @@ void Renderer::planList(const ScreenModel& m) {
             continue;
         }
         display_.setFont(nameFont_); display_.setTextSize(scale);
-        fitText(display_,m.names[i] ? m.names[i] : AppRegistry[i].name,row.name,sizeof(row.name),std::max(0,box.x+box.w-row.layout.labelX-4));
+        // A width that does not depend on the row's position, so a name is
+        // shortened only when it cannot fit the screen at all.
+        fitText(display_,m.names[i] ? m.names[i] : AppRegistry[i].name,row.name,sizeof(row.name),labelWidth(m));
         uint32_t hash=hashValue(i==m.selection,hashString(row.name));
         hash=hashValue(row.layout.centerY,hashValue(row.layout.iconX,hash));
         row.handle=frame_.add(rows_[i],box,hash);
     }
-    const int offset=int((1-m.transition)*m.height);
-    hintBox_=intersect({m.width/2-scaled(m,72),offset+scaled(m,433),scaled(m,144),scaled(m,20)},{0,0,m.width,m.height});
-    hintHandle_=frame_.add(hint_,hintBox_,0x1234);
     toastBox_=m.toast ? Rect{m.width/2-scaled(m,108),scaled(m,361),scaled(m,216),scaled(m,46)} : Rect{};
     toastHandle_=frame_.add(toast_,toastBox_,m.toast ? hashString(m.toast) : 0);
 }
@@ -87,12 +86,6 @@ void Renderer::paintList(const ScreenModel& m) {
         display_.setFont(nameFont_); display_.setTextSize(scale);
         display_.setTextDatum(middle_left); display_.setTextColor(i==m.selection ? Lime : White,0);
         display_.drawString(row.name,r.labelX,r.centerY);
-    }
-    if(!hintBox_.empty() && frame_.shouldPaint(hintHandle_)) {
-        display_.setClipRect(hintBox_.x,hintBox_.y,hintBox_.w,hintBox_.h);
-        display_.setTextDatum(middle_center); display_.setTextSize(scale);
-        display_.setFont(&fonts::Font0); display_.setTextColor(Muted,0);
-        display_.drawString("A NEXT  B OK  A+B HOME",hintBox_.x+hintBox_.w/2,hintBox_.y+scaled(m,10));
     }
     if(!toastBox_.empty() && frame_.shouldPaint(toastHandle_)) {
         const auto& b=toastBox_; display_.setClipRect(b.x,b.y,b.w,b.h);

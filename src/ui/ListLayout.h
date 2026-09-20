@@ -5,6 +5,8 @@
 namespace launcher {
 inline int scaled(const ScreenModel& m,int px) { return std::max(1,px*std::min(m.width,m.height)/468); }
 inline int rowSpacing(const ScreenModel& m) { return scaled(m,84); }
+inline int listMargin(const ScreenModel& m) { return scaled(m,24); }
+inline int iconRadius(const ScreenModel& m) { return scaled(m,34); }
 inline Rect appsTarget(const ScreenModel& m) {
     return {m.width/2-scaled(m,64),m.height*3/4,scaled(m,128),scaled(m,70)};
 }
@@ -16,6 +18,27 @@ inline Rect appsTarget(const ScreenModel& m) {
 inline constexpr int IconMaskPx=44;
 // `RowLayout::radius` is the selected circle; an unselected row shrinks by this.
 inline int selectionGrowth(const ScreenModel& m) { return scaled(m,2); }
+// Leftmost stop of an icon centre, reached by a vertically centred row: it
+// clears the bezel by `listMargin`.
+inline int iconHomeX(const ScreenModel& m) { return listMargin(m)+iconRadius(m); }
+// Icon centres all ride one arc. Its radius is 1.2x the panel's, so the path
+// leaves the middle flatter than the bezel and closes on it towards the rim.
+inline int arcRadius(const ScreenModel& m) {
+    return std::max(1,static_cast<int>(std::lround(std::min(m.width,m.height)*0.6f)));
+}
+// Icon centre for a row sitting `dy` below the middle of the panel. The clamp
+// only guards the square root; rows leave the screen well before the arc ends.
+inline int iconCentreX(const ScreenModel& m,int dy) {
+    const int r=arcRadius(m); const float d=std::min(r,std::abs(dy));
+    return iconHomeX(m)+r-static_cast<int>(std::lround(std::sqrt(float(r)*r-d*d)));
+}
+inline int labelOffset(const ScreenModel& m) { return iconRadius(m)+scaled(m,14); }
+// Widest a name can ever be, at the row's leftmost stop. Truncation is decided
+// here and nowhere else, so the text never reflows while scrolling; a row swung
+// out towards the rim is clipped by the bezel instead.
+inline int labelWidth(const ScreenModel& m) {
+    return std::max(0,m.width-listMargin(m)-iconHomeX(m)-labelOffset(m));
+}
 // iconX and centerY are boundary coordinates: the circle, the mask and the
 // middle datum of the even height name font all centre on them.
 struct RowLayout { Rect box{}; int iconX=0,centerY=0,radius=0,labelX=0; };
@@ -23,21 +46,20 @@ struct RowLayout { Rect box{}; int iconX=0,centerY=0,radius=0,labelX=0; };
 inline Rect iconBox(const RowLayout& r,int width,int height) {
     return {r.iconX-width/2,r.centerY-height/2,width,height};
 }
-// Shared by paint and hit testing. Row corners stay inside the circle.
+// Shared by paint and hit testing. `box` runs from the icon to the right edge
+// so it covers every pixel the row paints, including a name the bezel cuts off.
 inline RowLayout layoutRow(const ScreenModel& m,int index) {
     const int offset=static_cast<int>((1-m.transition)*m.height);
     const int y=m.height/2+index*rowSpacing(m)-static_cast<int>(m.scroll)+offset;
-    const int half=scaled(m,35),margin=scaled(m,12);
-    const int top=std::max(margin,offset);
-    Rect vertical=intersect({0,y-half,m.width,2*half+1},{0,top,m.width,std::max(0,m.height-margin-top)});
-    if (vertical.empty()) return {};
-    const int radius=std::min(m.width,m.height)/2;
-    const int farY=std::max(std::abs(vertical.y-m.height/2),std::abs(vertical.y+vertical.h-m.height/2));
-    const int chord=static_cast<int>(std::sqrt(std::max(0,radius*radius-farY*farY)));
-    const int left=m.width/2-chord+margin;
-    Rect box{left,vertical.y,std::max(0,2*(chord-margin)),vertical.h};
-    const int iconR=scaled(m,34);
-    return {box,left+iconR+2,y,iconR,left+2*iconR+scaled(m,14)};
+    const int half=scaled(m,35);
+    // Clipped by the incoming edge of the transition and by the panel, never by
+    // `listMargin`: that is a radial clearance for the arc, and subtracting it
+    // here as well would leave a black strip across the top and the bottom.
+    Rect band=intersect({0,y-half,m.width,2*half+1},{0,offset,m.width,std::max(0,m.height-offset)});
+    if (band.empty()) return {};
+    const int iconR=iconRadius(m),iconX=iconCentreX(m,y-m.height/2);
+    const int left=std::max(0,iconX-iconR-2);
+    return {{left,band.y,m.width-left,band.h},iconX,y,iconR,iconX+labelOffset(m)};
 }
 inline int hitRow(const ScreenModel& m,int x,int y) {
     for (int i=0;i<5;++i) if (layoutRow(m,i).box.contains(x,y)) return i;

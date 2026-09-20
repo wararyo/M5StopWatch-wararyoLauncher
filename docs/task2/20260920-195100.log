@@ -1,0 +1,121 @@
+I (247) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=386235 free=324931 largest=270336 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[RuntimeDiag] enabled: 40ms busy work each cycle; CPU1 idle hook
+[UI] screen=home selection=0 event=Ready homes=0 vbus=on usb=1
+[UI] screen=input selection=0 event=Ready homes=0 vbus=on usb=1
+[RuntimeDiag] idle_cpu1=125 window_us=5035282
+[UI] screen=input selection=0 event=Decide homes=0 vbus=on usb=1
+[UI] screen=input selection=1 event=Next homes=0 vbus=on usb=1
+[RuntimeDiag] idle_cpu1=125 window_us=5022000
+[UI] screen=input selection=0 event=Next homes=0 vbus=on usb=1
+[UI] screen=input selection=0 event=Tap homes=0 vbus=on usb=1
+[UI] screen=input selection=1 event=Next homes=0 vbus=on usb=1
+[UI] screen=home selection=0 event=Ready homes=0 vbus=on usb=1
+[UI] screen=input selection=0 event=Ready homes=0 vbus=on usb=1
+[RuntimeDiag] idle_cpu1=127 window_us=5062473
+[UI] screen=input selection=1 event=Next homes=0 vbus=on usb=1
+[UI] screen=home selection=0 event=Ready homes=0 vbus=on usb=1
+[RuntimeDiag] idle_cpu1=126 window_us=5022527
+[UI] screen=home selection=0 event=Ready homes=1 vbus=on usb=1
+[UI] screen=input selection=0 event=Ready homes=1 vbus=on usb=1
+[UI] screen=home selection=0 event=Ready homes=2 vbus=on usb=1
+[RuntimeDiag] idle_cpu1=124 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[Power] screen=off
+[RuntimeDiag] idle_cpu1=123 window_us=5007882
+[RuntimeDiag] idle_cpu1=122 window_us=5006118
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006875
+[RuntimeDiag] idle_cpu1=122 window_us=5006125
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006875
+[RuntimeDiag] idle_cpu1=122 window_us=5006125
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5006000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[Power] screen=on
+[UI] screen=home selection=0 event=Ready homes=2 vbus=on usb=1
+[RuntimeDiag] idle_cpu1=124 window_us=5035000
+[RuntimeDiag] idle_cpu1=123 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[RuntimeDiag] idle_cpu1=122 window_us=5007000
+[Power] screen=off
+[RuntimeDiag] idle_cpu1=123 window_us=5008000
+[Power] screen=on

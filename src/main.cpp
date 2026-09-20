@@ -12,6 +12,8 @@
 #include <sdkconfig.h>
 #include <cstdio>
 #include <cstring>
+#include "app/AppRuntime.h"
+#include "hal/M5Hal.h"
 
 #if !defined(MULTIFIRM_HOST) || MULTIFIRM_HOST != 1
 #error "The product firmware must be built as a MultiFirm host"
@@ -78,9 +80,14 @@ extern "C" void app_main() {
     M5.Display.drawCenterString(layoutOk && hostOk ? "MultiFirm host ready" :
                                "MultiFirm mismatch", cx, cy + 24);
     M5.Display.display();
-    std::printf("[Launcher] startup complete; hardware verification pending\n");
+    std::printf("[Launcher] startup complete; starting single-task runtime\n");
+    launcher::M5Hal hal;
+    launcher::AppRuntime runtime(hal, std::min(M5.Display.width(), M5.Display.height()));
+    runtime.begin();
+    launcher::beginRuntimeDiagnostics();
     while (true) {
-        M5.update();
-        vTaskDelay(pdMS_TO_TICKS(20));
+        runtime.step();
+        launcher::runtimeDiagnostics();
+        runtime.wait();
     }
 }

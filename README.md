@@ -22,12 +22,12 @@ M5StopWatch-MultiFirm の軽量ホストを目指すランチャーです。User
 | 場所 | 内容 |
 |---|---|
 | `measurement/` | 測定用の試作。描画性能と消費電力を実機で測るためのもの |
-| `src/`、ルートの `platformio.ini` | MultiFirmホスト用の製品構成。現在は最小起動確認画面 |
+| `src/`、ルートの `platformio.ini` | MultiFirmホスト用の製品構成。Runtime・共通入力・消灯復帰と診断画面 |
 | `tools/`、`tests/` | 製品用書き込み保護、ビルド検証、PC上のテスト |
 | `docs/plan.md` | 測定結果と合意事項を統合した製品版設計書・実装計画 |
 | `docs/measurements.md` | 実機測定の結果と、踏んだ罠の記録 |
 
-本体は作業1の製品用ビルドと最小起動処理を実装しています。[設計書・実装計画](docs/plan.md) に、初版の範囲、責務分離、
+本体は作業2のRuntime・入力・電源基盤まで実装し、2026-09-20に修正版の実機確認を完了しました。[設計書・実装計画](docs/plan.md) に、初版の範囲、責務分離、
 入力・描画・電源・MultiFirm連携、受け入れ基準をまとめています。
 
 ## 現状
@@ -55,8 +55,12 @@ CPU は 240 MHz のまま light sleep に入っていません。
 
 製品用はルートで `pio run -e m5stopwatch`、検証は `python tools/verify_build.py` を実行します。
 通常のupload・erase・uploadfs・uploadfsotaは拒否されます。更新にはMultiFirmの `install-host` を使います。
-[製品用ビルド・導入・復旧](docs/product-build.md) と [作業1の検証記録](docs/task1/task1-validation.md) を参照してください。
+[製品用ビルド・導入・復旧](docs/task1/product-build.md) と [作業1の検証記録](docs/task1/task1-validation.md) を参照してください。
 2026-09-20にユーザーによる実機へのインストール・起動・待機確認を終え、作業1は完了しました。
+
+作業2のPCテストは `python tools/test_runtime.py`。過負荷診断版は
+`pio run -e m5stopwatch-diagnostics` でビルドします。
+[作業2の構成・実機手順](docs/task2/runtime.md)と[検証記録](docs/task2/task2-validation.md)を参照してください。
 
 試作のビルドと書き込み手順、測定モードの使い方は
 [measurement/README.md](measurement/README.md) にあります。

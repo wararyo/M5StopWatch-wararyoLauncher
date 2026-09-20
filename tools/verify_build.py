@@ -1,5 +1,6 @@
 """Read-only checks of a completed product build; never connects to a device."""
 import hashlib
+import argparse
 import importlib.util
 import json
 from pathlib import Path
@@ -25,6 +26,11 @@ EXPECTED = {
     "ESP_MAIN_TASK_AFFINITY_CPU1": True,
     "ESP_MAIN_TASK_STACK_SIZE": 8192,
     "FREERTOS_HZ": 1000,
+    "ESP_TASK_WDT_EN": True,
+    "ESP_TASK_WDT_INIT": True,
+    "ESP_TASK_WDT_TIMEOUT_S": 5,
+    "ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0": True,
+    "ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1": True,
     "ESP_CONSOLE_USB_SERIAL_JTAG": True,
     "ESP32S3_INSTRUCTION_CACHE_SIZE": 16384,
     "ESP32S3_DATA_CACHE_SIZE": 65536,
@@ -43,6 +49,13 @@ def require(condition, message):
 
 
 def main():
+    global BUILD, MULTIFIRM
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--environment", choices=("m5stopwatch", "m5stopwatch-diagnostics"),
+                        default="m5stopwatch")
+    environment = parser.parse_args().environment
+    BUILD = ROOT / ".pio/build" / environment
+    MULTIFIRM = ROOT / ".pio/libdeps" / environment / "M5StopWatch-MultiFirm"
     config = json.loads((BUILD / "config/sdkconfig.json").read_text())
     for key, value in EXPECTED.items():
         # Kconfig omits some disabled symbols whose dependencies are disabled.

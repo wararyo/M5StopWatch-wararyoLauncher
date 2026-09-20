@@ -92,6 +92,64 @@ void navigation() {
         CHECK(highest==0 && lowest==side);
     }
 }
+void flick() {
+    auto release=[](ScreenManager& s,float speed,int dy=-60) {
+        Events e{}; e.next=true; s.handle(e,0); s.update(180000);
+        e={}; e.gesture=Gesture::DragStart; e.totalY=dy; s.handle(e,200000);
+        e.gesture=Gesture::DragEnd; e.velocityY=-speed; s.handle(e,250000);
+    };
+    ScreenManager slow,fast,sparse;
+    release(slow,0); release(fast,1000); release(sparse,1000);
+    float previous=fast.model().scroll;
+    for(int t=266000;t<430000;t+=16000) {
+        fast.update(t);
+        CHECK(fast.model().scroll>=previous && fast.model().scroll<=168);
+        previous=fast.model().scroll;
+    }
+    sparse.update(426000);
+    CHECK(std::abs(fast.model().scroll-sparse.model().scroll)<0.001f);
+    slow.update(450000); fast.update(450000);
+    CHECK(slow.model().scroll==84 && fast.model().scroll==168);
+    CHECK(!fast.active() && fast.nextUpdate()==INT64_MAX);
+    CHECK(!fast.update(1000000));
+    for(float speed: {-100000.0f,-1000.0f,0.0f,1000.0f,100000.0f}) {
+        ScreenManager s; release(s,speed,-200);
+        float last=s.model().scroll;
+        s.update(430000); const float end=s.model().scroll;
+        ScreenManager sample; release(sample,speed,-200);
+        for(int t=266000;t<=442000;t+=16000) {
+            sample.update(t); const float pos=sample.model().scroll;
+            CHECK(pos>=0 && pos<=336);
+            CHECK(end>=200 ? pos>=last && pos<=end : pos<=last && pos>=end);
+            last=pos;
+        }
+        CHECK(sample.model().screen==ScreenId::AppList);
+    }
+    ScreenManager stopped; release(stopped,1000);
+    Events e{}; e.gesture=Gesture::TouchStart; stopped.handle(e,282000);
+    const float pos=stopped.model().scroll;
+    CHECK(!stopped.active()); stopped.update(350000); CHECK(stopped.model().scroll==pos);
+    e.gesture=Gesture::Tap; e.x=234; e.y=234; stopped.handle(e,360000);
+    CHECK(!stopped.model().toast); stopped.update(540000);
+    CHECK(!stopped.active());
+    ScreenManager resumed; release(resumed,1000);
+    e={}; e.gesture=Gesture::TouchStart; resumed.handle(e,282000);
+    const float held=resumed.model().scroll;
+    e.gesture=Gesture::DragStart; e.totalY=-15; resumed.handle(e,300000);
+    CHECK(std::abs(resumed.model().scroll-held-15)<0.001f);
+    e.gesture=Gesture::DragEnd; resumed.handle(e,320000); resumed.update(500000);
+    CHECK(!resumed.active() && !resumed.model().toast);
+    ScreenManager edge; release(edge,100000,-1000); edge.update(450000);
+    CHECK(edge.model().scroll==336 && edge.model().screen==ScreenId::AppList);
+    ScreenManager decide; release(decide,1000);
+    e={}; e.decide=true; decide.handle(e,282000); decide.update(462000);
+    CHECK(decide.model().toast && decide.model().scroll==decide.model().selection*84);
+    ScreenManager buttons; release(buttons,1000);
+    e={}; e.next=true; buttons.handle(e,282000); buttons.update(462000);
+    CHECK(buttons.model().scroll==buttons.model().selection*84);
+    e={}; e.home=true; buttons.handle(e,470000);
+    CHECK(!buttons.active() && buttons.model().screen==ScreenId::Home);
+}
 struct Platform : Hal,RenderPort,DisplayDataSource {
     TimeUs time=0; InputSnapshot input{}; int draws=0,invalidations=0,samples=0;
     bool valid=false; UsbState usb{};
@@ -176,6 +234,6 @@ void repaint() {
     plan.resolve(); CHECK(!plan.anyPaint());
 }
 int main() {
-    navigation(); deadlines(); repaint();
+    navigation(); flick(); deadlines(); repaint();
     std::cout<<"PASS: navigation/geometry, display deadlines, 3000 differential framebuffer cases\n";
 }

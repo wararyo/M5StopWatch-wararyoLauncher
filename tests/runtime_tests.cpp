@@ -90,6 +90,22 @@ void power() {
     p.update(longTime + 30000000, false, false); CHECK(p.screenOff());
     CHECK(!UsbState{}.powered());
 }
+void releaseVelocity() {
+    InputController c;
+    CHECK(c.update(0,{false,false,true,100,300}).gesture==Gesture::TouchStart);
+    for(int t=10000;t<=60000;t+=10000) c.update(t,{false,false,true,100,300-t/1000});
+    auto e=c.update(70000,{});
+    CHECK(e.gesture==Gesture::DragEnd && e.velocityY < -700 && e.velocityY > -1000);
+    c.update(80000,{false,false,true,100,300});
+    c.update(90000,{false,false,true,100,250});
+    // Stale speed must not fling, including when no stationary sample arrived.
+    CHECK(c.update(180000,{}).velocityY==0);
+    c.update(200000,{false,false,true,100,300});
+    c.update(210000,{false,false,true,100,250});
+    for(int t=220000;t<=310000;t+=10000) c.update(t,{false,false,true,100,250});
+    CHECK(c.update(320000,{}).velocityY==0);
+    CHECK(c.update(330000,{false,false,true,100,300},true).gesture==Gesture::None);
+}
 void screens() {
     ScreenManager s;
     Events e{}; e.next = true;
@@ -172,7 +188,7 @@ void overload() {
     }
 }
 int main() {
-    buttons(); touch(); power(); screens(); runtime();
+    buttons(); touch(); releaseVelocity(); power(); screens(); runtime();
     overload();
     std::cout << "PASS: buttons, touch, power, screens, runtime/registry, overload/early-wake\n";
 }

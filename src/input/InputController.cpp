@@ -19,6 +19,8 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
     if (in.touching && !previous_.touching) {
         startX_ = in.x; startY_ = in.y;
         dragging_ = false; swallowed_ = consumeTouch;
+        velocityY_ = 0; sampleTime_ = lastMoveTime_ = now;
+        if (!swallowed_) out.gesture = Gesture::TouchStart;
     }
     if (consumeTouch && in.touching) swallowed_ = true;
     // Home cancels the whole gesture, including a release in this same sample.
@@ -30,6 +32,12 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
     } else if (in.touching && !swallowed_) {
         out.totalX = in.x - startX_; out.totalY = in.y - startY_;
         out.dx = in.x - previous_.x; out.dy = in.y - previous_.y;
+        if (previous_.touching && now > sampleTime_) {
+            const float dt = float(now - sampleTime_);
+            const float alpha = dt / (30000.0f + dt);
+            velocityY_ += alpha * (out.dy * 1000000.0f / dt - velocityY_);
+            if (out.dy) lastMoveTime_ = now;
+        }
         if (!dragging_ && (std::abs(out.totalX) > threshold_ || std::abs(out.totalY) > threshold_)) {
             dragging_ = true; out.gesture = Gesture::DragStart;
         } else if (dragging_ && (out.dx || out.dy)) out.gesture = Gesture::DragMove;
@@ -37,9 +45,11 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
         out.x = previous_.x; out.y = previous_.y;
         out.totalX = previous_.x - startX_; out.totalY = previous_.y - startY_;
         out.gesture = dragging_ ? Gesture::DragEnd : Gesture::Tap;
+        out.velocityY = now - lastMoveTime_ < 80000 ? velocityY_ : 0;
     }
     if (!in.touching) swallowed_ = dragging_ = false;
     previous_ = in;
+    sampleTime_ = now;
     return out;
 }
 }

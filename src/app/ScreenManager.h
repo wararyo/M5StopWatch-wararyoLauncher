@@ -11,9 +11,12 @@ public:
     bool active() const { return model_.dragging || animating_; }
 private:
     void animate(float transition,float scroll,TimeUs now);
+    void settleList(float velocity,TimeUs now);
     ScreenModel model_{};
     enum class Drag { None,Watch,List,Return } drag_=Drag::None;
     bool animating_=false;
+    bool listSettling_=false,stopTouch_=false;
+    float scrollTangent_=0;
     float fromTransition_=0,toTransition_=0,fromScroll_=0,toScroll_=0;
     float dragScroll_=0,dragTransition_=0;
     TimeUs animationStart_=0,nextFrame_=INT64_MAX,toastUntil_=INT64_MAX;

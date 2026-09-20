@@ -7,7 +7,8 @@
 
 - 時計のAPPSタップ、A/B短押し、上スワイプで一覧を開く。
 - 一覧はストップウォッチ、設定、外部アプリ1〜3。Aで選択を循環し、選択行が中央へ移動する。
-- Bまたは行タップで「未実装」「未確認」を1.4秒表示する。全項目が起動不可で、ゲスト走査はまだ行わない。
+- Bまたは行タップで「準備中」を1.4秒表示する。全項目が起動不可で、ゲスト走査はまだ行わない。
+  行にはアプリ名だけを28pxで表示し、起動不可の理由文は並べない。
 - 一覧を上下にドラッグし、解放後に近い行へ位置補正する。先頭から下スワイプすると時計へ戻る。
 - 先頭以外で始めたスクロールは、先頭に達しても同じ接触中にはホーム操作へ変わらない。
 - A+B連続600msは補間・ドラッグ・通知をキャンセルして時計へ戻る。
@@ -63,12 +64,25 @@ WatchFace切り替えでは全面再描画します。
 満杯の配列に再登録して欠落を繰り返す経路は使いません。
 
 時刻文字だけを内部RAMの小さなスプライトにキャッシュします。確保失敗時は直接描画し、
-毎フレームの動的確保を避けます。固定日本語はM5GFX同梱のlgfxJapanGothic_24を使用します。
-任意Unicodeは保証せず、未収録文字や不正UTF-8は代替文字にします。
+毎フレームの動的確保を避けます。
+
+固定日本語はGenShinGothic 28pxのVLWフォントを埋め込んで描画します。
+元の2.3MiBをそのまま載せず、`tools/build_font.py` がASCII・かな・UIが使う約物と、
+`src/` に現れる非ASCII文字だけを残した約147KiBの部分集合 `src/ui/fonts/GenShinGothic28.vlw` を作ります。
+生成物はリポジトリに含め、ESP-IDF側の `EMBED_FILES` とPlatformIOの `board_build.embed_files` の
+両方で参照します（PlatformIOがアセンブリを生成し、IDFのコンポーネントがそれをリンクします）。
+
+読み込みは `ui/VlwFont.*` が一度だけ行います。`setFont()` はM5GFXが持つランタイムフォントを
+破棄するため、VLWフォントとデータ参照はこちら側で所有し、他フォントと自由に切り替えられるようにしています。
+読み込みに失敗した場合はlgfxJapanGothic_24へ退避し、一覧の表示自体は止めません。
+部分集合の外の文字と不正UTF-8は `?` へ置換します。任意Unicodeは保証しません。
+文字集合を変えたとき（UIの文言を増やしたときを含む）は `build_font.py` を実行し直します。
+仕組み自体は日本語専用ではなく、別言語のフォントに差し替える場合も同じ経路を使います。
 
 ## PC検証とビルド
 
 ```powershell
+python tools/build_font.py --source <元フォント.vlw> --check
 python tools/test_runtime.py
 python -m unittest discover -s tests -v
 pio run -e m5stopwatch
@@ -78,6 +92,11 @@ python tools/verify_build.py --environment m5stopwatch-render-check
 pio run -e m5stopwatch-diagnostics
 python tools/verify_build.py --environment m5stopwatch-diagnostics
 ```
+
+元のGenShinGothic 28px VLWはリポジトリに含めません。`build_font.py` は `--source` で
+元フォントの場所を必ず指定します（既定値はありません）。
+`--check` は手元の元フォントから作り直した結果と埋め込み済みの部分集合を比較するだけで、
+元フォントがない環境では省略します。
 
 ビルドは環境ごとに順番に実行します。`verify_build.py` はSDK、4MiB上限、MultiFirm固定版・
 パーティション、hostイメージ、install-hostのローカル検査に加え、診断文字列が正しい環境にだけ含まれることを検査します。
@@ -98,8 +117,9 @@ FramePlanは3,000フレームの矩形・重なり・消去・容量超過を独
 | 描画検証版 | `.pio/build/m5stopwatch-render-check/firmware.bin` | ピクセル比較・検証用時計・性能集計 |
 | 過負荷診断版 | `.pio/build/m5stopwatch-diagnostics/firmware.bin` | 40ms負荷、idle_cpu1、WDT回帰 |
 
-1. 通常版で起動、MultiFirmレイアウト、240MHz、表示サイズを確認する。時計・一覧の
-   日本語、円形画面端、選択色、無効理由を目視確認する。
+1. 通常版で起動、MultiFirmレイアウト、240MHz、表示サイズを確認する。起動ログの
+   `[Font] GenShinGothic28 glyphs=...` と、時計・一覧の日本語、円形画面端、選択色を目視確認する。
+   一覧のアプリ名がGenShinGothic 28pxで描かれ、行が名前だけになっていることを確認する。
 2. 時計からA/B、APPS、上ドラッグで一覧を開く。しきい値未満では時計へ戻ること、
    5項目の循環と連打、全項目の決定、一覧両端、ドラッグ後のタップ抑止を確認する。
 3. 上下遷移中・通知中・ドラッグ中にホームを実行する。

@@ -12,19 +12,21 @@ public:
     void invalidate() override { full_=true; }
     void draw(const ScreenModel&,const WatchData&) override;
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return face_ ? face_->nextUpdate(now,data) : INT64_MAX; }
+    const lgfx::IFont* listFont() const { return nameFont_; }
     uint32_t layouts() const { return layouts_; }
     uint32_t paints() const { return paints_; }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
     void capacityForTest(int n) { capacity_=n; invalidate(); }
 #endif
 private:
-    struct Row { RowLayout layout{}; char name[96]{}; char reason[32]{}; int handle=-1; };
+    struct Row { RowLayout layout{}; char name[96]{}; int handle=-1; };
     void planList(const ScreenModel&);
     void paintList(const ScreenModel&);
     M5GFX& display_;
     DigitalWatchFace digital_;
     std::array<WatchFace*,4> registry_{};
     WatchFace* face_=nullptr;
+    const lgfx::IFont* nameFont_=&fonts::lgfxJapanGothic_24;
     FramePlan frame_;
     std::array<Element,5> rows_{};
     Element hint_,toast_;

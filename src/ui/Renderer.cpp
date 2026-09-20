@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Text.h"
+#include "VlwFont.h"
 #include "app/AppRegistry.h"
 #include <cstdio>
 #include <cstring>
@@ -31,6 +32,8 @@ bool Renderer::selectFace(const char* id,bool disableCache) {
     return false;
 }
 bool Renderer::begin(bool disableCache) {
+    // The list keeps working on the built-in font if the embedded subset fails.
+    if(const auto* embedded=vlwFont()) nameFont_=embedded;
     registerFace(digital_);
     return display_.width()>0 && display_.height()>0 && selectFace("digital",disableCache);
 }
@@ -40,15 +43,13 @@ void Renderer::planList(const ScreenModel& m) {
         auto& row=plannedRows_[i]; row.layout=layoutRow(m,i);
         const auto& box=row.layout.box;
         if(box.empty()) {
-            row.name[0]=row.reason[0]=0;
+            row.name[0]=0;
             row.handle=frame_.add(rows_[i],{},0);
             continue;
         }
-        display_.setFont(&fonts::lgfxJapanGothic_24); display_.setTextSize(scale);
+        display_.setFont(nameFont_); display_.setTextSize(scale);
         fitText(display_,m.names[i] ? m.names[i] : AppRegistry[i].name,row.name,sizeof(row.name),std::max(0,box.x+box.w-row.layout.labelX-4));
-        display_.setTextSize(0.65f*scale);
-        fitText(display_,AppRegistry[i].reason,row.reason,sizeof(row.reason),std::max(0,box.x+box.w-row.layout.labelX-4));
-        uint32_t hash=hashValue(i==m.selection,hashString(row.reason,hashString(row.name)));
+        uint32_t hash=hashValue(i==m.selection,hashString(row.name));
         hash=hashValue(row.layout.centerY,hashValue(row.layout.iconX,hash));
         row.handle=frame_.add(rows_[i],box,hash);
     }
@@ -84,11 +85,9 @@ void Renderer::paintList(const ScreenModel& m) {
                     r.iconX+int(std::cos(angle)*scaled(m,20)),r.centerY+int(std::sin(angle)*scaled(m,20)),White);
             }
         }
-        display_.setFont(&fonts::lgfxJapanGothic_24); display_.setTextSize(scale);
+        display_.setFont(nameFont_); display_.setTextSize(scale);
         display_.setTextDatum(middle_left); display_.setTextColor(i==m.selection ? Lime : White,0);
-        display_.drawString(row.name,r.labelX,r.centerY-scaled(m,10));
-        display_.setTextSize(0.65f*scale); display_.setTextColor(Muted,0);
-        display_.drawString(row.reason,r.labelX,r.centerY+scaled(m,17));
+        display_.drawString(row.name,r.labelX,r.centerY);
     }
     if(!hintBox_.empty() && frame_.shouldPaint(hintHandle_)) {
         display_.setClipRect(hintBox_.x,hintBox_.y,hintBox_.w,hintBox_.h);
@@ -99,7 +98,7 @@ void Renderer::paintList(const ScreenModel& m) {
     if(!toastBox_.empty() && frame_.shouldPaint(toastHandle_)) {
         const auto& b=toastBox_; display_.setClipRect(b.x,b.y,b.w,b.h);
         display_.fillRoundRect(b.x,b.y,b.w,b.h,scaled(m,14),0x2104);
-        display_.setFont(&fonts::lgfxJapanGothic_24); display_.setTextSize(scale);
+        display_.setFont(nameFont_); display_.setTextSize(scale);
         display_.setTextDatum(middle_center); display_.setTextColor(White,0x2104);
         display_.drawString(m.toast,b.x+b.w/2,b.y+b.h/2);
     }

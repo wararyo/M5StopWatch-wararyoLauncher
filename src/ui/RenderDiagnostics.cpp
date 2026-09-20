@@ -2,6 +2,7 @@
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 #include "Renderer.h"
 #include "Text.h"
+#include "VlwFont.h"
 #include "app/AppRegistry.h"
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
@@ -119,12 +120,16 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
         const bool readable=probe!=0 && incremental[pixels/2]==0;
         if(!readable) std::printf("[Verify] UNVERIFIED: framebuffer readback probe failed\n");
         else {
-            display.setFont(&fonts::lgfxJapanGothic_24); display.setTextSize(1);
-            for(const auto& entry:AppRegistry) for(const char* text: {entry.name,entry.reason}) {
+            ++checks;
+            if(!vlwFont()) { ++failures; std::printf("[Verify] FAIL embedded VLW font not loaded\n"); }
+            display.setFont(renderer.listFont()); display.setTextSize(1);
+            auto covered=[&](const char* text) {
                 char fitted[128]; fitText(display,text,fitted,sizeof(fitted),4096);
                 ++checks;
                 if(std::strcmp(text,fitted)!=0) { ++failures; std::printf("[Verify] FAIL missing fixed UI glyph: %s\n",text); }
-            }
+            };
+            for(const auto& entry:AppRegistry) covered(entry.name);
+            covered("準備中");
             char fitted[128];
             char small[2]; fitText(display,"a",small,sizeof(small),4096); ++checks;
             if(std::strcmp(small,"a")!=0) { ++failures; std::printf("[Verify] FAIL bounded text capacity\n"); }
@@ -163,7 +168,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
             for(int i=0;i<5;++i) {
                 m.selection=i; m.scroll=i*rowSpacing(m);
                 check("five-rows",m,d);
-                m.toast="未確認"; check("toast-on",m,d);
+                m.toast="準備中"; check("toast-on",m,d);
                 m.scroll+=8; check("toast-overlap",m,d);
                 m.toast=nullptr; check("toast-off",m,d);
             }

@@ -1,5 +1,4 @@
 #include "ScreenManager.h"
-#include "AppRegistry.h"
 #include "ui/ListLayout.h"
 #include <algorithm>
 #include <cmath>
@@ -78,7 +77,9 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         const int row=tap ? hitRow(model_,e.x,e.y) : -1;
         if (e.decide || row>=0) {
             if (row>=0) model_.selection=row;
-            model_.toast=AppRegistry[model_.selection].reason;
+            // Until tasks 4-6 add the screens, opening an entry only acknowledges
+            // the input; the list itself does not advertise the missing targets.
+            model_.toast="準備中";
             toastUntil_=now+1400000; return true;
         }
     }

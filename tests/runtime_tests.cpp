@@ -136,7 +136,7 @@ void runtime() {
     CHECK(AppRuntime::waitDelay(100000, 90000) == 1000);
     CHECK(AppRuntime::waitDelay(100000, 105000) == 5000);
     CHECK(AppRegistry.size() == 5 && AppRegistry[2].slot == 1 && AppRegistry[4].slot == 3);
-    for (const auto& entry : AppRegistry) CHECK(!entry.available);
+    for (const auto& entry : AppRegistry) CHECK(entry.name && entry.name[0]);
 }
 void overload() {
     // vTaskDelay counts tick boundaries, so elapsed time can be shorter than

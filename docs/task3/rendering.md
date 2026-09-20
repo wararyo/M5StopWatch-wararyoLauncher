@@ -30,6 +30,7 @@ InputControllerのドラッグ判定（短辺/50）とは別のしきい値で�
 | `ui/Element.*` | 固定容量の差分計画。矩形と重なりの解決はPCでもテスト可能 |
 | `ui/WatchFace.h`、`DigitalWatchFace.*` | 安定ID、初期化・解放、plan/paint、次回更新期限、時刻文字キャッシュ |
 | `ui/Renderer.*` | 全レイヤー計画、消去、背面から描画、M5GFXへの直接描画 |
+| `ui/IconSet.*` | 埋め込みアイコンマスクの検証と参照。読み込み失敗時はnullptrを返す |
 | `ui/Text.*` | UTF-8の幅による省略、未収録文字の `?` 置換 |
 | `ui/RenderDiagnostics.*` | 描画検証版のみのデータ注入、ピクセル比較、性能集計 |
 | `hal/M5Hal.*` | 入力・単調時刻・USB・表示電源・待機。画面内容は持たない |
@@ -66,6 +67,22 @@ WatchFace切り替えでは全面再描画します。
 時刻文字だけを内部RAMの小さなスプライトにキャッシュします。確保失敗時は直接描画し、
 毎フレームの動的確保を避けます。
 
+一覧のアイコンは直径64px（選択時68px）の円を `fillSmoothRoundRect` で描き、その上に44pxのグレースケール
+マスクを `pushGrayscaleImage` で重ねます。マスクの0は円の色、255は白のグリフで、1バイト/ピクセルかつ
+実行時デコードがありません。44pxにしているのは、正方形が半径32の円に収まる上限だからです
+（対角の角は中心から31.1px）。マスクを大きくするなら円も大きくします。
+
+円に `fillCircle` を使わないのは、あれが中心ピクセルを含む `2r+1`＝奇数幅を塗るためです。
+偶数幅の `fillSmoothRoundRect(iconX-r, centerY-r, 2r, 2r, r)` なら中心がピクセルの境界に来て、
+44pxのマスクが四方10pxの余白でぴったり中央へ収まります。高さ34pxのVLWフォントも `middle` datumの
+中心が境界に来るので、円・アイコン・アプリ名の3つが同じ位置で揃います。アンチエイリアスも効きます。
+合成は黒へ消去した後に行うため、差分描画と全面描画のピクセル一致は保たれます。
+`tools/build_icons.py` が `icons/*.png`（44×44、8bit、R=G=Bのマスク）から
+`src/ui/icons/AppIcons.bin`（9,692 bytes、5枚）を作り、フォントと同じく `EMBED_FILES` と
+`board_build.embed_files` の両方で参照します。並び順は `AppRegistry` の `IconId` と一対一で、追加はしても並べ替えません。
+アイコンの差し替え後は `python tools/build_icons.py` を実行し直します。
+資産が壊れている場合 `appIcon()` はnullptrを返し、行は円だけを描いて一覧自体は止めません。
+
 固定日本語はGenShinGothic 28pxのVLWフォントを埋め込んで描画します。
 `tools/build_font.py` がTrueTypeフォント（GenShinGothic-Medium.ttf）を直接ラスタライズし、
 ASCII・かな・UIが使う約物と `src/` に現れる非ASCII文字だけを収めた約143KiB・307グリフの
@@ -88,6 +105,7 @@ ASCII・かな・UIが使う約物と `src/` に現れる非ASCII文字だけを
 ## PC検証とビルド
 
 ```powershell
+python tools/build_icons.py --check
 python tools/build_font.py --source <GenShinGothic-Medium.ttf> --check
 python tools/test_runtime.py
 python -m unittest discover -s tests -v
@@ -110,6 +128,7 @@ python tools/verify_build.py --environment m5stopwatch-diagnostics
 
 PCテストは作業2回帰、スワイプ境界、選択循環、円形安全領域、当たり判定、補間の時間依存、
 通知期限、分境界、静止/非表示/消灯時の抑制と復帰を確認します。
+アイコン矩形が非選択時の円に収まり、行の左端と名前に掛からないことも全スクロール位置で確認します。
 FramePlanは3,000フレームの矩形・重なり・消去・容量超過を独立した全面描画とピクセル比較します。
 これはM5GFXでの文字・円・転送の実機検証を代替しません。
 
@@ -127,6 +146,9 @@ FramePlanは3,000フレームの矩形・重なり・消去・容量超過を独
 1. 通常版で起動、MultiFirmレイアウト、240MHz、表示サイズを確認する。起動ログの
    `[Font] GenShinGothicMedium28 glyphs=...` と、時計・一覧の日本語、円形画面端、選択色を目視確認する。
    一覧のアプリ名がGenShinGothic 28pxで描かれ、行が名前だけになっていることを確認する。
+   起動ログの `[Icons] AppIcons count=5 size=44x44` と、5行のアイコンが画像で描かれ、
+   円の縁が滑らかで欠けがなく、選択行だけ円が大きくなることを目視確認する。
+   アイコンとアプリ名が円の中心に対して上下左右に偏っていないことも確認する。
 2. 時計からA/B、APPS、上ドラッグで一覧を開く。しきい値未満では時計へ戻ること、
    5項目の循環と連打、全項目の決定、一覧両端、ドラッグ後のタップ抑止を確認する。
 3. 上下遷移中・通知中・ドラッグ中にホームを実行する。
@@ -138,6 +160,7 @@ FramePlanは3,000フレームの矩形・重なり・消去・容量超過を独
    `mismatches=0` を確認する。`UNVERIFIED` は合格ではない。
    元の24パターン、往復、5行、長い日本語、通知、復帰、WatchFace差し替え、
    キャッシュ無効化、容量超過を実行する。検証後は時計へ戻る。
+   起動検証は5枚のアイコンが読めることと、円に収まる大きさであることも確認する。
 6. 描画検証版の時計は2026-09-19 09:41を基点とする合成データで、単調時刻に従い進む。
    電池82%も検証値であり、実際のRTC/電池値ではない。分更新と復帰時の更新を確認する。
 7. 描画検証版で、時計↔一覧のドラッグ往復と一覧スクロールをそれぞれ60秒以上続ける。

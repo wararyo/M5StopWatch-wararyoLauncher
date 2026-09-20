@@ -1,5 +1,6 @@
 #include "RenderDiagnostics.h"
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#include "IconSet.h"
 #include "Renderer.h"
 #include "Text.h"
 #include "VlwFont.h"
@@ -135,6 +136,25 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
             if(std::strcmp(small,"a")!=0) { ++failures; std::printf("[Verify] FAIL bounded text capacity\n"); }
             fitText(display,"外部アプリ😀",fitted,sizeof(fitted),4096); ++checks;
             if(std::strcmp(fitted,"外部アプリ?")!=0) { ++failures; std::printf("[Verify] FAIL unsupported glyph fallback\n"); }
+            // Every row needs its mask, and the mask must stay inside the
+            // smaller unselected circle: pushGrayscaleImage paints the whole
+            // rectangle, so an overhang would show as a square corner.
+            {
+                // transition=1: row 0 sits at the centre with its full radius.
+                ScreenModel probe; probe.width=w; probe.height=h; probe.transition=1;
+                const float iconScale=float(std::min(w,h))/468;
+                const int radius=layoutRow(probe,0).radius-selectionGrowth(probe);
+                for(const auto& entry:AppRegistry) {
+                    const auto* icon=appIcon(entry.icon); ++checks;
+                    if(!icon) { ++failures; std::printf("[Verify] FAIL missing icon: %s\n",entry.name); continue; }
+                    const float hx=icon->width*iconScale*0.5f,hy=icon->height*iconScale*0.5f;
+                    if(hx*hx+hy*hy>float(radius)*radius) {
+                        ++failures;
+                        std::printf("[Verify] FAIL icon %dx%d does not fit radius %d: %s\n",
+                            icon->width,icon->height,radius,entry.name);
+                    }
+                }
+            }
             auto check=[&](const char* name,ScreenModel m,WatchData d) {
                 renderer.draw(m,d); display.readRect(0,0,w,h,incremental);
                 renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,reference);

@@ -67,6 +67,13 @@ void navigation() {
                 for(int x: {box.x,box.x+box.w-1}) for(int y: {box.y,box.y+box.h-1})
                     CHECK((x-side/2)*(x-side/2)+(y-side/2)*(y-side/2)<=side*side/4);
                 CHECK(hitRow(m,box.x+box.w/2,box.y+box.h/2)==i);
+                // The mask is pushed as a rectangle, so it has to stay inside
+                // the smaller unselected circle and clear of the name.
+                const int mask=scaled(m,IconMaskPx),small=r.radius-selectionGrowth(m);
+                const auto icon=iconBox(r,mask,mask);
+                CHECK(mask*mask/2<=small*small);
+                CHECK(icon.x>=box.x && icon.x+icon.w<=r.labelX);
+                CHECK(icon.y>=r.centerY-r.radius && icon.y+icon.h<=r.centerY+r.radius);
             }
         }
     }

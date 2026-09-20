@@ -22,6 +22,7 @@ M5StopWatch-MultiFirm の軽量ホストを目指すランチャーです。User
 | 場所 | 内容 |
 |---|---|
 | `measurement/` | 測定用の試作。描画性能と消費電力を実機で測るためのもの |
+| `icons/` | アプリ一覧アイコンの原本。埋め込み資産は `tools/build_icons.py` で生成する |
 | `src/`、ルートの `platformio.ini` | MultiFirmホスト用の製品構成。Runtime・共通入力・消灯復帰、時計と5項目一覧 |
 | `tools/`、`tests/` | 製品用書き込み保護、ビルド検証、PC上のテスト |
 | `docs/plan.md` | 測定結果と合意事項を統合した製品版設計書・実装計画 |
@@ -65,6 +66,10 @@ CPU は 240 MHz のまま light sleep に入っていません。
 作業3の描画検証版は `pio run -e m5stopwatch-render-check`。通常版では時刻・電池を不明表示とし、
 描画検証版だけに合成データを注入します。[構成・操作・実機手順](docs/task3/rendering.md)と
 [検証記録](docs/task3/task3-validation.md)を参照してください。
+
+一覧のアイコンは `icons/*.png`（44×44のグレースケールマスク）から
+`python tools/build_icons.py` で `src/ui/icons/AppIcons.bin` を作り、円の上に重ねて描きます。
+アイコンを差し替えたときだけ実行し直します。
 
 日本語表示にはGenShinGothic 28pxの部分集合を埋め込みます。TrueTypeフォントはリポジトリに含めないため、
 フォントや文字集合を変えたときは `pip install freetype-py` のうえ

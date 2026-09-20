@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "IconSet.h"
 #include "Text.h"
 #include "VlwFont.h"
 #include "app/AppRegistry.h"
@@ -65,25 +66,23 @@ void Renderer::paintList(const ScreenModel& m) {
         const auto& row=plannedRows_[i]; const auto& r=row.layout; const auto& b=r.box;
         if(b.empty() || !frame_.shouldPaint(row.handle)) continue;
         display_.setClipRect(b.x,b.y,b.w,b.h);
-        const int radius=r.radius-(i==m.selection ? 0 : scaled(m,3));
-        display_.fillCircle(r.iconX,r.centerY,radius,Colors[i]);
-        display_.setTextColor(White,Colors[i]); display_.setTextDatum(middle_center);
-        display_.setTextSize(scale); display_.setFont(&fonts::FreeSansBold18pt7b);
-        if(AppRegistry[i].kind==TargetKind::External) {
-            char number[8]; std::snprintf(number,sizeof(number),"%d",AppRegistry[i].slot);
-            display_.drawString(number,r.iconX,r.centerY);
-        } else if(AppRegistry[i].id==AppId::Stopwatch) {
-            int rr=scaled(m,14);
-            display_.drawCircle(r.iconX,r.centerY+2,rr,White);
-            display_.drawLine(r.iconX,r.centerY+2,r.iconX+scaled(m,7),r.centerY-scaled(m,6),White);
-            display_.fillRect(r.iconX-scaled(m,4),r.centerY-rr-scaled(m,5),scaled(m,8),scaled(m,3),White);
-        } else {
-            display_.drawCircle(r.iconX,r.centerY,scaled(m,9),White);
-            for(int k=0;k<8;++k) {
-                float angle=k*3.14159265f/4;
-                display_.drawLine(r.iconX+int(std::cos(angle)*scaled(m,13)),r.centerY+int(std::sin(angle)*scaled(m,13)),
-                    r.iconX+int(std::cos(angle)*scaled(m,20)),r.centerY+int(std::sin(angle)*scaled(m,20)),White);
-            }
+        const int radius=r.radius-(i==m.selection ? 0 : selectionGrowth(m));
+        // An even diameter, so the circle centres on the pixel boundary at
+        // (iconX, centerY) where the 44px mask and the even height text box
+        // centre too. fillCircle would cover 2r+1 and land half a pixel off.
+        display_.fillSmoothRoundRect(r.iconX-radius,r.centerY-radius,2*radius,2*radius,radius,Colors[i]);
+        // The mask fits inside the circle, so its zero pixels restore the
+        // circle colour and no pixel outside the circle is touched.
+        if(const auto* icon=appIcon(AppRegistry[i].icon)) {
+            if(scale==1.0f)
+                display_.pushGrayscaleImage(r.iconX-icon->width/2,r.centerY-icon->height/2,
+                    icon->width,icon->height,icon->pixels,lgfx::grayscale_8bit,White,Colors[i]);
+            else
+                // Rotate-zoom takes pixel indices and adds half a pixel to each,
+                // so both centres are given as index-0.5 to stay on the boundary.
+                display_.pushGrayscaleImageRotateZoom(r.iconX-0.5f,r.centerY-0.5f,
+                    icon->width*0.5f-0.5f,icon->height*0.5f-0.5f,0.0f,scale,scale,
+                    icon->width,icon->height,icon->pixels,lgfx::grayscale_8bit,White,Colors[i]);
         }
         display_.setFont(nameFont_); display_.setTextSize(scale);
         display_.setTextDatum(middle_left); display_.setTextColor(i==m.selection ? Lime : White,0);

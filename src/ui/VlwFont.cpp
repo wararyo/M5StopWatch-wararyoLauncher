@@ -1,8 +1,8 @@
 #include "VlwFont.h"
 #include <cstdio>
 
-extern const uint8_t fontStart[] asm("_binary_GenShinGothic28_vlw_start");
-extern const uint8_t fontEnd[] asm("_binary_GenShinGothic28_vlw_end");
+extern const uint8_t fontStart[] asm("_binary_GenShinGothicMedium28_vlw_start");
+extern const uint8_t fontEnd[] asm("_binary_GenShinGothicMedium28_vlw_end");
 
 namespace launcher {
 const lgfx::IFont* vlwFont() {
@@ -12,8 +12,8 @@ const lgfx::IFont* vlwFont() {
     static const lgfx::IFont* loaded=[]() -> const lgfx::IFont* {
         const auto bytes=static_cast<uint32_t>(fontEnd-fontStart);
         data.set(fontStart,bytes);
-        if(!font.loadFont(&data)) { std::printf("[Font] GenShinGothic28 load failed\n"); return nullptr; }
-        std::printf("[Font] GenShinGothic28 glyphs=%u bytes=%u\n",unsigned(font.gCount),unsigned(bytes));
+        if(!font.loadFont(&data)) { std::printf("[Font] GenShinGothicMedium28 load failed\n"); return nullptr; }
+        std::printf("[Font] GenShinGothicMedium28 glyphs=%u bytes=%u\n",unsigned(font.gCount),unsigned(bytes));
         return &font;
     }();
     return loaded;

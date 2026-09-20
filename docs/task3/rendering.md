@@ -67,10 +67,16 @@ WatchFace切り替えでは全面再描画します。
 毎フレームの動的確保を避けます。
 
 固定日本語はGenShinGothic 28pxのVLWフォントを埋め込んで描画します。
-元の2.3MiBをそのまま載せず、`tools/build_font.py` がASCII・かな・UIが使う約物と、
-`src/` に現れる非ASCII文字だけを残した約147KiBの部分集合 `src/ui/fonts/GenShinGothic28.vlw` を作ります。
+`tools/build_font.py` がTrueTypeフォント（GenShinGothic-Medium.ttf）を直接ラスタライズし、
+ASCII・かな・UIが使う約物と `src/` に現れる非ASCII文字だけを収めた約143KiB・307グリフの
+`src/ui/fonts/GenShinGothicMedium28.vlw` を作ります。全グリフを載せると2.3MiBになり4MiBのホストには入りません。
 生成物はリポジトリに含め、ESP-IDF側の `EMBED_FILES` とPlatformIOの `board_build.embed_files` の
 両方で参照します（PlatformIOがアセンブリを生成し、IDFのコンポーネントがそれをリンクします）。
+
+ラスタライズはFreeType（freetype-py）のlight hintingで行い、送り幅はヒンティング前の値を切り上げます。
+この組み合わせはvlw-font-creator.m5stack.comの出力と一致し、最初に使った同ツール製のVLWに対して
+メトリクスは307グリフすべて一致、ビットマップは138,026ピクセル中50ピクセルが1/255だけ異なります。
+`--compare <既存.vlw>` でこの比較をやり直せます。`--size` で別サイズも生成できます。
 
 読み込みは `ui/VlwFont.*` が一度だけ行います。`setFont()` はM5GFXが持つランタイムフォントを
 破棄するため、VLWフォントとデータ参照はこちら側で所有し、他フォントと自由に切り替えられるようにしています。
@@ -82,7 +88,7 @@ WatchFace切り替えでは全面再描画します。
 ## PC検証とビルド
 
 ```powershell
-python tools/build_font.py --source <元フォント.vlw> --check
+python tools/build_font.py --source <GenShinGothic-Medium.ttf> --check
 python tools/test_runtime.py
 python -m unittest discover -s tests -v
 pio run -e m5stopwatch
@@ -93,10 +99,11 @@ pio run -e m5stopwatch-diagnostics
 python tools/verify_build.py --environment m5stopwatch-diagnostics
 ```
 
-元のGenShinGothic 28px VLWはリポジトリに含めません。`build_font.py` は `--source` で
-元フォントの場所を必ず指定します（既定値はありません）。
-`--check` は手元の元フォントから作り直した結果と埋め込み済みの部分集合を比較するだけで、
-元フォントがない環境では省略します。
+元のTrueTypeフォントはリポジトリに含めません。`build_font.py` は `--source` で
+フォントの場所を必ず指定します（既定値はありません）。生成には `pip install freetype-py` が要りますが、
+必要なのはフォントか文字集合を変えるときだけで、通常のビルドはコミット済みの部分集合を使います。
+`--check` は手元のフォントから作り直した結果と埋め込み済みの部分集合を比較するだけなので、
+フォントがない環境では省略します。
 
 ビルドは環境ごとに順番に実行します。`verify_build.py` はSDK、4MiB上限、MultiFirm固定版・
 パーティション、hostイメージ、install-hostのローカル検査に加え、診断文字列が正しい環境にだけ含まれることを検査します。
@@ -118,7 +125,7 @@ FramePlanは3,000フレームの矩形・重なり・消去・容量超過を独
 | 過負荷診断版 | `.pio/build/m5stopwatch-diagnostics/firmware.bin` | 40ms負荷、idle_cpu1、WDT回帰 |
 
 1. 通常版で起動、MultiFirmレイアウト、240MHz、表示サイズを確認する。起動ログの
-   `[Font] GenShinGothic28 glyphs=...` と、時計・一覧の日本語、円形画面端、選択色を目視確認する。
+   `[Font] GenShinGothicMedium28 glyphs=...` と、時計・一覧の日本語、円形画面端、選択色を目視確認する。
    一覧のアプリ名がGenShinGothic 28pxで描かれ、行が名前だけになっていることを確認する。
 2. 時計からA/B、APPS、上ドラッグで一覧を開く。しきい値未満では時計へ戻ること、
    5項目の循環と連打、全項目の決定、一覧両端、ドラッグ後のタップ抑止を確認する。

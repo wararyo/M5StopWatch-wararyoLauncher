@@ -112,20 +112,27 @@ RTC同期、NVS保存、実計測、外部アプリ起動、電力目標の達�
 
 実機確認の完了後に、一覧の行から「未実装」「未確認」の理由文を外し（`AppRegistry` からも削除）、
 アプリ名をGenShinGothic 28pxの埋め込みVLWで描くよう変更した。決定操作の反応は「準備中」の通知に統一した。
-フォントは `tools/build_font.py` が作る146,646 bytes・307グリフの部分集合で、
-ASCII・かな・UIが使う約物と `src/` に現れる漢字だけを収録する。構成は[描画基盤](rendering.md)を参照。
+フォントは `tools/build_font.py` がGenShinGothic-Medium.ttfから生成する
+146,646 bytes・307グリフの部分集合で、ASCII・かな・UIが使う約物と `src/` に現れる漢字だけを収録する。
+構成は[描画基盤](rendering.md)を参照。
+
+当初はvlw-font-creator.m5stack.comが作ったVLWを部分集合化していたが、再現性のためTTFから直接生成する方式へ変更した。
+FreeTypeのlight hintingと送り幅の切り上げで同ツールの出力を再現できることを確認済み。
 
 | 項目 | 結果 |
 |---|---|
-| `python tools/build_font.py --source <元フォント> --check` | 埋め込み済み部分集合が現在の文字集合と一致 |
+| 同ツール製VLWとの比較（`--compare`） | 307グリフのメトリクスは全一致。ビットマップは138,026ピクセル中50ピクセルが1/255だけ相違 |
+| 収録文字 | Web版と同一。カタカナ範囲はU+30FEまでとし、合字ヿ（U+30FF）は除外 |
+| `python tools/build_font.py --source <GenShinGothic-Medium.ttf> --check` | 埋め込み済み部分集合が現在のフォント・文字集合と一致 |
 | `python tools/test_runtime.py` | 成功（登録テーブルの確認を名前の存在検査へ変更） |
-| m5stopwatch | 955,760 bytes。ビルド・SDK/レイアウト/host検査すべて成功 |
-| m5stopwatch-render-check | 963,712 bytes。同上 |
-| m5stopwatch-diagnostics | 956,336 bytes。同上 |
+| m5stopwatch | 955,776 bytes。ビルド・SDK/レイアウト/host検査すべて成功 |
+| m5stopwatch-render-check | 963,728 bytes。同上 |
+| m5stopwatch-diagnostics | 956,352 bytes。同上 |
 
 フォント分の増加は約150KiBで、4MiB上限に対しては22.8%。
 描画検証版には、埋め込みフォントの読み込み確認と、アプリ名・「準備中」のグリフ収録確認を追加した。
 通知のピクセル比較文言も「準備中」に合わせた。
 
 **実機未確認**: 28pxの見た目、行の高さと円形端での省略、ピクセル比較のPASS、
-描画時間への影響は未取得。次の実機確認で[描画基盤](rendering.md)の手順1・5を実施し、結果をここへ追記する。
+描画時間への影響は未取得。TTF生成版のグリフも実機では未確認で、PC上の比較値だけで合格扱いにはしない。
+次の実機確認で[描画基盤](rendering.md)の手順1・5を実施し、結果をここへ追記する。

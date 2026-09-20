@@ -66,9 +66,10 @@ CPU は 240 MHz のまま light sleep に入っていません。
 描画検証版だけに合成データを注入します。[構成・操作・実機手順](docs/task3/rendering.md)と
 [検証記録](docs/task3/task3-validation.md)を参照してください。
 
-日本語表示にはGenShinGothic 28pxの部分集合を埋め込みます。元フォントはリポジトリに含めないため、
-文字集合を変えたときは `python tools/build_font.py --source <元フォント.vlw>` で
-`src/ui/fonts/GenShinGothic28.vlw` を作り直します。
+日本語表示にはGenShinGothic 28pxの部分集合を埋め込みます。TrueTypeフォントはリポジトリに含めないため、
+フォントや文字集合を変えたときは `pip install freetype-py` のうえ
+`python tools/build_font.py --source <GenShinGothic-Medium.ttf>` で
+`src/ui/fonts/GenShinGothicMedium28.vlw` を作り直します。
 
 試作のビルドと書き込み手順、測定モードの使い方は
 [measurement/README.md](measurement/README.md) にあります。

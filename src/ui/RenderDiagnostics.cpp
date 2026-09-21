@@ -130,7 +130,11 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
                 if(std::strcmp(text,fitted)!=0) { ++failures; std::printf("[Verify] FAIL missing fixed UI glyph: %s\n",text); }
             };
             for(const auto& entry:AppRegistry) covered(entry.name);
-            covered("準備中");
+            // Every fixed string the launcher can put on screen, so a font
+            // subset that missed one fails here rather than on the device.
+            for(const char* text:{"準備中","日時","輝度","消灯時間","情報","戻る","保存","キャンセル",
+                                  "30秒","時刻を保存しました","保存しました","日付が正しくありません",
+                                  "保存に失敗しました","時計を設定できません"}) covered(text);
             char fitted[128];
             char small[2]; fitText(display,"a",small,sizeof(small),4096); ++checks;
             if(std::strcmp(small,"a")!=0) { ++failures; std::printf("[Verify] FAIL bounded text capacity\n"); }
@@ -194,6 +198,37 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
             }
             m.names[2]="非常に長い外部アプリ名と未収録文字😀";
             m.scroll=2*rowSpacing(m); check("long-japanese",m,d);
+            // Settings covers the list rather than sliding it away, so the rows
+            // it hides have to be erased by the same differential plan.
+            m.names[2]=nullptr; m.screen=ScreenId::Settings; m.settings=SettingsModel{};
+            m.settings.lines[0]="wararyoLauncher";
+            m.settings.lines[1]="0.0.0-verify"; m.settings.lines[2]="5.5.0";
+            for(int row=0;row<SettingsMenuRows;++row) {
+                m.settings.cursor=row; check("settings-menu",m,d);
+            }
+            for(const auto view:{SettingsView::DateTime,SettingsView::Brightness,
+                                 SettingsView::ScreenOff,SettingsView::Info}) {
+                m.settings.view=view; m.settings.editing=false;
+                m.settings.fields[0]=view==SettingsView::DateTime ? 2026 :
+                    view==SettingsView::Brightness ? 90 : 1;
+                m.settings.fields[1]=9; m.settings.fields[2]=21;
+                m.settings.fields[3]=23; m.settings.fields[4]=59;
+                for(int slot=0;slot<settingsSlotCount(view);++slot) {
+                    m.settings.cursor=slot; check("settings-slot",m,d);
+                    if(slot<settingsFieldCount(view)) {
+                        m.settings.editing=true; check("settings-editing",m,d);
+                        m.settings.editing=false;
+                    }
+                }
+                m.toast="保存しました"; check("settings-notice",m,d);
+                m.toast=nullptr; check("settings-notice-off",m,d);
+                vTaskDelay(1);
+            }
+            // The widest date the editor can show, separators included.
+            m.settings.view=SettingsView::DateTime; m.settings.cursor=0;
+            m.settings.fields[0]=2099; check("settings-widest",m,d);
+            m.screen=ScreenId::AppList; m.settings=SettingsModel{};
+            check("settings-left",m,d);
             m={}; m.width=w; m.height=h; check("home",m,d);
             d.localTime.tm_min=42; check("minute",m,d);
             d.localTime.tm_mday=20; d.localTime.tm_wday=0; check("date",m,d);

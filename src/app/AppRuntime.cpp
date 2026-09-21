@@ -30,13 +30,22 @@ void AppRuntime::step() {
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
         if (wasOff) recordWake(now);
 #endif
+        // The panel comes back at zero brightness, so the level is re-applied
+        // on the first frame after the wake rather than inside the HAL.
         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
+        appliedBrightness_ = -1;
     }
     if (!power_.screenOff()) {
         dirty_ = screens_.update(now) || dirty_;
     }
     if (!power_.screenOff() && (dirty_ || now >= nextDisplay_)) {
         const auto model = screens_.model();
+        // Both come from the display model, so a preview, a cancel and a home
+        // discard all travel the same single path down to the HAL.
+        if (model.brightness != appliedBrightness_) {
+            hal_.setBrightness(model.brightness); appliedBrightness_ = model.brightness;
+        }
+        power_.setTimeout(TimeUs(model.screenOffSec) * 1000000);
         const auto watch = data_.sample(now);
         renderer_.draw(model, watch);
         nextDisplay_ = model.transition < 1 ?

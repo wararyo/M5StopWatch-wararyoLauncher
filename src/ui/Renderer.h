@@ -1,6 +1,6 @@
 #pragma once
 #include "DigitalWatchFace.h"
-#include "ListLayout.h"
+#include "SettingsLayer.h"
 namespace launcher {
 class Renderer final : public RenderPort {
 public:
@@ -24,6 +24,7 @@ private:
     void paintList(const ScreenModel&);
     M5GFX& display_;
     DigitalWatchFace digital_;
+    SettingsLayer settings_;
     std::array<WatchFace*,4> registry_{};
     WatchFace* face_=nullptr;
     const lgfx::IFont* nameFont_=&fonts::lgfxJapanGothic_24;

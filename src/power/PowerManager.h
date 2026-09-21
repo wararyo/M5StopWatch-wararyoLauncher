@@ -1,5 +1,6 @@
 #pragma once
 #include "input/InputController.h"
+#include "storage/Settings.h"
 namespace launcher {
 enum class DisplayState { Active, WatchIdle, ScreenOff };
 // A failed read is unknown, never 0%, for the same reason a failed VBUS read is
@@ -14,19 +15,23 @@ struct UsbState {
 class PowerManager {
 public:
     void begin(TimeUs now) { lastActivity_ = now; state_ = DisplayState::WatchIdle; }
+    // Settings owns the value; the default matches the stored default so an
+    // unbound or failed store behaves exactly as before.
+    void setTimeout(TimeUs microseconds) { timeout_ = microseconds; }
     bool update(TimeUs now, bool activity, bool visibleActive) {
         const auto old = state_;
         if (activity) lastActivity_ = now;
-        if (now - lastActivity_ >= 30000000) state_ = DisplayState::ScreenOff;
+        if (now - lastActivity_ >= timeout_) state_ = DisplayState::ScreenOff;
         else state_ = activity || visibleActive ? DisplayState::Active : DisplayState::WatchIdle;
         return old != state_;
     }
     bool screenOff() const { return state_ == DisplayState::ScreenOff; }
     DisplayState state() const { return state_; }
-    TimeUs deadline() const { return screenOff() ? INT64_MAX : lastActivity_ + 30000000; }
+    TimeUs deadline() const { return screenOff() ? INT64_MAX : lastActivity_ + timeout_; }
     UsbState usb{};
 private:
     TimeUs lastActivity_ = 0;
+    TimeUs timeout_ = TimeUs(Settings{}.screenOffSec) * 1000000;
     DisplayState state_ = DisplayState::WatchIdle;
 };
 }

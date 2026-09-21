@@ -40,8 +40,11 @@ bool Renderer::begin(bool disableCache) {
 }
 void Renderer::planList(const ScreenModel& m) {
     const float scale=float(std::min(m.width,m.height))/468;
+    // Settings covers the list rather than sliding it away, so the rows are
+    // planned empty and their last painted boxes still get erased.
+    const bool hidden=m.screen==ScreenId::Settings;
     for(int i=0;i<5;++i) {
-        auto& row=plannedRows_[i]; row.layout=layoutRow(m,i);
+        auto& row=plannedRows_[i]; row.layout=hidden ? RowLayout{} : layoutRow(m,i);
         const auto& box=row.layout.box;
         if(box.empty()) {
             row.name[0]=0;
@@ -111,6 +114,7 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
 #endif
     face_->plan(frame_,display_,m,watch);
     planList(m);
+    settings_.plan(frame_,display_,m,nameFont_);
     frame_.resolve();
     if(frame_.anyPaint()) {
         display_.startWrite(); display_.clearClipRect();
@@ -120,7 +124,7 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
             if(!r.empty()) display_.fillRect(r.x,r.y,r.w,r.h,0);
         }
         // Full fallback paints every view, even those whose add() returned -1.
-        face_->paint(display_,frame_); paintList(m);
+        face_->paint(display_,frame_); paintList(m); settings_.paint(display_,frame_,m,nameFont_);
         display_.endWrite(); ++paints_;
     }
     if(frame_.overflow() && !overflowReported_) std::printf("[Renderer] element capacity exceeded: full repaint\n");

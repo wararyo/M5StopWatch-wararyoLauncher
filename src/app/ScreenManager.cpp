@@ -1,5 +1,5 @@
 #include "ScreenManager.h"
-#include "ui/ListLayout.h"
+#include "app/AppRegistry.h"
 #include <algorithm>
 #include <cmath>
 namespace launcher {
@@ -48,9 +48,18 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         const int w=model_.width,h=model_.height; const auto homes=model_.homeCount+1;
         model_={}; model_.width=w; model_.height=h; model_.homeCount=homes;
         drag_=Drag::None; animating_=listSettling_=stopTouch_=false; nextFrame_=toastUntil_=INT64_MAX;
+        settings_.exit();
         return true;
     }
     bool changed=update(now);
+    // Settings owns its own input once open. Gestures it does not use simply do
+    // nothing, so a stray drag cannot move the list underneath it.
+    if (model_.screen==ScreenId::Settings) {
+        const auto out=settings_.handle(e,now);
+        if (out.notice) { model_.toast=out.notice; toastUntil_=now+1400000; }
+        if (out.leave) { settings_.exit(); model_.screen=ScreenId::AppList; }
+        return out.changed || out.leave || out.notice!=nullptr || changed;
+    }
     if (e.gesture==Gesture::TouchStart) {
         stopTouch_=animating_ && listSettling_;
         if (stopTouch_) { animating_=false; nextFrame_=INT64_MAX; return true; }
@@ -111,7 +120,13 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         if (e.decide || row>=0) {
             if (listSettling_ && animating_) animate(1,model_.selection*rowSpacing(model_),now);
             if (row>=0) model_.selection=row;
-            // Until tasks 4-6 add the screens, opening an entry only acknowledges
+            if (AppRegistry[model_.selection].id==AppId::Settings && settings_.available()) {
+                // The list keeps its scroll and selection: settings does not use
+                // them, so returning lands back on the same row.
+                settings_.enter(); model_.screen=ScreenId::Settings;
+                return true;
+            }
+            // Until tasks 5-6 add the screens, opening an entry only acknowledges
             // the input; the list itself does not advertise the missing targets.
             model_.toast="準備中";
             toastUntil_=now+1400000; return true;

@@ -8,6 +8,10 @@ public:
     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
         : hal_(hal), renderer_(renderer), data_(data),
           input_(std::max(1, std::min(width,height) / 50)), screens_(width,height) {}
+    void bindSettings(SettingsStore& store,TimeService& time) { screens_.bind(&store,&time); }
+    void setInfo(const char* name,const char* version,const char* idf) {
+        screens_.setInfo(name,version,idf);
+    }
     void begin();
     void step();
     void wait();
@@ -25,6 +29,7 @@ private:
     PowerManager power_;
     TimeUs nextInput_ = 0, nextUsb_ = 0;
     TimeUs nextDisplay_ = INT64_MAX;
+    int appliedBrightness_ = -1; // Forced re-apply after every wake.
     bool dirty_ = true;
 };
 }

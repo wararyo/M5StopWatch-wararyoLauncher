@@ -29,8 +29,10 @@ UsbState M5Hal::sampleUsb() {
     return usb;
 }
 void M5Hal::setScreenOff(bool off) {
+    // Waking only powers the panel: the level is the runtime's to decide, since
+    // it can be a settings preview rather than the stored value.
     if (off) { M5.Display.setBrightness(0); M5.Display.sleep(); }
-    else { M5.Display.wakeup(); M5.Display.setBrightness(90); }
+    else M5.Display.wakeup();
     std::printf("[Power] screen=%s\n", off ? "off" : "on");
 }
 bool M5Hal::readRtc(CivilTime& utc) {

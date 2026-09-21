@@ -15,6 +15,7 @@
 #include "app/AppRuntime.h"
 #include "hal/M5Hal.h"
 #include "services/LauncherData.h"
+#include "storage/NvsBackend.h"
 #include "ui/Renderer.h"
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 #include "ui/RenderDiagnostics.h"
@@ -42,7 +43,9 @@ extern "C" void app_main() {
     cfg.output_power = false;
     cfg.clear_display = true;
     M5.begin(cfg);
-    M5.Display.setBrightness(90);
+    // The stored level is applied once NVS has been read; this only keeps the
+    // boot screen visible until then.
+    M5.Display.setBrightness(launcher::Settings{}.brightness);
 
     const auto* app = esp_app_get_description();
     std::printf("[Launcher] firmware=%s version=%s idf=%s\n",
@@ -80,16 +83,26 @@ extern "C" void app_main() {
     // Keep framebuffer metadata / font cache objects off the 8KiB UI stack.
     static launcher::Renderer renderer(M5.Display);
     if (!renderer.begin()) { std::printf("[Renderer] initialization failed\n"); return; }
+    // Declared for both builds so the settings screen exists either way. The
+    // diagnostics build never begins it, so it touches no RTC and reports the
+    // clock as unset instead of writing one.
+    static launcher::TimeService timeService;
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
     launcher::runRepaintCheck(renderer, M5.Display);
     static launcher::DiagnosticDataSource data;
     std::printf("[RenderDiag] synthetic JST time / battery; no RTC read\n");
 #else
-    static launcher::TimeService timeService;
     timeService.begin(hal);
     static launcher::LauncherData data(hal, timeService);
 #endif
+    static launcher::NvsBackend nvs;
+    nvs.begin();
+    static launcher::SettingsStore settingsStore;
+    settingsStore.begin(nvs);
+    hal.setBrightness(settingsStore.get().brightness);
     launcher::AppRuntime runtime(hal, renderer, data, M5.Display.width(), M5.Display.height());
+    runtime.bindSettings(settingsStore, timeService);
+    runtime.setInfo(app->project_name, app->version, esp_get_idf_version());
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     runtime.begin();

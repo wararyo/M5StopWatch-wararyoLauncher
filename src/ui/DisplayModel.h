@@ -1,8 +1,22 @@
 #pragma once
 #include "input/InputController.h"
+#include "storage/Settings.h"
 #include <ctime>
 namespace launcher {
-enum class ScreenId { Home, AppList };
+enum class ScreenId { Home, AppList, Settings };
+// Order matters: a menu cursor of 0..3 maps onto the view that follows Menu.
+enum class SettingsView : uint8_t { Menu, DateTime, Brightness, ScreenOff, Info };
+struct SettingsModel {
+    SettingsView view=SettingsView::Menu;
+    // Cursor runs over the fields and then the buttons. `editing` is the
+    // physical-button mode only: touch changes a value without entering it.
+    int cursor=0;
+    bool editing=false;
+    // DateTime: year, month, day, hour, minute. Brightness: the level itself.
+    // ScreenOff: an index into ScreenOffChoices, which is what A cycles.
+    int fields[5]{};
+    const char* lines[3]{}; // Info text, captured once at startup.
+};
 struct ScreenModel {
     ScreenId screen=ScreenId::Home;
     int width=468,height=468,selection=0;
@@ -11,6 +25,9 @@ struct ScreenModel {
     bool dragging=false,animating=false;
     const char* names[5]{}; // optional stable service/diagnostic labels
     const char* toast=nullptr;
+    SettingsModel settings{};
+    int brightness=Settings{}.brightness;   // Effective: preview while editing.
+    int screenOffSec=Settings{}.screenOffSec; // Saved only; never previewed.
 };
 struct WatchData {
     std::tm localTime{}; // JST, supplied by the service; no conversion in UI

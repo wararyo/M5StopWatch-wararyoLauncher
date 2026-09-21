@@ -12,7 +12,7 @@ inline uint32_t hashValue(uint32_t v,uint32_t h=2166136261u) {
 struct Element { Rect box{}; uint32_t fingerprint=0; bool valid=false; };
 class FramePlan {
 public:
-    // Current maximum: 5 watch elements + 5 rows + toast = 11.
+    // Current maximum: 5 watch elements + 5 rows + 11 settings + toast = 22.
     // Extra room is for future faces; overflow is handled, never truncated.
     static constexpr int Capacity=32;
     void begin(bool full,int limit=Capacity) {

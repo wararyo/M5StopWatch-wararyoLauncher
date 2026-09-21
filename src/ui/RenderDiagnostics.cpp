@@ -221,6 +221,8 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
                     }
                 }
                 m.toast="保存しました"; check("settings-notice",m,d);
+                // The longest notice, over the buttons it used to be buried under.
+                m.toast="日付が正しくありません"; check("settings-notice-long",m,d);
                 m.toast=nullptr; check("settings-notice-off",m,d);
                 vTaskDelay(1);
             }

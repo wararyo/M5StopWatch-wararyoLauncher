@@ -22,6 +22,8 @@ private:
     struct Row { RowLayout layout{}; char name[96]{}; int handle=-1; };
     void planList(const ScreenModel&);
     void paintList(const ScreenModel&);
+    void planToast(const ScreenModel&);
+    void paintToast(const ScreenModel&);
     M5GFX& display_;
     DigitalWatchFace digital_;
     SettingsLayer settings_;

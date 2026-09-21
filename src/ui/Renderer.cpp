@@ -59,8 +59,21 @@ void Renderer::planList(const ScreenModel& m) {
         hash=hashValue(row.layout.centerY,hashValue(row.layout.iconX,hash));
         row.handle=frame_.add(rows_[i],box,hash);
     }
-    toastBox_=m.toast ? Rect{m.width/2-scaled(m,108),scaled(m,361),scaled(m,216),scaled(m,46)} : Rect{};
-    toastHandle_=frame_.add(toast_,toastBox_,m.toast ? hashString(m.toast) : 0);
+}
+void Renderer::planToast(const ScreenModel& m) {
+    if(!m.toast) { toastBox_={}; toastHandle_=frame_.add(toast_,{},0); return; }
+    display_.setFont(nameFont_); display_.setTextSize(float(std::min(m.width,m.height))/468);
+    const int height=scaled(m,46),centreY=scaled(m,360);
+    // Width follows the text: the settings notices are three times as long as
+    // "準備中" and were being cut off by a box sized for the short one.
+    // Clamped to the chord at the lower edge so the bezel never crops it.
+    const int radius=std::min(m.width,m.height)/2;
+    const int dy=std::abs(centreY+height/2-m.height/2);
+    const int chord=int(std::sqrt(float(radius)*radius-float(dy)*dy))-scaled(m,6);
+    const int width=std::min(2*chord,int(display_.textWidth(m.toast))+2*scaled(m,22));
+    toastBox_={m.width/2-width/2,centreY-height/2,width,height};
+    toastHandle_=frame_.add(toast_,toastBox_,hashString(m.toast));
+    display_.setTextSize(1);
 }
 void Renderer::paintList(const ScreenModel& m) {
     const float scale=float(std::min(m.width,m.height))/468;
@@ -90,13 +103,19 @@ void Renderer::paintList(const ScreenModel& m) {
         display_.setTextDatum(middle_left); display_.setTextColor(i==m.selection ? Lime : White,0);
         display_.drawString(row.name,r.labelX,r.centerY);
     }
-    if(!toastBox_.empty() && frame_.shouldPaint(toastHandle_)) {
-        const auto& b=toastBox_; display_.setClipRect(b.x,b.y,b.w,b.h);
-        display_.fillRoundRect(b.x,b.y,b.w,b.h,scaled(m,14),0x2104);
-        display_.setFont(nameFont_); display_.setTextSize(scale);
-        display_.setTextDatum(middle_center); display_.setTextColor(White,0x2104);
-        display_.drawString(m.toast,b.x+b.w/2,b.y+b.h/2);
-    }
+    display_.clearClipRect(); display_.setTextSize(1);
+}
+void Renderer::paintToast(const ScreenModel& m) {
+    if(toastBox_.empty() || !frame_.shouldPaint(toastHandle_)) return;
+    const auto& b=toastBox_;
+    display_.setClipRect(b.x,b.y,b.w,b.h);
+    display_.fillRoundRect(b.x,b.y,b.w,b.h,scaled(m,14),0x2104);
+    display_.setFont(nameFont_); display_.setTextSize(float(std::min(m.width,m.height))/468);
+    // A notice too long even for the chord is shortened, never silently clipped.
+    char fitted[96];
+    fitText(display_,m.toast,fitted,sizeof(fitted),b.w-2*scaled(m,12));
+    display_.setTextDatum(middle_center); display_.setTextColor(White,0x2104);
+    display_.drawString(fitted,b.x+b.w/2,b.y+b.h/2);
     display_.clearClipRect(); display_.setTextSize(1);
 }
 void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
@@ -115,6 +134,7 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
     face_->plan(frame_,display_,m,watch);
     planList(m);
     settings_.plan(frame_,display_,m,nameFont_);
+    planToast(m);
     frame_.resolve();
     if(frame_.anyPaint()) {
         display_.startWrite(); display_.clearClipRect();
@@ -124,7 +144,10 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
             if(!r.empty()) display_.fillRect(r.x,r.y,r.w,r.h,0);
         }
         // Full fallback paints every view, even those whose add() returned -1.
-        face_->paint(display_,frame_); paintList(m); settings_.paint(display_,frame_,m,nameFont_);
+        // The toast is the topmost layer: it was being drawn before settings,
+        // so the save and cancel buttons landed on top of the notice.
+        face_->paint(display_,frame_); paintList(m);
+        settings_.paint(display_,frame_,m,nameFont_); paintToast(m);
         display_.endWrite(); ++paints_;
     }
     if(frame_.overflow() && !overflowReported_) std::printf("[Renderer] element capacity exceeded: full repaint\n");

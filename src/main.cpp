@@ -14,6 +14,7 @@
 #include <cstring>
 #include "app/AppRuntime.h"
 #include "hal/M5Hal.h"
+#include "services/LauncherData.h"
 #include "ui/Renderer.h"
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 #include "ui/RenderDiagnostics.h"
@@ -74,7 +75,8 @@ extern "C" void app_main() {
                 hostOk ? "valid" : "MISMATCH");
 
     std::printf("[Launcher] startup complete; starting single-task runtime\n");
-    launcher::M5Hal hal;
+    // Static: the data source below keeps a reference to it for the whole run.
+    static launcher::M5Hal hal;
     // Keep framebuffer metadata / font cache objects off the 8KiB UI stack.
     static launcher::Renderer renderer(M5.Display);
     if (!renderer.begin()) { std::printf("[Renderer] initialization failed\n"); return; }
@@ -83,7 +85,9 @@ extern "C" void app_main() {
     static launcher::DiagnosticDataSource data;
     std::printf("[RenderDiag] synthetic JST time / battery; no RTC read\n");
 #else
-    static launcher::DisplayDataSource data; // unavailable until task 4
+    static launcher::TimeService timeService;
+    timeService.begin(hal);
+    static launcher::LauncherData data(hal, timeService);
 #endif
     launcher::AppRuntime runtime(hal, renderer, data, M5.Display.width(), M5.Display.height());
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);

@@ -1,7 +1,8 @@
 idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     "ui/Element.cpp" "ui/DigitalWatchFace.cpp" "ui/Text.cpp" "ui/Renderer.cpp"
     "ui/VlwFont.cpp" "ui/IconSet.cpp"
-    "ui/RenderDiagnostics.cpp" "app/ScreenManager.cpp" "app/AppRuntime.cpp" "hal/M5Hal.cpp" INCLUDE_DIRS "."
+    "ui/RenderDiagnostics.cpp" "app/ScreenManager.cpp" "app/AppRuntime.cpp" "hal/M5Hal.cpp"
+    "services/TimeService.cpp" "services/LauncherData.cpp" INCLUDE_DIRS "."
     # Subset produced by tools/build_font.py; the full 2.3MiB VLW is not embedded.
     # App list icon masks produced by tools/build_icons.py from icons/*.png.
     EMBED_FILES "ui/fonts/GenShinGothicMedium28.vlw" "ui/icons/AppIcons.bin"

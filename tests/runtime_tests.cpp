@@ -9,9 +9,16 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     TimeUs time = 0, waited = 0, earlyWakeUs = 0;
     InputSnapshot input{};
     UsbState usb{};
-    int draws = 0, sleeps = 0, wakes = 0, inputSamples = 0, usbSamples = 0;
+    int draws = 0, sleeps = 0, wakes = 0, inputSamples = 0, usbSamples = 0, brightness = -1;
     ScreenModel rendered{};
     TimeUs now() override { return time; }
+    // Task 4 wires these up; the runtime tests only need them to compile.
+    bool readRtc(CivilTime&) override { return false; }
+    bool writeRtc(const CivilTime&) override { return false; }
+    void setUtcClock(int64_t) override {}
+    int64_t utcClockUs() override { return 0; }
+    BatteryState sampleBattery() override { return {}; }
+    void setBrightness(int level) override { brightness = level; }
     InputSnapshot sampleInput() override { ++inputSamples; return input; }
     UsbState sampleUsb() override { ++usbSamples; return usb; }
     void setScreenOff(bool off) override { off ? ++sleeps : ++wakes; }

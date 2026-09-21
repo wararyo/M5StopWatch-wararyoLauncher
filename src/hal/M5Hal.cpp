@@ -4,6 +4,7 @@
 #include <driver/usb_serial_jtag.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <sys/time.h>
 #include <cstdio>
 #ifdef LAUNCHER_RUNTIME_DIAGNOSTICS
 #include <esp_freertos_hooks.h>
@@ -31,6 +32,44 @@ void M5Hal::setScreenOff(bool off) {
     if (off) { M5.Display.setBrightness(0); M5.Display.sleep(); }
     else { M5.Display.wakeup(); M5.Display.setBrightness(90); }
     std::printf("[Power] screen=%s\n", off ? "off" : "on");
+}
+bool M5Hal::readRtc(CivilTime& utc) {
+    if (!M5.Rtc.isEnabled()) return false;
+    m5::rtc_datetime_t datetime{};
+    if (!M5.Rtc.getDateTime(&datetime)) return false;
+    utc = {datetime.date.year, datetime.date.month, datetime.date.date,
+           datetime.time.hours, datetime.time.minutes, datetime.time.seconds};
+    return true;
+}
+bool M5Hal::writeRtc(const CivilTime& utc) {
+    if (!M5.Rtc.isEnabled()) return false;
+    // setDateTime returns void, so reaching the chip is all this can report.
+    // Whether the value stuck is decided by the read-back in TimeService::save.
+    const int8_t weekday = int8_t(weekdayFromDays(daysFromCivil(utc.year, utc.month, utc.day)));
+    M5.Rtc.setDateTime(m5::rtc_datetime_t{
+        m5::rtc_date_t(int16_t(utc.year), int8_t(utc.month), int8_t(utc.day), weekday),
+        m5::rtc_time_t(int8_t(utc.hour), int8_t(utc.minute), int8_t(utc.second))});
+    return true;
+}
+void M5Hal::setUtcClock(int64_t unixSeconds) {
+    const timeval tv{time_t(unixSeconds), 0};
+    settimeofday(&tv, nullptr);
+}
+int64_t M5Hal::utcClockUs() {
+    timeval tv{};
+    gettimeofday(&tv, nullptr);
+    return int64_t(tv.tv_sec) * 1000000 + tv.tv_usec;
+}
+BatteryState M5Hal::sampleBattery() {
+    BatteryState battery{};
+    const auto level = M5.Power.getBatteryLevel();
+    // Out of range means the PMIC did not answer; leave it unknown.
+    if (level >= 0 && level <= 100) battery.percent = int(level);
+    battery.charging = M5.Power.isCharging() == m5::Power_Class::is_charging;
+    return battery;
+}
+void M5Hal::setBrightness(int level) {
+    M5.Display.setBrightness(uint8_t(level < 0 ? 0 : level > 255 ? 255 : level));
 }
 void M5Hal::waitUs(TimeUs delay) {
     constexpr TimeUs tickUs = 1000000 / configTICK_RATE_HZ;

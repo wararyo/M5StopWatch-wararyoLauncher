@@ -158,6 +158,12 @@ struct Platform : Hal,RenderPort,DisplayDataSource {
     UsbState sampleUsb() override { return usb; }
     void setScreenOff(bool) override {}
     void waitUs(TimeUs us) override { time+=us; }
+    bool readRtc(CivilTime&) override { return false; }
+    bool writeRtc(const CivilTime&) override { return false; }
+    void setUtcClock(int64_t) override {}
+    int64_t utcClockUs() override { return 0; }
+    BatteryState sampleBattery() override { return {}; }
+    void setBrightness(int) override {}
     void invalidate() override { ++invalidations; }
     void draw(const ScreenModel&,const WatchData&) override { ++draws; }
     WatchData sample(TimeUs now) override {

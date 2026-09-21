@@ -2,6 +2,9 @@
 #include "input/InputController.h"
 namespace launcher {
 enum class DisplayState { Active, WatchIdle, ScreenOff };
+// A failed read is unknown, never 0%, for the same reason a failed VBUS read is
+// not zero volts. The watch face shows `--%` rather than an empty battery.
+struct BatteryState { int percent = -1; bool charging = false; };
 struct UsbState {
     bool vbusValid = false;
     int vbusMv = 0;

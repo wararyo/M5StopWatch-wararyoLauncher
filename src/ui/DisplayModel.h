@@ -1,9 +1,10 @@
 #pragma once
 #include "input/InputController.h"
+#include "multifirm/SlotCatalog.h"
 #include "storage/Settings.h"
 #include <ctime>
 namespace launcher {
-enum class ScreenId { Home, AppList, Settings };
+enum class ScreenId { Home, AppList, Settings, External };
 // Order matters: a menu cursor of 0..3 maps onto the view that follows Menu.
 enum class SettingsView : uint8_t { Menu, DateTime, Brightness, ScreenOff, Info };
 struct SettingsModel {
@@ -17,6 +18,20 @@ struct SettingsModel {
     int fields[5]{};
     const char* lines[3]{}; // Info text, captured once at startup.
 };
+// Browsing is the only phase that takes input. BootCommitting is the one-way
+// stretch of plan.md 8.2: the frame is painted, then the API is called once.
+enum class ExternalPhase : uint8_t { Browsing, BootCommitting, BootFailed };
+struct ExternalModel {
+    int slot=1;
+    SlotStatus status=SlotStatus::Scanning;
+    ExternalPhase phase=ExternalPhase::Browsing;
+    int cursor=0;
+    // Borrowed from the catalog the screen manager holds; stable for the frame.
+    const char* name=nullptr;
+    const char* version=nullptr;
+    const char* message=nullptr; // Boot failure reason.
+    int32_t error=0;
+};
 struct ScreenModel {
     ScreenId screen=ScreenId::Home;
     int width=468,height=468,selection=0;
@@ -24,8 +39,10 @@ struct ScreenModel {
     float transition=0,scroll=0;
     bool dragging=false,animating=false;
     const char* names[5]{}; // optional stable service/diagnostic labels
+    bool rowDimmed[5]{};    // Slot cannot be launched: name shown in grey.
     const char* toast=nullptr;
     SettingsModel settings{};
+    ExternalModel external{};
     int brightness=Settings{}.brightness;   // Effective: preview while editing.
     int screenOffSec=Settings{}.screenOffSec; // Saved only; never previewed.
 };

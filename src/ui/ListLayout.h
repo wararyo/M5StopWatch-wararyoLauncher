@@ -4,6 +4,9 @@
 #include <cmath>
 namespace launcher {
 inline int scaled(const ScreenModel& m,int px) { return std::max(1,px*std::min(m.width,m.height)/468); }
+// Signed counterpart of `scaled`: an offset from the centre can be negative and
+// must not be clamped up to 1.
+inline int offsetPx(const ScreenModel& m,int px) { return px*std::min(m.width,m.height)/468; }
 inline int rowSpacing(const ScreenModel& m) { return scaled(m,84); }
 inline int listMargin(const ScreenModel& m) { return scaled(m,24); }
 inline int iconRadius(const ScreenModel& m) { return scaled(m,34); }

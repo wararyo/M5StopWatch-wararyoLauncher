@@ -86,13 +86,13 @@ const char* SettingsScreen::confirm() {
     openView(SettingsView::Menu);
     return "保存しました";
 }
-void SettingsScreen::activate(SettingsOutcome& out) {
+void SettingsScreen::activate(ScreenOutcome& out) {
     if (model_.view!=SettingsView::Menu) { out.notice=confirm(); return; }
     if (model_.cursor==SettingsMenuRows-1) { out.leave=true; return; }
     openView(SettingsView(int(SettingsView::DateTime)+model_.cursor));
 }
-SettingsOutcome SettingsScreen::handle(const Events& e,TimeUs) {
-    SettingsOutcome out{};
+ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs) {
+    ScreenOutcome out{};
     if (!available()) return out;
     const int fields=settingsFieldCount(model_.view);
     if (e.gesture==Gesture::Tap) {

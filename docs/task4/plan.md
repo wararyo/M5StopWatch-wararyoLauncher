@@ -234,7 +234,7 @@ python tools/verify_build.py --environment m5stopwatch-diagnostics
 ## 作業4に含めないもの
 
 - ストップウォッチ（作業5）、スロット走査・外部起動（作業6）。
-- 画面基底クラスの抽出（作業5で2つ目の実装が出た時点）。
+- 画面基底クラスの抽出（2つ目の実装が出た時点。実際には作業6で抽出した）。
 - 設定メニューのアイコン資産。
 - タイムゾーン設定UI、共有NVS、USB時刻設定、MultiFirm共有時刻API。
 - DFS・light sleep・電力目標の評価（作業8）。

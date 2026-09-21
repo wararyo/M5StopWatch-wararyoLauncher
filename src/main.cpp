@@ -14,10 +14,12 @@
 #include <cstring>
 #include "app/AppRuntime.h"
 #include "hal/M5Hal.h"
+#include "multifirm/MultiFirmAdapter.h"
 #include "services/LauncherData.h"
 #include "storage/NvsBackend.h"
 #include "ui/Renderer.h"
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#include "multifirm/FakeSlotService.h"
 #include "ui/RenderDiagnostics.h"
 #endif
 
@@ -88,12 +90,20 @@ extern "C" void app_main() {
     // clock as unset instead of writing one.
     static launcher::TimeService timeService;
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
-    launcher::runRepaintCheck(renderer, M5.Display);
+    // Injected slots: the render check has to draw states a device cannot be
+    // put into safely, and it must not read flash behind the UI task.
+    static launcher::FakeSlotService slots;
+    slots.set(1, launcher::SlotStatus::Ready, "RenderCheck", "1.0.0");
+    slots.set(2, launcher::SlotStatus::Empty);
+    slots.set(3, launcher::SlotStatus::Invalid, nullptr, nullptr, 0x105);
+    launcher::runRepaintCheck(renderer, M5.Display, slots.catalog);
     static launcher::DiagnosticDataSource data;
-    std::printf("[RenderDiag] synthetic JST time / battery; no RTC read\n");
+    std::printf("[RenderDiag] synthetic JST time / battery / slots; no RTC or flash read\n");
 #else
     timeService.begin(hal);
     static launcher::LauncherData data(hal, timeService);
+    static launcher::MultiFirmAdapter slots;
+    slots.begin();
 #endif
     static launcher::NvsBackend nvs;
     nvs.begin();
@@ -102,6 +112,7 @@ extern "C" void app_main() {
     hal.setBrightness(settingsStore.get().brightness);
     launcher::AppRuntime runtime(hal, renderer, data, M5.Display.width(), M5.Display.height());
     runtime.bindSettings(settingsStore, timeService);
+    runtime.bindSlots(slots);
     runtime.setInfo(app->project_name, app->version, esp_get_idf_version());
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);

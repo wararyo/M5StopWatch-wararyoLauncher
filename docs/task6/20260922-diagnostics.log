@@ -1,0 +1,57 @@
+I (150) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=378331 free=317027 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=337 bytes=168570
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-21 22:45:51 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=378331 free=261979 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+[RuntimeDiag] enabled: 40ms busy work each cycle; CPU1 idle hook
+I (2308) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2341) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2342) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2344) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2376) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2383) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2383) multifirm-host: slot 1 image verification took 419 ms
+I (2383) multifirm-host: slot 1 SHA-256 calculation took 186 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2880) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2908) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2911) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (2976) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (2977) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (2987) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (2988) multifirm-host: slot 2 image verification took 601 ms
+I (2988) multifirm-host: slot 2 SHA-256 calculation took 267 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3331) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3347) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3350) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3350) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3397) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3405) multifirm-host: slot 3 image verification took 413 ms
+I (3405) multifirm-host: slot 3 SHA-256 calculation took 183 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+[RuntimeDiag] idle_cpu1=286 window_us=5026889
+[RuntimeDiag] idle_cpu1=125 window_us=5023078
+[RuntimeDiag] idle_cpu1=136 window_us=5018990
+[RuntimeDiag] idle_cpu1=131 window_us=5003932
+[RuntimeDiag] idle_cpu1=128 window_us=5032127
+[RuntimeDiag] idle_cpu1=140 window_us=5041692
+[RuntimeDiag] idle_cpu1=135 window_us=5035661
+[RuntimeDiag] idle_cpu1=135 window_us=5009290
+[RuntimeDiag] idle_cpu1=131 window_us=5049518
+[RuntimeDiag] idle_cpu1=139 window_us=5066768
+[RuntimeDiag] idle_cpu1=136 window_us=5008988
+[RuntimeDiag] idle_cpu1=135 window_us=5004952

@@ -103,7 +103,7 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
     inputLatency={}; wakeLatency={}; lastMode=-1; lastEnd=0;
     windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints();
 }
-void runRepaintCheck(Renderer& renderer,M5GFX& display) {
+void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalog) {
     recording=false;
     const int w=display.width(),h=display.height();
     const size_t pixels=static_cast<size_t>(w)*h,bytes=pixels*2;
@@ -134,7 +134,9 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
             // subset that missed one fails here rather than on the device.
             for(const char* text:{"準備中","日時","輝度","消灯時間","情報","戻る","保存","キャンセル",
                                   "30秒","時刻を保存しました","保存しました","日付が正しくありません",
-                                  "保存に失敗しました","時計を設定できません"}) covered(text);
+                                  "保存に失敗しました","時計を設定できません",
+                                  "検証中","空き","破損","読み取り失敗","非対応","起動","起動中",
+                                  "バージョン","スロット","エラー","起動できませんでした"}) covered(text);
             char fitted[128];
             char small[2]; fitText(display,"a",small,sizeof(small),4096); ++checks;
             if(std::strcmp(small,"a")!=0) { ++failures; std::printf("[Verify] FAIL bounded text capacity\n"); }
@@ -231,6 +233,47 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display) {
             m.settings.fields[0]=2099; check("settings-widest",m,d);
             m.screen=ScreenId::AppList; m.settings=SettingsModel{};
             check("settings-left",m,d);
+            // A row that only changed colour still has to repaint, so the dim
+            // flag has to reach the fingerprint.
+            m.scroll=2*rowSpacing(m); m.selection=2;
+            for(int i=2;i<5;++i) m.rowDimmed[i]=true;
+            check("list-dimmed",m,d);
+            m.names[2]=catalog.slots[0].name; m.rowDimmed[2]=false;
+            check("list-named",m,d);
+            m.names[2]=nullptr;
+            for(int i=0;i<5;++i) m.rowDimmed[i]=false;
+            // The external detail: every state a slot can report, then the two
+            // phases the boot commit adds. The injected catalog is what makes
+            // a corrupt slot reachable without breaking a real one.
+            m.screen=ScreenId::External;
+            for(int slot=1;slot<=SlotCount;++slot) {
+                const auto& entry=catalog.slots[slot-1];
+                m.external=ExternalModel{}; m.external.slot=slot; m.external.status=entry.status;
+                m.external.name=entry.name[0] ? entry.name : nullptr;
+                m.external.version=entry.version[0] ? entry.version : nullptr;
+                m.external.error=entry.error;
+                for(int cursor=0;cursor<externalButtonCount(m.external);++cursor) {
+                    m.external.cursor=cursor; check("external-browse",m,d);
+                }
+                vTaskDelay(1);
+            }
+            for(const auto status:{SlotStatus::Scanning,SlotStatus::ReadError,SlotStatus::Unsupported}) {
+                m.external=ExternalModel{}; m.external.slot=2; m.external.status=status;
+                m.external.error=status==SlotStatus::ReadError ? 0x102 : 0;
+                check("external-state",m,d);
+            }
+            m.external=ExternalModel{}; m.external.slot=1; m.external.status=SlotStatus::Ready;
+            m.external.name=catalog.slots[0].name; m.external.version=catalog.slots[0].version;
+            m.external.phase=ExternalPhase::BootCommitting; check("external-committing",m,d);
+            m.external.phase=ExternalPhase::BootFailed; m.external.cursor=0;
+            m.external.message="ESP_ERR_IMAGE_INVALID"; check("external-failed",m,d);
+            // A guest chooses its own name, so the detail has to survive one
+            // that is too long and holds a glyph the subset does not carry.
+            m.external=ExternalModel{}; m.external.slot=1; m.external.status=SlotStatus::Ready;
+            m.external.name="非常に長い外部アプリ名と未収録文字😀";
+            m.external.version="1.0.0-verify"; check("external-long-name",m,d);
+            m.screen=ScreenId::AppList; m.external=ExternalModel{};
+            check("external-left",m,d);
             m={}; m.width=w; m.height=h; check("home",m,d);
             d.localTime.tm_min=42; check("minute",m,d);
             d.localTime.tm_mday=20; d.localTime.tm_wday=0; check("date",m,d);

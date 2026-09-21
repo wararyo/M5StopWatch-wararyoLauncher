@@ -60,7 +60,10 @@ void SettingsLayer::build(const ScreenModel& m) {
 void SettingsLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font) {
     (void)g; (void)font;
     count_=0;
-    if (m.screen==ScreenId::Settings) build(m);
+    // Closed: register nothing. The screen change already forces a full repaint,
+    // so there is no leftover to erase and the frame keeps its capacity free.
+    if (m.screen!=ScreenId::Settings) return;
+    build(m);
     for (int i=0;i<Capacity;++i) {
         const bool used=i<count_;
         // Unused slots are registered empty so a view with fewer elements

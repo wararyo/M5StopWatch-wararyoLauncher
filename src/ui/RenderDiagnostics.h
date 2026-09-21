@@ -8,7 +8,7 @@ class DiagnosticDataSource final : public DisplayDataSource {
 public:
     WatchData sample(TimeUs now) override;
 };
-void runRepaintCheck(Renderer&,M5GFX&);
+void runRepaintCheck(Renderer&,M5GFX&,const SlotCatalog&);
 void recordRender(const ScreenModel&,TimeUs start,TimeUs end,bool painted,uint32_t layouts);
 void recordInput(TimeUs now);
 void recordWake(TimeUs now);

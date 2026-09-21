@@ -11,7 +11,7 @@
 #endif
 namespace launcher {
 namespace {
-constexpr uint16_t White=0xf7be,Lime=0xb7e0;
+constexpr uint16_t White=0xf7be,Lime=0xb7e0,Dimmed=0x7bcf;
 constexpr uint16_t Colors[]={0x349f,0x632c,0x2e17,0x2e17,0x2e17};
 }
 bool Renderer::registerFace(WatchFace& face) {
@@ -40,9 +40,9 @@ bool Renderer::begin(bool disableCache) {
 }
 void Renderer::planList(const ScreenModel& m) {
     const float scale=float(std::min(m.width,m.height))/468;
-    // Settings covers the list rather than sliding it away, so the rows are
-    // planned empty and their last painted boxes still get erased.
-    const bool hidden=m.screen==ScreenId::Settings;
+    // An app screen covers the list rather than sliding it away, so the rows
+    // are planned empty and their last painted boxes still get erased.
+    const bool hidden=m.screen==ScreenId::Settings || m.screen==ScreenId::External;
     for(int i=0;i<5;++i) {
         auto& row=plannedRows_[i]; row.layout=hidden ? RowLayout{} : layoutRow(m,i);
         const auto& box=row.layout.box;
@@ -55,7 +55,8 @@ void Renderer::planList(const ScreenModel& m) {
         // A width that does not depend on the row's position, so a name is
         // shortened only when it cannot fit the screen at all.
         fitText(display_,m.names[i] ? m.names[i] : AppRegistry[i].name,row.name,sizeof(row.name),labelWidth(m));
-        uint32_t hash=hashValue(i==m.selection,hashString(row.name));
+        uint32_t hash=hashValue(uint32_t(i==m.selection)|(uint32_t(m.rowDimmed[i])<<1),
+                                hashString(row.name));
         hash=hashValue(row.layout.centerY,hashValue(row.layout.iconX,hash));
         row.handle=frame_.add(rows_[i],box,hash);
     }
@@ -100,7 +101,10 @@ void Renderer::paintList(const ScreenModel& m) {
                     icon->width,icon->height,icon->pixels,lgfx::grayscale_8bit,White,Colors[i]);
         }
         display_.setFont(nameFont_); display_.setTextSize(scale);
-        display_.setTextDatum(middle_left); display_.setTextColor(i==m.selection ? Lime : White,0);
+        display_.setTextDatum(middle_left);
+        // A slot that cannot be launched greys its name out. The icon is left
+        // alone so the rows still scan as one column.
+        display_.setTextColor(i==m.selection ? Lime : (m.rowDimmed[i] ? Dimmed : White),0);
         display_.drawString(row.name,r.labelX,r.centerY);
     }
     display_.clearClipRect(); display_.setTextSize(1);
@@ -134,6 +138,7 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
     face_->plan(frame_,display_,m,watch);
     planList(m);
     settings_.plan(frame_,display_,m,nameFont_);
+    external_.plan(frame_,display_,m,nameFont_);
     planToast(m);
     frame_.resolve();
     if(frame_.anyPaint()) {
@@ -147,7 +152,8 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
         // The toast is the topmost layer: it was being drawn before settings,
         // so the save and cancel buttons landed on top of the notice.
         face_->paint(display_,frame_); paintList(m);
-        settings_.paint(display_,frame_,m,nameFont_); paintToast(m);
+        settings_.paint(display_,frame_,m,nameFont_);
+        external_.paint(display_,frame_,m,nameFont_); paintToast(m);
         display_.endWrite(); ++paints_;
     }
     if(frame_.overflow() && !overflowReported_) std::printf("[Renderer] element capacity exceeded: full repaint\n");

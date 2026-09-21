@@ -1,9 +1,6 @@
 #pragma once
 #include "ListLayout.h"
 namespace launcher {
-// Signed counterpart of `scaled`: an offset from the centre can be negative and
-// must not be clamped up to 1.
-inline int offsetPx(const ScreenModel& m,int px) { return px*std::min(m.width,m.height)/468; }
 constexpr int SettingsMenuRows=5;
 inline int settingsFieldCount(SettingsView view) {
     return view==SettingsView::DateTime ? 5 :

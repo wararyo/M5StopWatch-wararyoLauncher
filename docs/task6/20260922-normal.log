@@ -1,0 +1,932 @@
+I (150) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=378603 free=317299 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=337 bytes=168570
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-21 22:31:46 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=378603 free=262315 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+I (2306) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2339) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2341) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2343) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2376) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2382) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2382) multifirm-host: slot 1 image verification took 422 ms
+I (2383) multifirm-host: slot 1 SHA-256 calculation took 188 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2887) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2915) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2918) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (2983) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (2984) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (2995) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (2996) multifirm-host: slot 2 image verification took 609 ms
+I (2996) multifirm-host: slot 2 SHA-256 calculation took 274 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3344) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3362) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3365) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3366) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3414) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3423) multifirm-host: slot 3 image verification took 422 ms
+I (3423) multifirm-host: slot 3 SHA-256 calculation took 188 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+[Power] screen=off
+---- マシンから切断されたため、シリアル ポート COM11 を閉じました ----
+---- シリアル ポート COM11 が再オープンされました ----
+I (686) esp_psram: SPI SRAM memory test OK
+I (694) cpu_start: Pro cpu start user code
+I (694) cpu_start: cpu freq: 240000000 Hz
+I (695) app_init: Application information:
+I (695) app_init: Project name:     wararyoLauncher
+I (695) app_init: App version:      0.1.0-dev
+I (695) app_init: Compile time:     Sep 22 2026 07:06:43
+I (695) app_init: ELF file SHA256:  01567007a...
+I (695) app_init: ESP-IDF:          5.5.0
+I (695) efuse_init: Min chip rev:     v0.0
+I (696) efuse_init: Max chip rev:     v0.99 
+I (696) efuse_init: Chip rev:         v0.2
+I (696) heap_init: Initializing. RAM available for dynamic allocation:
+I (696) heap_init: At 3FC9C710 len 0004D000 (308 KiB): RAM
+I (696) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (696) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (697) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (698) spi_flash: detected chip: generic
+I (698) spi_flash: flash io: dio
+I (699) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (699) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (147) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=378603 free=317299 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=337 bytes=168570
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-21 22:33:43 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=378603 free=262315 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+I (2306) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2346) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2349) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2351) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2390) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2398) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2399) multifirm-host: slot 1 image verification took 440 ms
+I (2400) multifirm-host: slot 1 SHA-256 calculation took 190 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2903) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2933) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2937) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (3016) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (3017) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (3029) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (3031) multifirm-host: slot 2 image verification took 627 ms
+I (3031) multifirm-host: slot 2 SHA-256 calculation took 272 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3376) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3393) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3395) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3396) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3443) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3451) multifirm-host: slot 3 image verification took 417 ms
+I (3452) multifirm-host: slot 3 SHA-256 calculation took 186 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+I BOD: Brownout detector was triggered
+---- マシンから切断されたため、シリアル ポート COM11 を閉じました ----
+---- シリアル ポート COM11 が再オープンされました ----
+g: PSRAM timing tuning index: 10
+I (394) esp_psram: Found 8MB PSRAM device
+I (398) esp_psram: Speed: 80MHz
+I (401) cpu_start: Multicore app
+I (686) esp_psram: SPI SRAM memory test OK
+I (694) cpu_start: Pro cpu start user code
+I (694) cpu_start: cpu freq: 240000000 Hz
+I (695) app_init: Application information:
+I (695) app_init: Project name:     wararyoLauncher
+I (695) app_init: App version:      0.1.0-dev
+I (695) app_init: Compile time:     Sep 22 2026 07:06:43
+I (695) app_init: ELF file SHA256:  01567007a...
+I (695) app_init: ESP-IDF:          5.5.0
+I (695) efuse_init: Min chip rev:     v0.0
+I (695) efuse_init: Max chip rev:     v0.99 
+I (696) efuse_init: Chip rev:         v0.2
+I (696) heap_init: Initializing. RAM available for dynamic allocation:
+I (696) heap_init: At 3FC9C710 len 0004D000 (308 KiB): RAM
+I (696) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (696) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (697) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (698) spi_flash: detected chip: generic
+I (698) spi_flash: flash io: dio
+I (698) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (699) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (147) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=378603 free=317299 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=337 bytes=168570
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-21 22:33:52 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=378603 free=262315 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+I (2302) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2342) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+I (2344) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2346) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2386) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2393) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2394) multifirm-host: slot 1 image verification took 437 ms
+I (2394) multifirm-host: slot 1 SHA-256 calculation took 188 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2898) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2932) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2935) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (3014) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (3015) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (3027) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (3028) multifirm-host: slot 2 image verification took 631 ms
+I (3029) multifirm-host: slot 2 SHA-256 calculation took 274 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3375) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3395) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3398) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3399) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3455) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3465) multifirm-host: slot 3 image verification took 433 ms
+I (3466) multifirm-host: slot 3 SHA-256 calculation took 187 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[Slots] booting slot=2
+I (61470) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (61497) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (61499) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (61564) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (61564) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (61574) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (61575) multifirm-host: slot 2 boot verification took 596 ms
+I (61575) multifirm-host: slot 2 boot SHA-256 calculation took 266 ms
+I (61575) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (61602) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (61604) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (61669) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (61669) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (61680) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+[Slots] boot committed; shutting down
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40379bf2
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (193) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) load
+I (197) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (330) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) load
+I (331) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) load
+I (359) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) load
+I (370) boot: Loaded app from partition at offset 0x610000
+I (370) boot: Disabling RNG early entropy source...
+I (380) octal_psram: vendor id    : 0x0d (AP)
+I (380) octal_psram: dev id       : 0x02 (generation 3)
+I (381) octal_psram: density      : 0x03 (64 Mbit)
+I (383) octal_psram: good-die     : 0x01 (Pass)
+I (387) octal_psram: Latency      : 0x01 (Fixed)
+I (391) octal_psram: VCC          : 0x01 (3V)
+I (395) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (400) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (405) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (410) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (415) octal_psram: DriveStrength: 0x00 (1/1)
+I (420) MSPI Timing: PSRAM timing tuning index: 4
+I (423) esp_psram: Found 8MB PSRAM device
+I (427) esp_psram: Speed: 80MHz
+I (430) cpu_start: Multicore app
+I (839) esp_psram: SPI SRAM memory test OK
+I (848) cpu_start: Pro cpu start user code
+I (848) cpu_start: cpu freq: 80000000 Hz
+I (849) app_init: Application information:
+I (849) app_init: Project name:     M5StopWatch-MuteHid
+I (849) app_init: App version:      0.0.1-phase0
+I (849) app_init: Compile time:     Sep 20 2026 01:10:51
+I (849) app_init: ELF file SHA256:  cc5ce638e...
+I (850) app_init: ESP-IDF:          5.5.0
+I (850) efuse_init: Min chip rev:     v0.0
+I (850) efuse_init: Max chip rev:     v0.99 
+I (850) efuse_init: Chip rev:         v0.2
+I (851) heap_init: Initializing. RAM available for dynamic allocation:
+I (851) heap_init: At 3FCAA220 len 0003F4F0 (253 KiB): RAM
+I (851) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (851) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (852) heap_init: At 600FE050 len 00001F98 (7 KiB): RTCRAM
+I (852) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (854) spi_flash: detected chip: generic
+I (854) spi_flash: flash io: dio
+I (855) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (856) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (857) esp_core_dump_flash: Init core dump to flash
+I (857) esp_core_dump_flash: Found partition 'coredump' @ e00000 65536 bytes
+I (858) coexist: coex firmware version: 831ec70
+I (859) coexist: coexist rom version e7ae62f
+I (0) main_task: Started on CPU1
+I (2) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (2) main_task: Calling app_main()
+I (985) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (1075) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) 
+I (1078) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) 
+I (1079) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (1139) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) 
+I (1151) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) 
+I (1152) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (1241) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) 
+I (1244) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) 
+I (1246) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (1306) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) 
+I (1317) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) 
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x403812ce
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (239) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) load
+I (242) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) load
+I (244) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (318) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) load
+I (333) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) load
+I (341) boot: Loaded app from partition at offset 0x20000
+I (341) boot: Disabling RNG early entropy source...
+I (351) octal_psram: vendor id    : 0x0d (AP)
+I (351) octal_psram: dev id       : 0x02 (generation 3)
+I (351) octal_psram: density      : 0x03 (64 Mbit)
+I (353) octal_psram: good-die     : 0x01 (Pass)
+I (358) octal_psram: Latency      : 0x01 (Fixed)
+I (362) octal_psram: VCC          : 0x01 (3V)
+I (366) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (371) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (376) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (380) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (386) octal_psram: DriveStrength: 0x00 (1/1)
+I (390) MSPI Timing: PSRAM timing tuning index: 4
+I (394) esp_psram: Found 8MB PSRAM device
+I (398) esp_psram: Speed: 80MHz
+I (401) cpu_start: Multicore app
+I (686) esp_psram: SPI SRAM memory test OK
+I (695) cpu_start: Pro cpu start user code
+I (695) cpu_start: cpu freq: 240000000 Hz
+I (695) app_init: Application information:
+I (695) app_init: Project name:     wararyoLauncher
+I (695) app_init: App version:      0.1.0-dev
+I (695) app_init: Compile time:     Sep 22 2026 07:06:43
+I (695) app_init: ELF file SHA256:  01567007a...
+I (695) app_init: ESP-IDF:          5.5.0
+I (696) efuse_init: Min chip rev:     v0.0
+I (696) efuse_init: Max chip rev:     v0.99 
+I (696) efuse_init: Chip rev:         v0.2
+I (696) heap_init: Initializing. RAM available for dynamic allocation:
+I (696) heap_init: At 3FC9C710 len 0004D000 (308 KiB): RAM
+I (696) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (697) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (697) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (698) spi_flash: detected chip: generic
+I (698) spi_flash: flash io: dio
+I (699) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (699) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=378603 free=317299 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=337 bytes=168570
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-21 22:34:55 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=378603 free=262315 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+I (2050) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2083) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2085) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2087) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2120) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2126) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2127) multifirm-host: slot 1 image verification took 422 ms
+I (2127) multifirm-host: slot 1 SHA-256 calculation took 188 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2627) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2655) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2657) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (2723) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (2724) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (2734) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (2735) multifirm-host: slot 2 image verification took 605 ms
+I (2735) multifirm-host: slot 2 SHA-256 calculation took 270 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3079) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3096) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3098) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3099) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3146) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3155) multifirm-host: slot 3 image verification took 415 ms
+I (3155) multifirm-host: slot 3 SHA-256 calculation took 185 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+[Slots] booting slot=1
+I (15825) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (15857) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (15859) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (15860) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (15892) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (15898) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (15898) multifirm-host: slot 1 boot verification took 415 ms
+I (15899) multifirm-host: slot 1 boot SHA-256 calculation took 185 ms
+I (15899) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (15931) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (15933) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (15934) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (15966) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (15972) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+[Slots] boot committed; shutting down
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40379bf2
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (203) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) load
+I (207) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) load
+I (210) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (280) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) load
+I (295) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) load
+I (303) boot: Loaded app from partition at offset 0x420000
+I (303) boot: Disabling RNG early entropy source...
+I (313) octal_psram: vendor id    : 0x0d (AP)
+I (313) octal_psram: dev id       : 0x02 (generation 3)
+I (313) octal_psram: density      : 0x03 (64 Mbit)
+I (315) octal_psram: good-die     : 0x01 (Pass)
+I (320) octal_psram: Latency      : 0x01 (Fixed)
+I (324) octal_psram: VCC          : 0x01 (3V)
+I (328) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (333) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (338) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (342) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (348) octal_psram: DriveStrength: 0x00 (1/1)
+I (352) MSPI Timing: PSRAM timing tuning index: 5
+I (356) esp_psram: Found 8MB PSRAM device
+I (360) esp_psram: Speed: 80MHz
+I (363) cpu_start: Multicore app
+I (779) esp_psram: SPI SRAM memory test OK
+I (788) cpu_start: Pro cpu start user code
+I (788) cpu_start: cpu freq: 240000000 Hz
+I (788) app_init: Application information:
+I (788) app_init: Project name:     M5StopWatch-KantanPlay
+I (793) app_init: App version:      0.1.0
+I (797) app_init: Compile time:     Sep 20 2026 01:01:44
+I (802) app_init: ELF file SHA256:  094c136e3...
+I (806) app_init: ESP-IDF:          5.5.0
+I (810) efuse_init: Min chip rev:     v0.0
+I (814) efuse_init: Max chip rev:     v0.99 
+I (818) efuse_init: Chip rev:         v0.2
+I (822) heap_init: Initializing. RAM available for dynamic allocation:
+I (828) heap_init: At 3FC9C1B8 len 0004D558 (309 KiB): RAM
+I (833) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (838) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (843) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (849) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (856) spi_flash: detected chip: generic
+I (859) spi_flash: flash io: dio
+I (862) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (868) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (4) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (10) main_task: Calling app_main()
+I (34) M5GFX: [Autodetect] board_M5StopWatch
+[Autodetect] board_M5StopWatch (id=30)
+[Display] width=468 height=468 expected=468x468 result=PASS
+[PSRAM] total=8388608 free=7942692 bytes
+Compliant with KANTAN Music
+[Settings] restored key=0 volume=8 vibration=1
+[Audio] rate=48000 dma=128x4 mono feed=256x2 master=0.400000 speaker=255
+[Input] period_ms=5 core=1 priority=4; touch: chord; A:7th B:swap
+[InputStats] work_max_us=5102 work_over_5ms=3 interval_max_us=5425
+[UIDelta] cells=1 frames=18 max_us=1938
+[UIDelta] cells=7 frames=2 max_us=11671
+I (6936) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (6991) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) 
+I (6993) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) 
+I (6996) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (7039) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) 
+I (7046) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) 
+I (7047) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (7104) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) 
+I (7106) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) 
+I (7109) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (7152) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) 
+I (7159) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) 
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40379e0e
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (239) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) load
+I (242) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) load
+I (244) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (318) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) load
+I (333) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) load
+I (341) boot: Loaded app from partition at offset 0x20000
+I (341) boot: Disabling RNG early entropy source...
+I (351) octal_psram: vendor id    : 0x0d (AP)
+I (351) octal_psram: dev id       : 0x02 (generation 3)
+I (351) octal_psram: density      : 0x03 (64 Mbit)
+I (353) octal_psram: good-die     : 0x01 (Pass)
+I (358) octal_psram: Latency      : 0x01 (Fixed)
+I (362) octal_psram: VCC          : 0x01 (3V)
+I (366) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (371) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (376) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (380) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (386) octal_psram: DriveStrength: 0x00 (1/1)
+I (390) MSPI Timing: PSRAM timing tuning index: 4
+I (394) esp_psram: Found 8MB PSRAM device
+I (398) esp_psram: Speed: 80MHz
+I (401) cpu_start: Multicore app
+I (686) esp_psram: SPI SRAM memory test OK
+I (695) cpu_start: Pro cpu start user code
+I (695) cpu_start: cpu freq: 240000000 Hz
+I (695) app_init: Application information:
+I (695) app_init: Project name:     wararyoLauncher
+I (695) app_init: App version:      0.1.0-dev
+I (695) app_init: Compile time:     Sep 22 2026 07:06:43
+I (695) app_init: ELF file SHA256:  01567007a...
+I (695) app_init: ESP-IDF:          5.5.0
+I (696) efuse_init: Min chip rev:     v0.0
+I (696) efuse_init: Max chip rev:     v0.99 
+I (696) efuse_init: Chip rev:         v0.2
+I (696) heap_init: Initializing. RAM available for dynamic allocation:
+I (696) heap_init: At 3FC9C710 len 0004D000 (308 KiB): RAM
+I (696) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (697) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (697) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (698) spi_flash: detected chip: generic
+I (698) spi_flash: flash io: dio
+I (699) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (699) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=378603 free=317299 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=337 bytes=168570
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-21 22:35:19 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=378603 free=262315 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+I (2050) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2083) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2085) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2087) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2120) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2126) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2127) multifirm-host: slot 1 image verification took 422 ms
+I (2127) multifirm-host: slot 1 SHA-256 calculation took 188 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2627) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2655) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2657) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (2723) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (2724) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (2735) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (2736) multifirm-host: slot 2 image verification took 605 ms
+I (2736) multifirm-host: slot 2 SHA-256 calculation took 270 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3079) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3096) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3098) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3099) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3146) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3154) multifirm-host: slot 3 image verification took 415 ms
+I (3155) multifirm-host: slot 3 SHA-256 calculation took 185 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+[Slots] booting slot=2
+I (20722) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (20749) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (20751) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (20816) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (20816) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (20826) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (20827) multifirm-host: slot 2 boot verification took 596 ms
+I (20827) multifirm-host: slot 2 boot SHA-256 calculation took 266 ms
+I (20827) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (20854) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (20856) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (20921) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (20921) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (20932) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+[Slots] boot committed; shutting down
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40379bf2
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (193) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) load
+I (197) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (330) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) load
+I (331) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) load
+I (359) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) load
+I (370) boot: Loaded app from partition at offset 0x610000
+I (370) boot: Disabling RNG early entropy source...
+I (380) octal_psram: vendor id    : 0x0d (AP)
+I (380) octal_psram: dev id       : 0x02 (generation 3)
+I (381) octal_psram: density      : 0x03 (64 Mbit)
+I (383) octal_psram: good-die     : 0x01 (Pass)
+I (387) octal_psram: Latency      : 0x01 (Fixed)
+I (391) octal_psram: VCC          : 0x01 (3V)
+I (395) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (400) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (405) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (410) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (415) octal_psram: DriveStrength: 0x00 (1/1)
+I (420) MSPI Timing: PSRAM timing tuning index: 4
+I (423) esp_psram: Found 8MB PSRAM device
+I (427) esp_psram: Speed: 80MHz
+I (430) cpu_start: Multicore app
+I (839) esp_psram: SPI SRAM memory test OK
+I (848) cpu_start: Pro cpu start user code
+I (848) cpu_start: cpu freq: 80000000 Hz
+I (849) app_init: Application information:
+I (849) app_init: Project name:     M5StopWatch-MuteHid
+I (849) app_init: App version:      0.0.1-phase0
+I (849) app_init: Compile time:     Sep 20 2026 01:10:51
+I (849) app_init: ELF file SHA256:  cc5ce638e...
+I (850) app_init: ESP-IDF:          5.5.0
+I (850) efuse_init: Min chip rev:     v0.0
+I (850) efuse_init: Max chip rev:     v0.99 
+I (850) efuse_init: Chip rev:         v0.2
+I (851) heap_init: Initializing. RAM available for dynamic allocation:
+I (851) heap_init: At 3FCAA220 len 0003F4F0 (253 KiB): RAM
+I (851) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (851) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (852) heap_init: At 600FE050 len 00001F98 (7 KiB): RTCRAM
+I (852) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (854) spi_flash: detected chip: generic
+I (854) spi_flash: flash io: dio
+I (855) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (856) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (857) esp_core_dump_flash: Init core dump to flash
+I (857) esp_core_dump_flash: Found partition 'coredump' @ e00000 65536 bytes
+I (858) coexist: coex firmware version: 831ec70
+I (859) coexist: coexist rom version e7ae62f
+I (0) main_task: Started on CPU1
+I (2) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (2) main_task: Calling app_main()
+I (24) M5GFX: [Autodetect] board_M5StopWatch
+I (284) Boot: BOOT M5StopWatch-MuteHid 0.0.1-phase0 IDF=5.5.0
+I (285) pm: Frequency switching config: CPU_MAX: 80, APB_MAX: 80, APB_MIN: 80, Light sleep: ENABLED
+I (285) sleep: Code start at 0x42000020, total 749848, data start at 0x3c000000, total 33554432 Bytes
+I (322) BLE_INIT: BT controller compile version [4713a69]
+I (323) BLE_INIT: Bluetooth will use main XTAL as Bluetooth sleep clock.
+I (323) BLE_INIT: Feature Config, ADV:1, BLE_50:1, DTM:1, SCAN:1, CCA:0, SMP:1, CONNECT:1
+I (1509) BLE_INIT: Bluetooth MAC: 28:84:85:43:a7:c2
+I (1511) phy_init: phy_version 701,f4f1da3a,Mar  3 2025,15:50:10
+W (1511) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1547) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1627) Telephony: MAP id=1 type=1 len=1 protocol=1
+I (1628) Telephony: MAP id=1 type=2 len=1 protocol=1
+I (1628) Telephony: IDENTITY VID=16c0 PID=05df version=0001 model="M5StopWatch MuteHid" bonds=0
+I (1656) Settings: No stored settings; using defaults
+I (1672) Telephony: DIS model="M5StopWatch MuteHid" appended
+I (1679) Telephony: HANDLES input=0x0042 ccc=0x0043 output=0x0046
+I (1682) Telephony: ADV request=ESP_OK
+I (1692) Telephony: ADV started status=0
+I (1711) MuteApp: COMMANDS a/b=buttons, 0/1=raw input, s=status, y/n=pairing, u=UserDemo
+I (1712) MuteApp: POWER p=sample, L/l=log on/off, D=display step, A=advertising pause, X=clear, R/r=record start/stop, O=dump record
+I (1712) MuteApp: STATUS conn=0 auth=0 ccc=0 ready=0 host=-1 pending=0 tx=0 rx=0 gen=0
+I (1714) MuteApp: STATUS conn=0 auth=0 ccc=0 ready=0 host=-1 pending=0 tx=0 rx=0 gen=0
+I (7319) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (7410) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) 
+I (7413) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) 
+I (7414) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (7474) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) 
+I (7486) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) 
+I (7487) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (7577) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) 
+I (7580) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) 
+I (7582) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (7642) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) 
+I (7653) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) 
+I (7679) Telephony: ADV stopped status=0
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x403812ce
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00020020 vaddr=3c060020 size=8b264h (569956) map
+I (239) esp_image: segment 1: paddr=000ab28c vaddr=3fc96800 size=03534h ( 13620) load
+I (242) esp_image: segment 2: paddr=000ae7c8 vaddr=40374000 size=01850h (  6224) load
+I (244) esp_image: segment 3: paddr=000b0020 vaddr=42000020 size=5c8bch (379068) map
+I (318) esp_image: segment 4: paddr=0010c8e4 vaddr=40375850 size=10f78h ( 69496) load
+I (333) esp_image: segment 5: paddr=0011d864 vaddr=600fe000 size=00020h (    32) load
+I (341) boot: Loaded app from partition at offset 0x20000
+I (341) boot: Disabling RNG early entropy source...
+I (351) octal_psram: vendor id    : 0x0d (AP)
+I (351) octal_psram: dev id       : 0x02 (generation 3)
+I (351) octal_psram: density      : 0x03 (64 Mbit)
+I (353) octal_psram: good-die     : 0x01 (Pass)
+I (358) octal_psram: Latency      : 0x01 (Fixed)
+I (362) octal_psram: VCC          : 0x01 (3V)
+I (366) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (371) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (376) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (380) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (386) octal_psram: DriveStrength: 0x00 (1/1)
+I (390) MSPI Timing: PSRAM timing tuning index: 4
+I (394) esp_psram: Found 8MB PSRAM device
+I (398) esp_psram: Speed: 80MHz
+I (401) cpu_start: Multicore app
+I (686) esp_psram: SPI SRAM memory test OK
+I (695) cpu_start: Pro cpu start user code
+I (695) cpu_start: cpu freq: 240000000 Hz
+I (695) app_init: Application information:
+I (695) app_init: Project name:     wararyoLauncher
+I (695) app_init: App version:      0.1.0-dev
+I (695) app_init: Compile time:     Sep 22 2026 07:06:43
+I (695) app_init: ELF file SHA256:  01567007a...
+I (695) app_init: ESP-IDF:          5.5.0
+I (696) efuse_init: Min chip rev:     v0.0
+I (696) efuse_init: Max chip rev:     v0.99 
+I (696) efuse_init: Chip rev:         v0.2
+I (696) heap_init: Initializing. RAM available for dynamic allocation:
+I (696) heap_init: At 3FC9C710 len 0004D000 (308 KiB): RAM
+I (696) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (697) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (697) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (698) spi_flash: detected chip: generic
+I (698) spi_flash: flash io: dio
+I (699) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (699) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=378603 free=317299 largest=262144 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=337 bytes=168570
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-21 22:35:46 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=378603 free=262251 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+I (2055) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2088) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2090) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2091) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2124) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2130) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2131) multifirm-host: slot 1 image verification took 421 ms
+I (2131) multifirm-host: slot 1 SHA-256 calculation took 188 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2631) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2659) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2661) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (2727) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (2728) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (2741) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (2743) multifirm-host: slot 2 image verification took 608 ms
+I (2743) multifirm-host: slot 2 SHA-256 calculation took 270 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+I (3089) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3110) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3113) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3113) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3168) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3178) multifirm-host: slot 3 image verification took 432 ms
+I (3179) multifirm-host: slot 3 SHA-256 calculation took 187 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK

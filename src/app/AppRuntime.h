@@ -9,6 +9,7 @@ public:
         : hal_(hal), renderer_(renderer), data_(data),
           input_(std::max(1, std::min(width,height) / 50)), screens_(width,height) {}
     void bindSettings(SettingsStore& store,TimeService& time) { screens_.bind(&store,&time); }
+    void bindSlots(SlotService& slots) { slots_=&slots; screens_.bindSlots(&slots); }
     void setInfo(const char* name,const char* version,const char* idf) {
         screens_.setInfo(name,version,idf);
     }
@@ -24,6 +25,7 @@ private:
     Hal& hal_;
     RenderPort& renderer_;
     DisplayDataSource& data_;
+    SlotService* slots_=nullptr;
     InputController input_;
     ScreenManager screens_;
     PowerManager power_;
@@ -31,5 +33,6 @@ private:
     TimeUs nextDisplay_ = INT64_MAX;
     int appliedBrightness_ = -1; // Forced re-apply after every wake.
     bool dirty_ = true;
+    bool scanRequested_ = false; // The scan starts behind the first frame.
 };
 }

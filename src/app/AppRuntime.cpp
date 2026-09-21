@@ -21,6 +21,12 @@ void AppRuntime::step() {
         }
         nextInput_ = now + 10000;
     } else power_.update(now, false, screens_.active());
+    // Cheap enough to do every pass: the loop already wakes at the input
+    // period, so results reach the list without any extra wakeup.
+    if (slots_) {
+        SlotCatalog catalog;
+        if (slots_->poll(catalog)) { screens_.setSlots(catalog); dirty_ = true; }
+    }
     if (now >= nextUsb_) {
         const auto usb = hal_.sampleUsb();
         power_.usb = usb;
@@ -53,7 +59,16 @@ void AppRuntime::step() {
         // A misbehaving display provider must not make an overdue busy loop.
         if (nextDisplay_ <= now) nextDisplay_ = now + 16000;
         dirty_ = false;
+        // The clock is on screen before the ~1s of flash reads begin, as
+        // plan.md 8.1 asks.
+        if (slots_ && !scanRequested_) { scanRequested_ = true; slots_->requestScan(); }
     }
+    // After the draw above, so the "starting" frame reaches the panel before the
+    // call blocks for the pre-boot re-verification and restarts. Entering the
+    // phase marks the frame dirty, so that draw happens in this same step.
+    // Deliberately outside the draw branch: a screen that went off must not
+    // strand the commit, because the screen itself takes no input until it ends.
+    if (screens_.commitPendingBoot()) dirty_ = true;
 }
 void AppRuntime::wait() {
     const auto now = hal_.now();

@@ -60,11 +60,9 @@ void ExternalLayer::build(Gfx& g,const lgfx::IFont* font,const ScreenModel& m) {
         std::snprintf(buffer,sizeof(buffer),"エラー 0x%x",unsigned(e.error));
         text(diagnostic,buffer);
     }
-    const int buttons=externalButtonCount(e);
-    for (int i=0;i<buttons;++i) {
+    for (int i=0;i<externalButtonCount(e);++i) {
         Item& item=add(Button,externalButtonBox(m,i),i,e.cursor==i);
-        const char* label=buttons==2 ? (i==0 ? "起動" : "キャンセル") : "戻る";
-        std::snprintf(item.text,sizeof(item.text),"%s",label);
+        std::snprintf(item.text,sizeof(item.text),"戻る");
     }
 }
 void ExternalLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font) {

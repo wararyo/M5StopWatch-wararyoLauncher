@@ -3,8 +3,10 @@
 #include "multifirm/SlotService.h"
 #include "ui/ExternalLayout.h"
 namespace launcher {
-// The external app detail screen of plan.md 8.2: it shows what a slot is, and
-// it owns the one-way stretch between deciding to launch and the restart.
+// The external app screen of plan.md 8.2. Deciding a launchable row in the list
+// IS the final decision, so entering one goes straight to the commit; this
+// screen only shows the launch in progress, a slot that cannot be launched, or
+// a launch that failed.
 class ExternalAppScreen final : public AppScreen {
 public:
     void resize(int width,int height) override { width_=width; height_=height; }
@@ -22,12 +24,10 @@ public:
     bool commitPendingBoot();
 private:
     ScreenModel layoutModel() const;
-    void activate(ScreenOutcome& out);
     SlotService* slots_=nullptr;
     const SlotCatalog* catalog_=nullptr;
     int slot_=1;
     ExternalPhase phase_=ExternalPhase::Browsing;
-    int cursor_=0;
     bool issued_=false;
     const char* message_=nullptr;
     int width_=468,height_=468;

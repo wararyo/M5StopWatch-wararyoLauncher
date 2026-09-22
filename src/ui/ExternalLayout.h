@@ -3,12 +3,11 @@
 namespace launcher {
 // Three lines of detail: slot number, state or version, diagnostic.
 constexpr int ExternalLines=3;
-// Ready offers a launch and a cancel; everything else only goes back, and the
-// committing frame offers nothing at all (plan.md 8.2).
+// There is no confirmation to give: a launchable slot starts from the list, so
+// this screen only ever goes back. The committing frame takes nothing at all
+// (plan.md 8.2).
 inline int externalButtonCount(const ExternalModel& e) {
-    if (e.phase==ExternalPhase::BootCommitting) return 0;
-    if (e.phase==ExternalPhase::BootFailed) return 1;
-    return e.status==SlotStatus::Ready ? 2 : 1;
+    return e.phase==ExternalPhase::BootCommitting ? 0 : 1;
 }
 inline Rect externalTitleBox(const ScreenModel& m) {
     const int h=offsetPx(m,52),margin=offsetPx(m,58);
@@ -18,11 +17,9 @@ inline Rect externalLineBox(const ScreenModel& m,int line) {
     const int h=offsetPx(m,46),margin=offsetPx(m,46);
     return {margin,offsetPx(m,204)+line*offsetPx(m,54)-h/2,m.width-2*margin,h};
 }
-inline Rect externalButtonBox(const ScreenModel& m,int index) {
-    const int count=externalButtonCount(m.external);
-    const int w=offsetPx(m,count==1 ? 150 : 138),h=offsetPx(m,52);
-    const int cx=count==1 ? m.width/2 : m.width/2+offsetPx(m,index==0 ? -74 : 74);
-    return {cx-w/2,offsetPx(m,400)-h/2,w,h};
+inline Rect externalButtonBox(const ScreenModel& m,int) {
+    const int w=offsetPx(m,150),h=offsetPx(m,52);
+    return {m.width/2-w/2,offsetPx(m,400)-h/2,w,h};
 }
 // Same rule as the settings screen: nothing outside a painted target can be
 // tapped, because drawing and hit testing read the same rectangles.

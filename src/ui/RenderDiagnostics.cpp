@@ -242,9 +242,11 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             check("list-named",m,d);
             m.names[2]=nullptr;
             for(int i=0;i<5;++i) m.rowDimmed[i]=false;
-            // The external detail: every state a slot can report, then the two
+            // The external screen: every state a slot can report, then the two
             // phases the boot commit adds. The injected catalog is what makes
             // a corrupt slot reachable without breaking a real one.
+            // Ready in Browsing is reachable too: open a slot while it is still
+            // being verified and let the scan finish underneath it.
             m.screen=ScreenId::External;
             for(int slot=1;slot<=SlotCount;++slot) {
                 const auto& entry=catalog.slots[slot-1];
@@ -252,9 +254,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                 m.external.name=entry.name[0] ? entry.name : nullptr;
                 m.external.version=entry.version[0] ? entry.version : nullptr;
                 m.external.error=entry.error;
-                for(int cursor=0;cursor<externalButtonCount(m.external);++cursor) {
-                    m.external.cursor=cursor; check("external-browse",m,d);
-                }
+                check("external-browse",m,d);
                 vTaskDelay(1);
             }
             for(const auto status:{SlotStatus::Scanning,SlotStatus::ReadError,SlotStatus::Unsupported}) {
@@ -265,7 +265,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             m.external=ExternalModel{}; m.external.slot=1; m.external.status=SlotStatus::Ready;
             m.external.name=catalog.slots[0].name; m.external.version=catalog.slots[0].version;
             m.external.phase=ExternalPhase::BootCommitting; check("external-committing",m,d);
-            m.external.phase=ExternalPhase::BootFailed; m.external.cursor=0;
+            m.external.phase=ExternalPhase::BootFailed;
             m.external.message="ESP_ERR_IMAGE_INVALID"; check("external-failed",m,d);
             // A guest chooses its own name, so the detail has to survive one
             // that is too long and holds a glyph the subset does not carry.

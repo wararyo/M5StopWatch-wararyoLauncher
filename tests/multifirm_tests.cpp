@@ -87,56 +87,58 @@ void unsupportedLayoutDisablesEveryExternalRow() {
         }
 }
 
-void detailOpensForEveryState() {
+void launchableRowStartsWithoutConfirmation() {
+    FakeSlotService slots;
+    slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
+    ScreenManager s; TimeUs now=0;
+    s.bindSlots(&slots); s.setSlots(slots.catalog);
+    // Deciding the row IS the final decision: no confirmation, no second press.
+    openRow(s,now,AppId::External1);
+    const auto m=s.model();
+    CHECK(m.screen==ScreenId::External);
+    CHECK(m.external.slot==1 && m.external.phase==ExternalPhase::BootCommitting);
+    CHECK(externalButtonCount(m.external)==0);
+    // Still nothing called until the committing frame has been painted.
+    CHECK(slots.bootRequests==0);
+    CHECK(s.commitPendingBoot());
+    CHECK(slots.bootRequests==1 && slots.bootSlot==1);
+}
+
+void unusableSlotsOpenTheScreenInstead() {
     FakeSlotService slots;
     slots.catalog=scanning();
-    slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
     slots.set(2,SlotStatus::Empty);
     slots.set(3,SlotStatus::ReadError,nullptr,nullptr,0x102);
     ScreenManager s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
-    // Ready: the detail knows the name, the version and offers two buttons.
-    openRow(s,now,AppId::External1);
-    auto m=s.model();
-    CHECK(m.screen==ScreenId::External);
-    CHECK(m.external.slot==1 && m.external.status==SlotStatus::Ready);
-    CHECK(std::string(m.external.name)=="KantanPlay");
-    CHECK(std::string(m.external.version)=="1.2.0");
-    CHECK(externalButtonCount(m.external)==2);
-    // An unusable slot still opens, and only offers the way back.
+    // An unusable slot explains itself and only offers the way back.
     openRow(s,now,AppId::External2);
-    m=s.model();
+    auto m=s.model();
     CHECK(m.screen==ScreenId::External && m.external.status==SlotStatus::Empty);
+    CHECK(m.external.phase==ExternalPhase::Browsing);
     CHECK(m.external.name==nullptr);
     CHECK(externalButtonCount(m.external)==1);
     openRow(s,now,AppId::External3);
     m=s.model();
     CHECK(m.external.status==SlotStatus::ReadError && m.external.error==0x102);
+    CHECK(m.external.phase==ExternalPhase::Browsing);
     CHECK(externalButtonCount(m.external)==1);
-    // The way back lands on the row it came from.
+    // A slot still being verified is not launchable either.
+    openRow(s,now,AppId::External1);
+    m=s.model();
+    CHECK(m.external.status==SlotStatus::Scanning);
+    CHECK(m.external.phase==ExternalPhase::Browsing);
+    // Nothing here starts a boot, and the way back lands on the row it came from.
+    CHECK(slots.bootRequests==0);
+    CHECK(!s.commitPendingBoot());
     s.handle(press(false),now); now+=1000;
     m=s.model();
     CHECK(m.screen==ScreenId::AppList);
-    CHECK(AppRegistry[m.selection].id==AppId::External3);
+    CHECK(AppRegistry[m.selection].id==AppId::External1);
     // The stopwatch is still the only row that just acknowledges the input.
     openRow(s,now,AppId::Stopwatch);
     m=s.model();
     CHECK(m.screen==ScreenId::AppList && m.toast!=nullptr);
-}
-
-void cancelLeavesWithoutBooting() {
-    FakeSlotService slots;
-    slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
-    ScreenManager s; TimeUs now=0;
-    s.bindSlots(&slots); s.setSlots(slots.catalog);
-    openRow(s,now,AppId::External1);
-    CHECK(s.model().external.cursor==0);
-    s.handle(press(true),now); now+=1000;          // A moves onto cancel
-    CHECK(s.model().external.cursor==1);
-    s.handle(press(false),now); now+=1000;
-    CHECK(s.model().screen==ScreenId::AppList);
-    CHECK(slots.bootRequests==0);
-    CHECK(!s.commitPendingBoot());
 }
 
 void commitSuppressesInputAndRecovers() {
@@ -145,8 +147,7 @@ void commitSuppressesInputAndRecovers() {
     slots.bootMessage="ESP_ERR_IMAGE_INVALID";
     ScreenManager s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
-    openRow(s,now,AppId::External1);
-    s.handle(press(false),now); now+=1000;         // B on the launch button
+    openRow(s,now,AppId::External1);               // one press: decide == launch
     auto m=s.model();
     CHECK(m.external.phase==ExternalPhase::BootCommitting);
     CHECK(externalButtonCount(m.external)==0);
@@ -195,32 +196,33 @@ void homeDuringScanKeepsResultsHarmless() {
     CHECK(!s.commitPendingBoot());
 }
 
-void scanFinishingDuringDetailKeepsCursorValid() {
+void scanFinishingDuringDetailDoesNotLaunch() {
     FakeSlotService slots;
     slots.catalog=scanning();
     ScreenManager s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
     openRow(s,now,AppId::External1);
     CHECK(s.model().external.status==SlotStatus::Scanning);
-    CHECK(externalButtonCount(s.model().external)==1);
-    // Two buttons appear underneath the cursor; it stays in range and the
-    // launch is not triggered by the state change itself.
+    CHECK(s.model().external.phase==ExternalPhase::Browsing);
+    // The slot turns launchable underneath the open screen. Only a decision in
+    // the list starts a boot, so this must not turn into one.
     slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
     s.setSlots(slots.catalog);
     auto m=s.model();
-    CHECK(m.external.status==SlotStatus::Ready && m.external.cursor==0);
+    CHECK(m.external.status==SlotStatus::Ready);
+    CHECK(m.external.phase==ExternalPhase::Browsing);
+    CHECK(externalButtonCount(m.external)==1);
     CHECK(slots.bootRequests==0);
-    // And the other way round: a Ready slot that turns out unusable must not
-    // leave the cursor pointing at a button that is no longer drawn.
-    s.handle(press(true),now); now+=1000;
-    CHECK(s.model().external.cursor==1);
-    slots.set(1,SlotStatus::Invalid,nullptr,nullptr,0x105);
-    s.setSlots(slots.catalog);
-    m=s.model();
-    CHECK(externalButtonCount(m.external)==1 && m.external.cursor==0);
+    CHECK(!s.commitPendingBoot());
+    // This is also the only way to read a launchable slot's version, since
+    // deciding its row launches it instead of opening this screen.
+    CHECK(std::string(m.external.version)=="1.2.0");
     s.handle(press(false),now); now+=1000;
     CHECK(s.model().screen==ScreenId::AppList);
     CHECK(slots.bootRequests==0);
+    // Leaving resets the phase, so the next decision starts from scratch.
+    openRow(s,now,AppId::External1);
+    CHECK(s.model().external.phase==ExternalPhase::BootCommitting);
 }
 
 void runtimeScansBehindTheFirstFrameAndPollsResults() {
@@ -262,10 +264,8 @@ void runtimeIssuesTheBootAfterPaintingTheCommitFrame() {
     };
     pressA();                                   // clock -> list
     while (AppRegistry[runtime.model().selection].id!=AppId::External1) pressA();
-    pressB();
-    CHECK(runtime.model().screen==ScreenId::External);
     const int drawsBefore=render.draws;
-    pressB();                                   // launch
+    pressB();                                   // decide == launch
     // The committing frame reached the renderer, and only then the API ran.
     CHECK(render.draws>drawsBefore);
     CHECK(slots.bootRequests==1 && slots.bootSlot==1);
@@ -275,11 +275,11 @@ void runtimeIssuesTheBootAfterPaintingTheCommitFrame() {
 int main() {
     listShowsNamesAndDimming();
     unsupportedLayoutDisablesEveryExternalRow();
-    detailOpensForEveryState();
-    cancelLeavesWithoutBooting();
+    launchableRowStartsWithoutConfirmation();
+    unusableSlotsOpenTheScreenInstead();
     commitSuppressesInputAndRecovers();
     homeDuringScanKeepsResultsHarmless();
-    scanFinishingDuringDetailKeepsCursorValid();
+    scanFinishingDuringDetailDoesNotLaunch();
     runtimeScansBehindTheFirstFrameAndPollsResults();
     runtimeIssuesTheBootAfterPaintingTheCommitFrame();
     std::cout << "multifirm tests passed\n";

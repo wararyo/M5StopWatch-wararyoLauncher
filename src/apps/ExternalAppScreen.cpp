@@ -10,10 +10,8 @@ ExternalModel ExternalAppScreen::model() const {
         m.version=entry.version[0] ? entry.version : nullptr;
         m.error=entry.error;
     } else m.status=SlotStatus::Unsupported;
-    // A scan finishing while the detail is open changes the button count, so
-    // the cursor is clamped here rather than trusted from the last input.
-    const int buttons=externalButtonCount(m);
-    m.cursor=buttons>0 ? (cursor_<buttons ? cursor_ : buttons-1) : 0;
+    // The cursor is always on the single button, so A has nowhere to move it
+    // and the button is drawn selected from the moment the screen opens.
     return m;
 }
 ScreenModel ExternalAppScreen::layoutModel() const {
@@ -22,21 +20,17 @@ ScreenModel ExternalAppScreen::layoutModel() const {
     return m;
 }
 void ExternalAppScreen::enter() {
-    phase_=ExternalPhase::Browsing; cursor_=0; issued_=false; message_=nullptr;
+    issued_=false; message_=nullptr;
+    // A launchable slot was already decided in the list, so there is nothing
+    // left to confirm and this is the final decision (plan.md 8.2). Everything
+    // that can fail has already been saved by the screen that owned it.
+    // A slot that becomes Ready later, while this screen is open, is NOT
+    // launched: only the decision in the list starts one.
+    phase_=model().status==SlotStatus::Ready ?
+        ExternalPhase::BootCommitting : ExternalPhase::Browsing;
 }
-void ExternalAppScreen::exit() { enter(); }
-void ExternalAppScreen::activate(ScreenOutcome& out) {
-    const auto m=model();
-    // Ready is the only state with two buttons, and index 0 is the launch. Any
-    // other button on any other state simply leaves.
-    if (m.status==SlotStatus::Ready && m.phase==ExternalPhase::Browsing && m.cursor==0) {
-        // plan.md 8.2 step 2: everything that can fail has already been saved
-        // by the screen that owned it. Nothing is left to flush here.
-        phase_=ExternalPhase::BootCommitting; issued_=false; message_=nullptr;
-        cursor_=0; out.changed=true;
-        return;
-    }
-    out.leave=true;
+void ExternalAppScreen::exit() {
+    phase_=ExternalPhase::Browsing; issued_=false; message_=nullptr;
 }
 ScreenOutcome ExternalAppScreen::handle(const Events& e,TimeUs) {
     ScreenOutcome out{};
@@ -44,18 +38,12 @@ ScreenOutcome ExternalAppScreen::handle(const Events& e,TimeUs) {
     // The commit is not cancellable and must not be disturbed, so the screen
     // drops every event until the API has answered (plan.md 8.2 step 3).
     if (phase_==ExternalPhase::BootCommitting) return out;
-    const auto m=model();
-    const int buttons=externalButtonCount(m);
-    if (buttons<=0) return out;
     if (e.gesture==Gesture::Tap) {
-        const auto hit=hitExternal(layoutModel(),e.x,e.y);
-        if (hit.kind==ExternalHit::Button) {
-            cursor_=hit.index; out.changed=true; activate(out);
-        }
+        if (hitExternal(layoutModel(),e.x,e.y).kind==ExternalHit::Button) out.leave=true;
         return out;
     }
-    if (e.next) { cursor_=(m.cursor+1)%buttons; out.changed=true; }
-    if (e.decide) { cursor_=m.cursor; out.changed=true; activate(out); }
+    // One button, whatever the state: B leaves, and A has nowhere to move to.
+    if (e.decide) out.leave=true;
     return out;
 }
 bool ExternalAppScreen::commitPendingBoot() {
@@ -66,7 +54,6 @@ bool ExternalAppScreen::commitPendingBoot() {
     if (slots_->boot(slot_,&message)) return false;
     phase_=ExternalPhase::BootFailed;
     message_=message;
-    cursor_=0;
     return true;
 }
 }

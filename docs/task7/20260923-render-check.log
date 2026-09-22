@@ -1,0 +1,27 @@
+I (102) boot:  7 ota_3            OTA app          00 13 0080000[WatchFace] digital cache=direct bytes=51728 internal
+[Renderer] element capacity exceeded: full repaint
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[Verify] lifecycle internal_free_before=250343 after=250343
+[Verify] checks=234 mismatches=0 result=PASS
+[RenderDiag] synthetic JST time / battery / slots; no RTC or flash read
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=15s stored=ok
+[Memory] ui-internal total=364763 free=248039 largest=196608 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+[Power] screen=off

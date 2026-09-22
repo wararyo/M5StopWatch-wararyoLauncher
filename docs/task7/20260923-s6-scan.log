@@ -1,0 +1,120 @@
+I (313) esp_image: segment 3: paddr=0010ee58 vaddr=3fc99ddc size=00068h (   104) load
+I (313) esp_image: segment 4: paddr=0010eec8 vaddr=40374000 size=12804h ( 75780) load
+I (333) esp_image: segment 5: paddr=001216d4 vaddr=600fe000 size=00020h (    32) load
+I (341) boot: Loaded app from partition at offset 0x20000
+I (341) boot: Disabling RNG early entropy source...
+I (351) octal_psram: vendor id    : 0x0d (AP)
+I (351) octal_psram: dev id       : 0x02 (generation 3)
+I (351) octal_psram: density      : 0x03 (64 Mbit)
+I (353) octal_psram: good-die     : 0x01 (Pass)
+I (358) octal_psram: Latency      : 0x01 (Fixed)
+I (362) octal_psram: VCC          : 0x01 (3V)
+I (366) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (371) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (376) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (380) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (385) octal_psram: DriveStrength: 0x00 (1/1)
+I (390) MSPI Timing: PSRAM timing tuning index: 4
+I (394) esp_psram: Found 8MB PSRAM device
+I (398) esp_psram: Speed: 80MHz
+I (401) cpu_start: Multicore app
+I (686) esp_psram: SPI SRAM memory test OK
+I (694) cpu_start: Pro cpu start user code
+I (694) cpu_start: cpu freq: 240000000 Hz
+I (695) app_init: Application information:
+I (695) app_init: Project name:     wararyoLauncher
+I (695) app_init: App version:      0.1.0-dev
+I (695) app_init: Compile time:     Sep 23 2026 00:24:19
+I (695) app_init: ELF file SHA256:  f5c15f12c...
+I (695) app_init: ESP-IDF:          5.5.0
+I (695) efuse_init: Min chip rev:     v0.0
+I (696) efuse_init: Max chip rev:     v0.99 
+I (696) efuse_init: Chip rev:         v0.2
+I (696) heap_init: Initializing. RAM available for dynamic allocation:
+I (696) heap_init: At 3FC9FE40 len 000498D0 (294 KiB): RAM
+I (696) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (696) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (697) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (698) spi_flash: detected chip: generic
+I (698) spi_flash: flash io: dio
+I (699) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (699) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=364475 free=303171 largest=245760 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=340 bytes=170790
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-22 16:09:46 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=15s stored=ok
+[Memory] ui-internal total=364475 free=247795 largest=192512 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+I (2051) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2084) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2086) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2087) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2120) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2127) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2128) multifirm-host: slot 1 image verification took 424 ms
+I (2128) multifirm-host: slot 1 SHA-256 calculation took 189 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+I (2633) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2666) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2669) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (2735) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (2736) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (2747) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (2747) multifirm-host: slot 2 image verification took 616 ms
+I (2748) multifirm-host: slot 2 SHA-256 calculation took 274 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3093) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3109) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3112) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3112) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3159) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3168) multifirm-host: slot 3 image verification took 416 ms
+I (3168) multifirm-host: slot 3 SHA-256 calculation took 186 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[RenderDiag] transition-draw n=6 avg=56801 max=126821 p95_upper=127000 us over33333=3
+[RenderDiag] scroll-draw n=1480 avg=30644 max=34762 p95_upper=35000 us over33333=387
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] single-draw n=13 avg=35378 max=88461 p95_upper=89000 us over33333=3
+[RenderDiag] transition-interval n=4 avg=65821 max=135250 p95_upper=136000 us over33333=2
+[RenderDiag] transition-interval-cont n=4 avg=65821 max=135250 p95_upper=136000 us over33333=2
+[RenderDiag] transition-interval fps=15.19 cont_fps=15.19 pauses=0 longest_pause=0 us
+[RenderDiag] scroll-interval n=1470 avg=33921 max=216799 p95_upper=37000 us over33333=846
+[RenderDiag] scroll-interval-cont n=1469 avg=33797 max=144268 p95_upper=37000 us over33333=845
+[RenderDiag] scroll-interval fps=29.48 cont_fps=29.59 pauses=1 longest_pause=216799 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=1439 avg=32016 max=133888 p95_upper=36000 us over33333=618
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60016083 layouts=1589 paints=1498 stack_free=4900 internal_free=247339 internal_largest=192512 psram_free=7939612 psram_largest=7864320
+[RenderDiag] transition-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-draw n=1765 avg=30082 max=34786 p95_upper=35000 us over33333=418
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] single-draw n=4 avg=30710 max=33105 p95_upper=34000 us over33333=0
+[RenderDiag] transition-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] transition-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] transition-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] scroll-interval n=1760 avg=33522 max=156635 p95_upper=37000 us over33333=893
+[RenderDiag] scroll-interval-cont n=1760 avg=33522 max=156635 p95_upper=37000 us over33333=893
+[RenderDiag] scroll-interval fps=29.83 cont_fps=29.83 pauses=0 longest_pause=0 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=1753 avg=31190 max=36652 p95_upper=36000 us over33333=653
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60035964 layouts=1910 paints=1769 stack_free=4900 internal_free=247339 internal_largest=192512 psram_free=7939612 psram_largest=7864320

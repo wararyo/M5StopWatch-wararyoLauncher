@@ -1,0 +1,32 @@
+[RenderDiag] transition-draw n=1032 avg=16288 max=30740 p95_upper=25000 us over33333=0
+[RenderDiag] scroll-draw n=63 avg=25554 max=34350 p95_upper=34000 us over33333=12
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] single-draw n=22 avg=25078 max=33515 p95_upper=32000 us over33333=1
+[RenderDiag] transition-interval n=1013 avg=45733 max=11356966 p95_upper=187000 us over33333=84
+[RenderDiag] transition-interval-cont n=976 avg=26920 max=199661 p95_upper=33000 us over33333=47
+[RenderDiag] transition-interval fps=21.87 cont_fps=37.15 pauses=37 longest_pause=11356966 us
+[RenderDiag] scroll-interval n=41 avg=39182 max=214483 p95_upper=52000 us over33333=24
+[RenderDiag] scroll-interval-cont n=40 avg=34799 max=51835 p95_upper=52000 us over33333=23
+[RenderDiag] scroll-interval fps=25.52 cont_fps=28.74 pauses=1 longest_pause=214483 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=496 avg=18080 max=34655 p95_upper=29000 us over33333=5
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60005130 layouts=1375 paints=1116 stack_free=4900 internal_free=247339 internal_largest=192512 psram_free=7939612 psram_largest=7864320
+[RenderDiag] transition-draw n=1688 avg=15763 max=30895 p95_upper=25000 us over33333=0
+[RenderDiag] scroll-draw n=33 avg=20267 max=34350 p95_upper=34000 us over33333=2
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] single-draw n=17 avg=24373 max=30980 p95_upper=31000 us over33333=0
+[RenderDiag] transition-interval n=1669 avg=31613 max=534808 p95_upper=146000 us over33333=135
+[RenderDiag] transition-interval-cont n=1648 avg=28524 max=199940 p95_upper=128000 us over33333=114
+[RenderDiag] transition-interval fps=31.63 cont_fps=35.06 pauses=21 longest_pause=534808 us
+[RenderDiag] scroll-interval n=14 avg=32389 max=52034 p95_upper=53000 us over33333=4
+[RenderDiag] scroll-interval-cont n=14 avg=32389 max=52034 p95_upper=53000 us over33333=4
+[RenderDiag] scroll-interval fps=30.87 cont_fps=30.87 pauses=0 longest_pause=0 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=741 avg=17471 max=35446 p95_upper=28000 us over33333=2
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60003675 layouts=2057 paints=1738 stack_free=4900 internal_free=247339 internal_largest=192512 psram_free=7939612 psram_largest=7864320

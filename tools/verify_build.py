@@ -51,7 +51,9 @@ def require(condition, message):
 def main():
     global BUILD, MULTIFIRM
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--environment", choices=("m5stopwatch", "m5stopwatch-diagnostics", "m5stopwatch-render-check"),
+    parser.add_argument("--environment",
+                        choices=("m5stopwatch", "m5stopwatch-diagnostics",
+                                 "m5stopwatch-measure", "m5stopwatch-render-check"),
                         default="m5stopwatch")
     environment = parser.parse_args().environment
     BUILD = ROOT / ".pio/build" / environment
@@ -91,7 +93,13 @@ def main():
             "Synthetic clock data do not match the selected environment")
     require((b"[Verify] checks=" in image_bytes) == (environment == "m5stopwatch-render-check"),
             "Pixel checks do not match the selected environment")
-    print("[OK] overload diagnostics / synthetic clock / pixel checks isolated by environment")
+    # The product build carries no measurement instrument at all: this is the
+    # check behind "remove the verification-only buffers" in work 7.
+    require((b"[RenderDiag] window_us=" in image_bytes) ==
+            (environment in ("m5stopwatch-measure", "m5stopwatch-render-check")),
+            "Frame metrics do not match the selected environment")
+    print("[OK] overload diagnostics / synthetic clock / pixel checks / frame metrics "
+          "isolated by environment")
     print(f"[OK] firmware SHA-256={hashlib.sha256(image.read_bytes()).hexdigest()}")
     print(f"[Build] project={description['project_name']} "
           f"version={description['project_version']} IDF={description['git_revision']}")

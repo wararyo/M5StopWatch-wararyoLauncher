@@ -1,5 +1,5 @@
 #include "AppRuntime.h"
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_METRICS
 #include "ui/RenderDiagnostics.h"
 #endif
 namespace launcher {
@@ -14,7 +14,7 @@ void AppRuntime::step() {
         power_.update(now, e.activity, screens_.active());
         if (e.home || e.next || e.decide || e.gesture != Gesture::None) {
             const bool changed = screens_.handle(e, now);
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_METRICS
             if (changed) recordInput(now);
 #endif
             dirty_ = changed || dirty_;
@@ -33,7 +33,7 @@ void AppRuntime::step() {
         nextUsb_ = now + 1000000;
     }
     if (wasOff != power_.screenOff()) {
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_METRICS
         if (wasOff) recordWake(now);
 #endif
         // The panel comes back at zero brightness, so the level is re-applied

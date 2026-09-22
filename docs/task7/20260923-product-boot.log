@@ -1,0 +1,87 @@
+I (320) esp_image: segment 4: paddr=0010e37c vaddr=40374190 size=12638h ( 75320) load
+I (336) esp_image: segment 5: paddr=001209bc vaddr=600fe000 size=00020h (    32) load
+I (344) boot: Loaded app from partition at offset 0x20000
+I (344) boot: Disabling RNG early entropy source...
+I (354) octal_psram: vendor id    : 0x0d (AP)
+I (354) octal_psram: dev id       : 0x02 (generation 3)
+I (355) octal_psram: density      : 0x03 (64 Mbit)
+I (357) octal_psram: good-die     : 0x01 (Pass)
+I (361) octal_psram: Latency      : 0x01 (Fixed)
+I (365) octal_psram: VCC          : 0x01 (3V)
+I (369) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (374) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (379) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (384) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (389) octal_psram: DriveStrength: 0x00 (1/1)
+I (394) MSPI Timing: PSRAM timing tuning index: 4
+I (397) esp_psram: Found 8MB PSRAM device
+I (401) esp_psram: Speed: 80MHz
+I (404) cpu_start: Multicore app
+I (689) esp_psram: SPI SRAM memory test OK
+I (698) cpu_start: Pro cpu start user code
+I (698) cpu_start: cpu freq: 240000000 Hz
+I (698) app_init: Application information:
+I (698) app_init: Project name:     wararyoLauncher
+I (698) app_init: App version:      0.1.0-dev
+I (698) app_init: Compile time:     Sep 23 2026 00:26:16
+I (699) app_init: ELF file SHA256:  c6e7b130a...
+I (699) app_init: ESP-IDF:          5.5.0
+I (699) efuse_init: Min chip rev:     v0.0
+I (699) efuse_init: Max chip rev:     v0.99 
+I (699) efuse_init: Chip rev:         v0.2
+I (699) heap_init: Initializing. RAM available for dynamic allocation:
+I (700) heap_init: At 3FC9CBD0 len 0004CB40 (306 KiB): RAM
+I (700) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (700) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (700) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (701) spi_flash: detected chip: generic
+I (701) spi_flash: flash io: dio
+I (702) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (702) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=377387 free=316083 largest=258048 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=340 bytes=170790
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-22 17:45:20 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=15s stored=ok
+[Memory] ui-internal total=377387 free=260575 largest=208896 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+I (2057) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2090) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2092) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2094) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2127) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2133) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2134) multifirm-host: slot 1 image verification took 423 ms
+I (2134) multifirm-host: slot 1 SHA-256 calculation took 189 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2635) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2664) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2666) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (2732) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (2733) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (2743) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (2744) multifirm-host: slot 2 image verification took 606 ms
+I (2744) multifirm-host: slot 2 SHA-256 calculation took 272 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3089) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3106) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3108) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3109) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3156) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3165) multifirm-host: slot 3 image verification took 416 ms
+I (3165) multifirm-host: slot 3 SHA-256 calculation took 186 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[Power] screen=off

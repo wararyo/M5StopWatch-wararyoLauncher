@@ -1,20 +1,23 @@
 #include "RenderDiagnostics.h"
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
-#include "IconSet.h"
+#ifdef LAUNCHER_RENDER_METRICS
 #include "Renderer.h"
-#include "Text.h"
-#include "VlwFont.h"
-#include "app/AppRegistry.h"
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <algorithm>
 #include <cstdio>
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#include "IconSet.h"
+#include "Text.h"
+#include "VlwFont.h"
+#include "app/AppRegistry.h"
 #include <cstring>
+#endif
 namespace launcher {
 namespace {
-bool recording=false;
+// Metrics alone have no repaint check to wait for.
+bool recording=true;
 struct Distribution {
     uint32_t count=0,maximum=0,over=0;
     uint64_t total=0;
@@ -32,10 +35,23 @@ struct Distribution {
             unsigned((p95==255 ? 255 : p95+1)*1000),unsigned(over));
     }
 };
-Distribution drawTime[3],interval[3],inputLatency,wakeLatency;
+// A frame is classified by what the model was doing, so one window can mix
+// scenarios and still report each of them separately.
+enum Mode { ModeTransition, ModeScroll, ModeStopwatch, ModeSingle, ModeCount };
+constexpr int IntervalModes=ModeSingle; // Continuous by nature; single frames are not.
+// An interval only describes a stretch where the operation keeps producing
+// frames. A longer gap is a pause - a stopped finger, a screen with nothing to
+// update - and goes to a counter instead of the continuous figures, so it is
+// out of the steady-stretch judgement of plan.md 6.3 without being silently
+// dropped: the unfiltered distribution is printed next to it.
+constexpr TimeUs ContinuousGapUs=200000;
+Distribution drawTime[ModeCount],interval[IntervalModes],continuous[IntervalModes],inputLatency,wakeLatency;
+uint32_t pauses[IntervalModes]{};
+TimeUs longestPause[IntervalModes]{};
 TimeUs lastEnd=0,windowStart=0,inputAt=-1,wakeAt=-1;
 int lastMode=-1;
 uint32_t lastLayouts=0,lastPaints=0;
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
 WatchData sampleData() {
     WatchData d; d.timeValid=true; d.localTime.tm_hour=9; d.localTime.tm_min=41;
     d.localTime.tm_mon=8; d.localTime.tm_mday=19; d.localTime.tm_wday=6;
@@ -57,7 +73,9 @@ public:
     }
     TimeUs nextUpdate(TimeUs,const WatchData&) const override { return INT64_MAX; }
 };
+#endif
 }
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
 WatchData DiagnosticDataSource::sample(TimeUs now) {
     auto d=sampleData();
     const auto seconds=now/1000000;
@@ -68,14 +86,23 @@ WatchData DiagnosticDataSource::sample(TimeUs now) {
     d.subsecondUs=now%1000000;
     return d;
 }
+#endif
 void recordInput(TimeUs now) { if(recording && inputAt<0) inputAt=now; }
 void recordWake(TimeUs now) { if(recording) wakeAt=now; }
 void recordRender(const ScreenModel& m,TimeUs start,TimeUs end,bool painted,uint32_t) {
     if(!recording) return;
     if(!painted) { inputAt=-1; return; }
-    const int mode=m.transition>0 && m.transition<1 ? 0 : m.dragging || m.animating ? 1 : 2;
+    const int mode=m.transition>0 && m.transition<1 ? ModeTransition
+        : m.dragging || m.animating ? ModeScroll
+        : m.screen==ScreenId::Stopwatch && m.stopwatch.state==StopwatchState::Running ? ModeStopwatch
+        : ModeSingle;
     drawTime[mode].add(end-start);
-    if(mode<2 && lastMode==mode && lastEnd) interval[mode].add(end-lastEnd);
+    if(mode<IntervalModes && lastMode==mode && lastEnd) {
+        const TimeUs gap=end-lastEnd;
+        interval[mode].add(gap);
+        if(gap<=ContinuousGapUs) continuous[mode].add(gap);
+        else { ++pauses[mode]; longestPause[mode]=std::max(longestPause[mode],gap); }
+    }
     lastMode=mode; lastEnd=end;
     if(inputAt>=0) { inputLatency.add(end-inputAt); inputAt=-1; }
     if(wakeAt>=0) { wakeLatency.add(end-wakeAt); wakeAt=-1; }
@@ -84,13 +111,18 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
     if(!recording) return;
     if(!windowStart) { windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); return; }
     if(now-windowStart<60000000) return;
-    const char* drawNames[]={"transition-draw","scroll-draw","single-draw"};
-    const char* gapNames[]={"transition-interval","scroll-interval"};
-    for(int i=0;i<3;++i) drawTime[i].print(drawNames[i]);
-    for(int i=0;i<2;++i) {
+    const char* drawNames[]={"transition-draw","scroll-draw","stopwatch-draw","single-draw"};
+    const char* gapNames[]={"transition-interval","scroll-interval","stopwatch-interval"};
+    for(int i=0;i<ModeCount;++i) drawTime[i].print(drawNames[i]);
+    for(int i=0;i<IntervalModes;++i) {
         interval[i].print(gapNames[i]);
-        std::printf("[RenderDiag] %s fps=%.2f (continuous pairs; keep moving)\n",gapNames[i],
-            interval[i].total ? interval[i].count*1000000.0/interval[i].total : 0.0);
+        char continuousName[40];
+        std::snprintf(continuousName,sizeof(continuousName),"%s-cont",gapNames[i]);
+        continuous[i].print(continuousName);
+        std::printf("[RenderDiag] %s fps=%.2f cont_fps=%.2f pauses=%u longest_pause=%llu us\n",gapNames[i],
+            interval[i].total ? interval[i].count*1000000.0/interval[i].total : 0.0,
+            continuous[i].total ? continuous[i].count*1000000.0/continuous[i].total : 0.0,
+            unsigned(pauses[i]),static_cast<unsigned long long>(longestPause[i]));
     }
     inputLatency.print("sampled-input-to-end"); wakeLatency.print("wake-request-to-end");
     std::printf("[RenderDiag] window_us=%lld layouts=%u paints=%u stack_free=%u internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u\n",
@@ -100,9 +132,13 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
         unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
     for(auto& d:drawTime) d={};
     for(auto& d:interval) d={};
+    for(auto& d:continuous) d={};
+    for(auto& p:pauses) p=0;
+    for(auto& p:longestPause) p=0;
     inputLatency={}; wakeLatency={}; lastMode=-1; lastEnd=0;
     windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints();
 }
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
 void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalog) {
     recording=false;
     // The statistics chip carries a clock, so the two draws a comparison makes
@@ -373,5 +409,6 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
     renderer.suppressStatsForTest(false);
     renderer.invalidate(); recording=true;
 }
+#endif
 }
 #endif

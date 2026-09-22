@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include <esp_timer.h>
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_METRICS
 #include "RenderDiagnostics.h"
 #endif
 namespace launcher {
@@ -124,7 +124,7 @@ void Renderer::paintToast(const ScreenModel& m) {
     display_.clearClipRect(); display_.setTextSize(1);
 }
 void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_METRICS
     const auto start=esp_timer_get_time();
 #endif
     if(!face_) return;
@@ -176,7 +176,7 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
     if(frame_.overflow() && !overflowReported_) std::printf("[Renderer] element capacity exceeded: full repaint\n");
     overflowReported_=frame_.overflow();
     full_=frame_.overflow();
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_METRICS
     recordRender(m,start,esp_timer_get_time(),frame_.anyPaint(),layouts_);
 #endif
 }

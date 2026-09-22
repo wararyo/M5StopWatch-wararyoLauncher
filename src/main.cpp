@@ -18,9 +18,11 @@
 #include "services/LauncherData.h"
 #include "storage/NvsBackend.h"
 #include "ui/Renderer.h"
+#ifdef LAUNCHER_RENDER_METRICS
+#include "ui/RenderDiagnostics.h"
+#endif
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 #include "multifirm/FakeSlotService.h"
-#include "ui/RenderDiagnostics.h"
 #endif
 
 #if !defined(MULTIFIRM_HOST) || MULTIFIRM_HOST != 1
@@ -121,7 +123,7 @@ extern "C" void app_main() {
     while (true) {
         runtime.step();
         launcher::runtimeDiagnostics();
-#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_METRICS
         launcher::reportRenderDiagnostics(renderer, hal.now());
 #endif
         runtime.wait();

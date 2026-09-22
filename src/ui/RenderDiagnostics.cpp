@@ -105,6 +105,11 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
 }
 void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalog) {
     recording=false;
+    // The statistics chip carries a clock, so the two draws a comparison makes
+    // would differ by whatever the window did between them. It is outside the
+    // frame plan and has nothing to verify differentially; the settings row
+    // that turns it on is checked below like any other element.
+    renderer.suppressStatsForTest(true);
     const int w=display.width(),h=display.height();
     const size_t pixels=static_cast<size_t>(w)*h,bytes=pixels*2;
     auto* incremental=static_cast<uint16_t*>(heap_caps_malloc(bytes,MALLOC_CAP_SPIRAM));
@@ -136,7 +141,8 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                                   "30秒","時刻を保存しました","保存しました","日付が正しくありません",
                                   "保存に失敗しました","時計を設定できません",
                                   "検証中","空き","破損","読み取り失敗","非対応","起動","起動中",
-                                  "バージョン","スロット","エラー","起動できませんでした"}) covered(text);
+                                  "バージョン","スロット","エラー","起動できませんでした",
+                                  "統計情報を表示"}) covered(text);
             // The elapsed time sits in a fixed box and is drawn as one string,
             // so digits of unequal width would shuffle it sideways as it counts.
             {
@@ -239,6 +245,16 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                         m.settings.editing=true; check("settings-editing",m,d);
                         m.settings.editing=false;
                     }
+                }
+                // Information carries the statistics action: its label does not
+                // change when taken, only its colour, so both states are swept.
+                if (settingsActionCount(view)>0) {
+                    m.settings.cursor=settingsFieldCount(view);
+                    check("settings-action-free",m,d);
+                    m.stats=true; check("settings-action-taken",m,d);
+                    m.settings.cursor=settingsSlotCount(view)-1;
+                    check("settings-action-taken-elsewhere",m,d);
+                    m.stats=false;
                 }
                 m.toast="保存しました"; check("settings-notice",m,d);
                 // The longest notice, over the buttons it used to be buried under.
@@ -354,6 +370,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
         }
     }
     heap_caps_free(incremental); heap_caps_free(reference);
+    renderer.suppressStatsForTest(false);
     renderer.invalidate(); recording=true;
 }
 }

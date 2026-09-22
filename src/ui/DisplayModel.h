@@ -45,6 +45,9 @@ struct ScreenModel {
     SettingsModel settings{};
     ExternalModel external{};
     StopwatchModel stopwatch{};
+    // Frame statistics overlay. Enabled from the settings information view and
+    // never saved, so every boot starts without it.
+    bool stats=false;
     int brightness=Settings{}.brightness;   // Effective: preview while editing.
     int screenOffSec=Settings{}.screenOffSec; // Saved only; never previewed.
 };

@@ -233,6 +233,18 @@ void repaint() {
         for(int i=0;i<N;++i) if(plan.shouldPaint(handles[i])) fill(partial,boxes[i],colors[i]);
         full.fill(0); for(int i=0;i<N;++i) fill(full,boxes[i],colors[i]);
         CHECK(partial==full);
+        // The statistics overlay skips its push when it sits outside this box,
+        // so every pixel the differential pass touched has to be inside it.
+        if(!plan.full()) {
+            const Rect dirty=plan.dirtyBounds();
+            auto inside=[&](Rect r) {
+                r=intersect(r,{0,0,W,H});
+                return r.empty() || (!dirty.empty() && r.x>=dirty.x && r.y>=dirty.y &&
+                    r.x+r.w<=dirty.x+dirty.w && r.y+r.h<=dirty.y+dirty.h);
+            };
+            for(int i=0;i<plan.count();++i) CHECK(inside(plan.eraseBox(i)));
+            for(int i=0;i<N;++i) if(plan.shouldPaint(handles[i])) CHECK(inside(boxes[i]));
+        }
         invalidate=plan.overflow();
     }
     plan.begin(false);
@@ -241,5 +253,6 @@ void repaint() {
 }
 int main() {
     navigation(); flick(); deadlines(); repaint();
-    std::cout<<"PASS: navigation/geometry, display deadlines, 3000 differential framebuffer cases\n";
+    std::cout<<"PASS: navigation/geometry, display deadlines, "
+               "3000 differential framebuffer cases with dirty bounds\n";
 }

@@ -2,6 +2,7 @@
 #include "DigitalWatchFace.h"
 #include "ExternalLayer.h"
 #include "SettingsLayer.h"
+#include "StatsOverlay.h"
 #include "StopwatchLayer.h"
 namespace launcher {
 class Renderer final : public RenderPort {
@@ -19,6 +20,9 @@ public:
     uint32_t paints() const { return paints_; }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
     void capacityForTest(int n) { capacity_=n; invalidate(); }
+    // The chip carries a clock, so two draws of the same model differ. The
+    // pixel comparison turns it off and checks the settings row instead.
+    void suppressStatsForTest(bool suppress) { statsSuppressed_=suppress; invalidate(); }
 #endif
 private:
     struct Row { RowLayout layout{}; char name[96]{}; int handle=-1; };
@@ -31,6 +35,8 @@ private:
     SettingsLayer settings_;
     ExternalLayer external_;
     StopwatchLayer stopwatch_;
+    StatsOverlay stats_;
+    bool statsSuppressed_=false;
     std::array<WatchFace*,4> registry_{};
     WatchFace* face_=nullptr;
     const lgfx::IFont* nameFont_=&fonts::lgfxJapanGothic_24;

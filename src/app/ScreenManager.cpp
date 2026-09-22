@@ -6,6 +6,7 @@ ScreenModel ScreenManager::model() const {
     auto m=model_; m.animating=animating_;
     m.settings=settings_.model();
     m.brightness=settings_.brightness(); m.screenOffSec=settings_.screenOffSec();
+    m.stats=settings_.stats();
     m.external=external_.model();
     m.stopwatch=stopwatchScreen_.model();
     // A launchable slot lends the row its own name; everything else keeps the

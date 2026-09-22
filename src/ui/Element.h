@@ -28,9 +28,15 @@ public:
     bool anyPaint() const;
     int count() const { return count_; }
     Rect eraseBox(int i) const { return entries_[i].paint ? entries_[i].oldBox : Rect{}; }
+    // Bounding box of everything this frame erases and repaints, valid after
+    // resolve(). Empty on a full repaint, where the caller already knows the
+    // answer is the whole screen. This panel flushes one bounding box per
+    // frame, so anything drawn outside this rectangle enlarges the transfer.
+    Rect dirtyBounds() const { return dirty_; }
 private:
     struct Entry { Element* element=nullptr; Rect box{},oldBox{}; uint32_t fingerprint=0; bool paint=false; };
     std::array<Entry,Capacity> entries_{};
+    Rect dirty_{};
     int count_=0,limit_=Capacity;
     bool full_=true,overflow_=false;
 };

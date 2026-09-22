@@ -18,6 +18,9 @@ public:
     void exit() override { openView(SettingsView::Menu); }
     ScreenOutcome handle(const Events& e,TimeUs now) override;
     const SettingsModel& model() const { return model_; }
+    // One way on purpose: the overlay is a measurement aid, and having no path
+    // back to off means no leftover pixels to erase (docs/plan.md 6.3).
+    bool stats() const { return stats_; }
     int brightness() const;
     int screenOffSec() const;
 private:
@@ -29,6 +32,9 @@ private:
     SettingsStore* store_=nullptr;
     TimeService* time_=nullptr;
     SettingsModel model_{};
+    // Outside `model_`, which openView() and exit() reset: the choice has to
+    // survive leaving the view and the screen. Never written back to NVS.
+    bool stats_=false;
     int menuCursor_=0;
     int width_=468,height_=468;
 };

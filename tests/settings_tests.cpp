@@ -226,7 +226,62 @@ void runtimeApplies() {
     hal.time+=16000000; runtime.step();
     CHECK(runtime.power().screenOff()); // 16s > 15s, which 30s would not have.
 }
+void statisticsAction() {
+    MemoryBackend backend; SettingsStore store; store.begin(backend);
+    StubHal hal; TimeService time; time.begin(hal);
+    ScreenManager screens; screens.bind(&store,&time);
+    screens.setInfo("wararyoLauncher","0.1.0","5.5.0");
+    TimeUs now=0;
+    // Every other view keeps exactly the slots it had before actions existed.
+    CHECK(settingsSlotCount(SettingsView::Menu)==SettingsMenuRows);
+    CHECK(settingsSlotCount(SettingsView::DateTime)==7);
+    CHECK(settingsSlotCount(SettingsView::Brightness)==3);
+    CHECK(settingsSlotCount(SettingsView::ScreenOff)==3);
+    CHECK(settingsActionCount(SettingsView::DateTime)==0);
+    // Information gains one: the action, and then the single button.
+    CHECK(settingsActionCount(SettingsView::Info)==1);
+    CHECK(settingsSlotCount(SettingsView::Info)==2);
+    openSettings(screens,now);
+    CHECK(!screens.model().stats);
+    for (int i=0;i<3;++i) screens.handle(press(true),now);  // menu row 3: 情報
+    screens.handle(press(false),now);
+    CHECK(screens.model().settings.view==SettingsView::Info);
+    CHECK(screens.model().settings.cursor==0);
+    // B takes the action and stays put: no notice, no view change.
+    screens.handle(press(false),now);
+    CHECK(screens.model().stats);
+    CHECK(screens.model().settings.view==SettingsView::Info);
+    CHECK(screens.model().toast==nullptr);
+    // Pressing it again cannot undo it.
+    screens.handle(press(false),now);
+    CHECK(screens.model().stats && screens.model().settings.view==SettingsView::Info);
+    // A moves on to the button, which still returns to the menu.
+    screens.handle(press(true),now);
+    CHECK(screens.model().settings.cursor==1);
+    screens.handle(press(false),now);
+    CHECK(screens.model().settings.view==SettingsView::Menu && screens.model().stats);
+    // It outlives leaving the screen entirely.
+    Events home{}; home.home=true; screens.handle(home,now);
+    CHECK(screens.model().screen==ScreenId::Home && screens.model().stats);
+    // A tap reaches the same action, and does not steal the button's box.
+    ScreenManager tapped; tapped.bind(&store,&time);
+    tapped.setInfo("wararyoLauncher","0.1.0","5.5.0");
+    TimeUs t2=0;
+    openSettings(tapped,t2);
+    for (int i=0;i<3;++i) tapped.handle(press(true),t2);
+    tapped.handle(press(false),t2);
+    CHECK(tapped.model().settings.view==SettingsView::Info && !tapped.model().stats);
+    const Rect action=settingsActionBox(tapped.model(),0);
+    const Rect back=settingsButtonBox(tapped.model(),0);
+    CHECK(!action.contains(back.x+back.w/2,back.y+back.h/2));
+    tapped.handle(tap(action.x+action.w/2,action.y+action.h/2),t2);
+    CHECK(tapped.model().stats && tapped.model().settings.view==SettingsView::Info);
+    tapped.handle(tap(back.x+back.w/2,back.y+back.h/2),t2);
+    CHECK(tapped.model().settings.view==SettingsView::Menu);
+}
 int main() {
     storeRecord(); menuAndEditors(); saveAndCancel(); dateSaving(); runtimeApplies();
-    std::cout << "PASS: settings record, menu/editors, save/cancel, date saving, runtime apply\n";
+    statisticsAction();
+    std::cout << "PASS: settings record, menu/editors, save/cancel, date saving, "
+                 "runtime apply, statistics action\n";
 }

@@ -7,6 +7,9 @@ namespace {
 constexpr uint16_t White=0xf7be,Muted=0xad75,Lime=0xb7e0,Panel=0x2104,Ink=0x0000;
 constexpr const char* MenuNames[]={"日時","輝度","消灯時間","情報","戻る"};
 constexpr const char* Titles[]={"","日時","輝度","消灯時間","情報"};
+// Information's one action. Taking it cannot be undone before a restart, so
+// the label says what it does rather than naming a state to toggle.
+constexpr const char* ActionNames[]={"統計情報を表示"};
 }
 void SettingsLayer::build(const ScreenModel& m) {
     count_=0;
@@ -47,12 +50,18 @@ void SettingsLayer::build(const ScreenModel& m) {
         std::snprintf(item.text,sizeof(item.text),"%s",i==2 ? ":" : "/");
     }
     if (s.view==SettingsView::Info)
-        for (int i=0;i<3;++i) {
+        for (int i=0;i<SettingsInfoLines;++i) {
             Item& item=add(InfoLine,settingsInfoBox(m,i),i,false);
             std::snprintf(item.text,sizeof(item.text),"%s",s.lines[i] ? s.lines[i] : "-");
         }
+    const int actions=settingsActionCount(s.view);
+    for (int i=0;i<actions;++i) {
+        Item& item=add(Action,settingsActionBox(m,i),i,s.cursor==fields+i);
+        item.done=m.stats;
+        std::snprintf(item.text,sizeof(item.text),"%s",ActionNames[i]);
+    }
     for (int i=0;i<settingsButtonCount(s.view);++i) {
-        Item& item=add(Button,settingsButtonBox(m,i),i,s.cursor==fields+i);
+        Item& item=add(Button,settingsButtonBox(m,i),i,s.cursor==fields+actions+i);
         const char* label=s.view==SettingsView::Info ? "戻る" : i==0 ? "保存" : "キャンセル";
         std::snprintf(item.text,sizeof(item.text),"%s",label);
     }
@@ -72,7 +81,8 @@ void SettingsLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx
         if (used) {
             const auto& item=items_[i];
             hash=hashString(item.text,hashValue(uint32_t(item.kind),0x9e3779b9u));
-            hash=hashValue(uint32_t(item.selected)|(uint32_t(item.editing)<<1),hash);
+            hash=hashValue(uint32_t(item.selected)|(uint32_t(item.editing)<<1)|
+                           (uint32_t(item.done)<<2),hash);
             hash=hashValue(uint32_t(item.centerY),hashValue(uint32_t(item.labelX),hash));
         }
         handles_[i]=frame.add(elements_[i],used ? items_[i].box : Rect{},hash);
@@ -121,6 +131,13 @@ void SettingsLayer::paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,con
             break;
         case InfoLine:
             g.setTextDatum(middle_center); g.setTextColor(White,Ink);
+            g.drawString(item.text,item.box.x+item.box.w/2,item.box.y+item.box.h/2);
+            break;
+        case Action:
+            g.setTextDatum(middle_center);
+            // Greyed once taken: the cursor still stops here, and the colour is
+            // what says that pressing again does nothing.
+            g.setTextColor(item.done ? Muted : item.selected ? Lime : White,Ink);
             g.drawString(item.text,item.box.x+item.box.w/2,item.box.y+item.box.h/2);
             break;
         case Button: {

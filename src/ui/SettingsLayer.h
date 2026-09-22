@@ -10,14 +10,18 @@ public:
     void paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,const lgfx::IFont* font);
 private:
     // The busiest view is the date editor: title, five fields, three
-    // separators and two buttons.
+    // separators and two buttons. Information needs six: title, three lines,
+    // one action and one button.
     static constexpr int Capacity=11;
-    enum Kind { Title,MenuRow,Field,Separator,Button,InfoLine };
+    enum Kind { Title,MenuRow,Field,Separator,Button,InfoLine,Action };
     struct Item {
         Rect box{};
         Kind kind=Title;
         int index=0,labelX=0,centerY=0;
         bool selected=false,editing=false;
+        // An action already taken. Its text does not change, so this has to
+        // reach the fingerprint or the colour change would not repaint.
+        bool done=false;
         char text[40]{};
     };
     void build(const ScreenModel& m);

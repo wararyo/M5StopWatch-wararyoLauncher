@@ -67,7 +67,16 @@ void SettingsScreen::step(int delta) {
 }
 const char* SettingsScreen::confirm() {
     const int fields=settingsFieldCount(model_.view);
-    const bool cancel=settingsButtonCount(model_.view)==2 && model_.cursor==fields+1;
+    const int actions=settingsActionCount(model_.view);
+    const int action=model_.cursor-fields;
+    // An action stays where it is: the view does not close, and there is
+    // nothing to save, so it never reaches the notice paths below. Action 0 is
+    // the statistics overlay, which only ever turns on (docs/plan.md 5.4).
+    if (action>=0 && action<actions) {
+        if (action==0) stats_=true;
+        return nullptr;
+    }
+    const bool cancel=settingsButtonCount(model_.view)==2 && model_.cursor==fields+actions+1;
     if (model_.view==SettingsView::Info || cancel) { openView(SettingsView::Menu); return nullptr; }
     if (model_.view==SettingsView::DateTime) {
         const CivilTime jst{model_.fields[0],model_.fields[1],model_.fields[2],
@@ -106,8 +115,11 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs) {
         case SettingsHit::Down:
             model_.cursor=hit.index; model_.editing=false;
             step(hit.kind==SettingsHit::Up ? 1 : -1); out.changed=true; break;
-        case SettingsHit::Button:
+        case SettingsHit::Action:
             model_.cursor=fields+hit.index; model_.editing=false;
+            out.changed=true; activate(out); break;
+        case SettingsHit::Button:
+            model_.cursor=fields+settingsActionCount(model_.view)+hit.index; model_.editing=false;
             out.changed=true; activate(out); break;
         case SettingsHit::None: break;
         }

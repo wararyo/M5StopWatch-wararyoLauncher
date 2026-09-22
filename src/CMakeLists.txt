@@ -1,6 +1,6 @@
 idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     "ui/Element.cpp" "ui/DigitalWatchFace.cpp" "ui/Text.cpp" "ui/Renderer.cpp"
-    "ui/VlwFont.cpp" "ui/IconSet.cpp"
+    "ui/VlwFont.cpp" "ui/IconSet.cpp" "ui/StatsOverlay.cpp"
     "ui/RenderDiagnostics.cpp" "app/ScreenManager.cpp" "app/AppRuntime.cpp" "hal/M5Hal.cpp"
     "services/TimeService.cpp" "services/LauncherData.cpp"
     "storage/SettingsStore.cpp" "storage/NvsBackend.cpp"

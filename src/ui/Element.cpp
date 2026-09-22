@@ -22,8 +22,10 @@ void FramePlan::resolve() {
                 entries_[j].paint=true; changed=true;
             }
     }
+    dirty_={};
     for(int i=0;i<count_;++i) {
         auto& e=entries_[i];
+        if(e.paint) dirty_=unite(dirty_,unite(e.box,e.oldBox));
         *e.element={e.box,e.fingerprint,true};
     }
 }

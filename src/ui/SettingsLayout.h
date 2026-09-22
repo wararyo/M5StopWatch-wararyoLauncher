@@ -8,9 +8,13 @@ inline int settingsFieldCount(SettingsView view) {
 }
 // Info only confirms; the others save or cancel.
 inline int settingsButtonCount(SettingsView view) { return view==SettingsView::Info ? 1 : 2; }
+// An action takes effect where it stands: it neither edits a value nor leaves
+// the view, so it sits between the fields and the buttons in the cursor order.
+// A view that has none keeps exactly the slots it had before.
+inline int settingsActionCount(SettingsView view) { return view==SettingsView::Info ? 1 : 0; }
 inline int settingsSlotCount(SettingsView view) {
     return view==SettingsView::Menu ? SettingsMenuRows
-        : settingsFieldCount(view)+settingsButtonCount(view);
+        : settingsFieldCount(view)+settingsActionCount(view)+settingsButtonCount(view);
 }
 // Five rows centred on the panel. They all fit, so the menu never scrolls and
 // the cursor is the only thing that moves; the arc placement is still the app
@@ -74,9 +78,15 @@ inline Rect settingsInfoBox(const ScreenModel& m,int line) {
     const int h=offsetPx(m,46),margin=offsetPx(m,60);
     return {margin,offsetPx(m,170)+line*offsetPx(m,54)-h/2,m.width-2*margin,h};
 }
+constexpr int SettingsInfoLines=3;
+// Actions continue the information lines, so they share their height, margins
+// and spacing instead of inventing a second row geometry.
+inline Rect settingsActionBox(const ScreenModel& m,int index) {
+    return settingsInfoBox(m,SettingsInfoLines+index);
+}
 // Drawing and hit testing share these rectangles, so nothing outside a painted
 // target can be tapped.
-struct SettingsHit { enum Kind { None,MenuRow,Field,Up,Down,Button } kind=None; int index=0; };
+struct SettingsHit { enum Kind { None,MenuRow,Field,Up,Down,Action,Button } kind=None; int index=0; };
 inline SettingsHit hitSettings(const ScreenModel& m,int x,int y) {
     const auto view=m.settings.view;
     if (view==SettingsView::Menu) {
@@ -89,6 +99,8 @@ inline SettingsHit hitSettings(const ScreenModel& m,int x,int y) {
         if (settingsArrowBox(m,i,false).contains(x,y)) return {SettingsHit::Down,i};
         if (settingsValueBox(m,i).contains(x,y)) return {SettingsHit::Field,i};
     }
+    for (int i=0;i<settingsActionCount(view);++i)
+        if (settingsActionBox(m,i).contains(x,y)) return {SettingsHit::Action,i};
     for (int i=0;i<settingsButtonCount(view);++i)
         if (settingsButtonBox(m,i).contains(x,y)) return {SettingsHit::Button,i};
     return {};

@@ -1,0 +1,83 @@
+I (243) esp_image: segment 2: paddr=000afc40 vaddr=40374000 sizeI (691) esp_psram: SPI SRAM memory test OK
+I (700) cpu_start: Pro cpu start user code
+I (700) cpu_start: cpu freq: 240000000 Hz
+I (700) app_init: Application information:
+I (701) app_init: Project name:     wararyoLauncher
+I (701) app_init: App version:      0.1.0-dev
+I (701) app_init: Compile time:     Sep 22 2026 21:01:02
+I (701) app_init: ELF file SHA256:  3e15cab12...
+I (701) app_init: ESP-IDF:          5.5.0
+I (701) efuse_init: Min chip rev:     v0.0
+I (701) efuse_init: Max chip rev:     v0.99 
+I (702) efuse_init: Chip rev:         v0.2
+I (702) heap_init: Initializing. RAM available for dynamic allocation:
+I (702) heap_init: At 3FC9EC98 len 0004AA78 (298 KiB): RAM
+I (702) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (702) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (703) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (704) spi_flash: detected chip: generic
+I (704) spi_flash: flash io: dio
+I (704) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (705) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (141) M5GFX: [Autodetect] board_M5StopWatch
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=368995 free=307691 largest=249856 bytes
+[Memory] psram total=8388608 free=7942728 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=340 bytes=170790
+[WatchFace] digital cache=ready bytes=51728 internal
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+[WatchFace] digital cache=direct bytes=51728 internal
+[Renderer] element capacity exceeded: full repaint
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[Verify] lifecycle internal_free_before=254575 after=254575
+[Verify] checks=234 mismatches=0 result=PASS
+[RenderDiag] synthetic JST time / battery / slots; no RTC or flash read
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=105 screen_off=60s stored=ok
+[Memory] ui-internal total=368995 free=252403 largest=200704 bytes
+[Memory] ui-psram total=8388608 free=7939612 largest=7864320 bytes
+[RenderDiag] transition-draw n=13 avg=17369 max=25691 p95_upper=26000 us over33333=0
+[RenderDiag] scroll-draw n=1813 avg=28643 max=31867 p95_upper=32000 us over33333=0
+[RenderDiag] single-draw n=6 avg=26590 max=28573 p95_upper=29000 us over33333=0
+[RenderDiag] transition-interval n=12 avg=21805 max=29043 p95_upper=30000 us over33333=0
+[RenderDiag] transition-interval fps=45.86 (continuous pairs; keep moving)
+[RenderDiag] scroll-interval n=1807 avg=31009 max=128695 p95_upper=34000 us over33333=189
+[RenderDiag] scroll-interval fps=32.25 (continuous pairs; keep moving)
+[RenderDiag] sampled-input-to-end n=1793 avg=29592 max=33681 p95_upper=33000 us over33333=2
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60029814 layouts=1878 paints=1831 stack_free=4364 internal_free=252183 internal_largest=200704 psram_free=7939612 psram_largest=7864320
+[Stats] overlay cache=ready bytes=6992 internal
+[RenderDiag] transition-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-draw n=1741 avg=28701 max=32569 p95_upper=32000 us over33333=0
+[RenderDiag] single-draw n=7 avg=23869 max=31298 p95_upper=32000 us over33333=0
+[RenderDiag] transition-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] transition-interval fps=0.00 (continuous pairs; keep moving)
+[RenderDiag] scroll-interval n=1737 avg=31739 max=1241227 p95_upper=35000 us over33333=370
+[RenderDiag] scroll-interval fps=31.51 (continuous pairs; keep moving)
+[RenderDiag] sampled-input-to-end n=1726 avg=29695 max=33891 p95_upper=33000 us over33333=9
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60001188 layouts=1796 paints=1748 stack_free=4364 internal_free=245011 internal_largest=200704 psram_free=7939612 psram_largest=7864320

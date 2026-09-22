@@ -5,9 +5,9 @@
 #include "app/AppRegistry.h"
 #include <cstdio>
 #include <cstring>
+#include <esp_timer.h>
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 #include "RenderDiagnostics.h"
-#include <esp_timer.h>
 #endif
 namespace launcher {
 namespace {
@@ -128,6 +128,9 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
     const auto start=esp_timer_get_time();
 #endif
     if(!face_) return;
+    // Only when the overlay is on: an unused build pays nothing for it, and the
+    // frame it times is the one below the chip.
+    const TimeUs statsStart=m.stats ? esp_timer_get_time() : 0;
     if(m.screen!=previousScreen_ || m.toast!=previousToast_) full_=true;
     previousScreen_=m.screen; previousToast_=m.toast;
     ++layouts_;
@@ -157,7 +160,18 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
         settings_.paint(display_,frame_,m,nameFont_);
         external_.paint(display_,frame_,m,nameFont_);
         stopwatch_.paint(display_,frame_,m,nameFont_); paintToast(m);
+        // Last of all, and outside the plan: the chip owns its own rectangle
+        // and pushes it whole, so nothing below can leave it half erased. It is
+        // given the frame's dirty box so it can leave its pixels alone when
+        // nothing reached them (see StatsOverlay).
+        if(m.stats && !statsSuppressed_)
+            stats_.paint(display_,m,frame_.full() ? Rect{0,0,m.width,m.height} : frame_.dirtyBounds());
         display_.endWrite(); ++paints_;
+        // After endWrite, which is where this panel flushes the modified region
+        // over QSPI. [RenderDiag] measures the same span, so the two agree.
+        // The chip therefore shows the previous window's text, which is what it
+        // would show anyway between updates.
+        if(m.stats && !statsSuppressed_) stats_.record(statsStart,esp_timer_get_time());
     }
     if(frame_.overflow() && !overflowReported_) std::printf("[Renderer] element capacity exceeded: full repaint\n");
     overflowReported_=frame_.overflow();

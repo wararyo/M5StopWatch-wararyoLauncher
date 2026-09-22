@@ -19,7 +19,7 @@ ScreenModel ExternalAppScreen::layoutModel() const {
     m.external=model();
     return m;
 }
-void ExternalAppScreen::enter() {
+void ExternalAppScreen::enter(TimeUs) {
     issued_=false; message_=nullptr;
     // A launchable slot was already decided in the list, so there is nothing
     // left to confirm and this is the final decision (plan.md 8.2). Everything

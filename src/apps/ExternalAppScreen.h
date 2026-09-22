@@ -14,7 +14,7 @@ public:
     void bind(SlotService* slots,const SlotCatalog* catalog) { slots_=slots; catalog_=catalog; }
     bool available() const override { return slots_ && catalog_; }
     void select(int slot) { slot_=slot; }
-    void enter() override;
+    void enter(TimeUs) override;
     void exit() override;
     ScreenOutcome handle(const Events& e,TimeUs now) override;
     ExternalModel model() const;

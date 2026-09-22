@@ -42,7 +42,8 @@ void Renderer::planList(const ScreenModel& m) {
     const float scale=float(std::min(m.width,m.height))/468;
     // An app screen covers the list rather than sliding it away, so the rows
     // are planned empty and their last painted boxes still get erased.
-    const bool hidden=m.screen==ScreenId::Settings || m.screen==ScreenId::External;
+    const bool hidden=m.screen==ScreenId::Settings || m.screen==ScreenId::External ||
+        m.screen==ScreenId::Stopwatch;
     for(int i=0;i<5;++i) {
         auto& row=plannedRows_[i]; row.layout=hidden ? RowLayout{} : layoutRow(m,i);
         const auto& box=row.layout.box;
@@ -139,6 +140,7 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
     planList(m);
     settings_.plan(frame_,display_,m,nameFont_);
     external_.plan(frame_,display_,m,nameFont_);
+    stopwatch_.plan(frame_,display_,m,nameFont_);
     planToast(m);
     frame_.resolve();
     if(frame_.anyPaint()) {
@@ -153,7 +155,8 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
         // so the save and cancel buttons landed on top of the notice.
         face_->paint(display_,frame_); paintList(m);
         settings_.paint(display_,frame_,m,nameFont_);
-        external_.paint(display_,frame_,m,nameFont_); paintToast(m);
+        external_.paint(display_,frame_,m,nameFont_);
+        stopwatch_.paint(display_,frame_,m,nameFont_); paintToast(m);
         display_.endWrite(); ++paints_;
     }
     if(frame_.overflow() && !overflowReported_) std::printf("[Renderer] element capacity exceeded: full repaint\n");

@@ -32,7 +32,12 @@ public:
     }
     bool boot(int slot,const char** message) override {
         ++bootRequests; bootSlot=slot;
-        if (bootSucceeds) return true;   // Only a test can take this branch.
+        if (bootSucceeds) {              // Only a test can take this branch.
+            // Where the real adapter calls it: past the point of no return, and
+            // never on the failure path below.
+            if (shutdown_) shutdown_->onBootCommitted();
+            return true;
+        }
         if (message) *message=bootMessage;
         return false;
     }

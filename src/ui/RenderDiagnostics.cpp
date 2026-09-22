@@ -137,6 +137,24 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                                   "保存に失敗しました","時計を設定できません",
                                   "検証中","空き","破損","読み取り失敗","非対応","起動","起動中",
                                   "バージョン","スロット","エラー","起動できませんでした"}) covered(text);
+            // The elapsed time sits in a fixed box and is drawn as one string,
+            // so digits of unequal width would shuffle it sideways as it counts.
+            {
+                display.setFont(&fonts::FreeSansBold24pt7b); display.setTextSize(1);
+                const int zero=display.textWidth("0");
+                for(char c='1';c<='9';++c) {
+                    const char digit[2]={c,0};
+                    ++checks;
+                    if(display.textWidth(digit)!=zero) {
+                        ++failures;
+                        std::printf("[Verify] FAIL elapsed digit %c is %d wide, not %d\n",
+                            c,int(display.textWidth(digit)),int(zero));
+                    }
+                }
+                // Back to the list font: the checks below measure Japanese
+                // with it, and a GFX font would call every glyph missing.
+                display.setFont(renderer.listFont()); display.setTextSize(1);
+            }
             char fitted[128];
             char small[2]; fitText(display,"a",small,sizeof(small),4096); ++checks;
             if(std::strcmp(small,"a")!=0) { ++failures; std::printf("[Verify] FAIL bounded text capacity\n"); }
@@ -274,6 +292,45 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             m.external.version="1.0.0-verify"; check("external-long-name",m,d);
             m.screen=ScreenId::AppList; m.external=ExternalModel{};
             check("external-left",m,d);
+            // The stopwatch. Its panel and divider are background rather than
+            // plan elements, so these differential frames are what proves the
+            // background survives: an element that skipped a repaint, or one
+            // whose box moved, shows up as a black hole against the full
+            // repaint the comparison draws.
+            m.screen=ScreenId::Stopwatch; m.stopwatch=StopwatchModel{};
+            check("stopwatch-reset",m,d);
+            for(const auto state:{StopwatchState::Running,StopwatchState::Paused}) {
+                m.stopwatch.state=state;
+                for(int laps=0;laps<=StopwatchLapRows;++laps) {
+                    m.stopwatch.rows=laps;
+                    for(int i=0;i<laps;++i) {
+                        m.stopwatch.lapNumber[i]=uint16_t(laps-i);
+                        m.stopwatch.lapUs[i]=TimeUs(laps-i)*1234567;
+                    }
+                    check("stopwatch-laps",m,d);
+                }
+                vTaskDelay(1);
+            }
+            // 40 Hz: only the hundredths may repaint, and it has to land on the
+            // panel colour rather than on the black the erase leaves behind.
+            m.stopwatch.state=StopwatchState::Running;
+            for(int i=0;i<12;++i) {
+                m.stopwatch.elapsedUs+=StopwatchFrameUs;
+                check("stopwatch-hundredths",m,d);
+            }
+            // A carry into every field, and the display cap.
+            for(const TimeUs value:{TimeUs(0),TimeUs(9990000),TimeUs(59990000),
+                                    TimeUs(3599990000LL),StopwatchDisplayCapUs,
+                                    StopwatchDisplayCapUs+60000000}) {
+                m.stopwatch.elapsedUs=value;
+                check("stopwatch-value",m,d);
+            }
+            // The toast is the only other thing that touches these pixels, so
+            // it has to force a full repaint on the way in and on the way out.
+            m.toast="保存しました"; check("stopwatch-toast-on",m,d);
+            m.toast=nullptr; check("stopwatch-toast-off",m,d);
+            m.screen=ScreenId::AppList; m.stopwatch=StopwatchModel{};
+            check("stopwatch-left",m,d);
             m={}; m.width=w; m.height=h; check("home",m,d);
             d.localTime.tm_min=42; check("minute",m,d);
             d.localTime.tm_mday=20; d.localTime.tm_wday=0; check("date",m,d);

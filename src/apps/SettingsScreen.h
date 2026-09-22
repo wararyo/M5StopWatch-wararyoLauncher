@@ -12,7 +12,7 @@ public:
         model_.lines[0]=name; model_.lines[1]=version; model_.lines[2]=idf;
     }
     bool available() const override { return store_ && time_; }
-    void enter() override { menuCursor_=0; openView(SettingsView::Menu); }
+    void enter(TimeUs) override { menuCursor_=0; openView(SettingsView::Menu); }
     // Leaving drops the unsaved edit, and with it the brightness preview,
     // because the preview is derived from the open view rather than stored.
     void exit() override { openView(SettingsView::Menu); }

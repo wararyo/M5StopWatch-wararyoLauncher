@@ -7,6 +7,7 @@ ScreenModel ScreenManager::model() const {
     m.settings=settings_.model();
     m.brightness=settings_.brightness(); m.screenOffSec=settings_.screenOffSec();
     m.external=external_.model();
+    m.stopwatch=stopwatchScreen_.model();
     // A launchable slot lends the row its own name; everything else keeps the
     // registry name and only dims, so the list stays icon plus name (plan.md
     // 5.2) and the reason lives on the detail screen.
@@ -20,11 +21,11 @@ ScreenModel ScreenManager::model() const {
     }
     return m;
 }
-bool ScreenManager::open(AppScreen& screen,ScreenId id) {
+bool ScreenManager::open(AppScreen& screen,ScreenId id,TimeUs now) {
     if (!screen.available()) return false;
     // The list keeps its scroll and selection: the screen does not use them, so
     // returning lands back on the same row.
-    screen.enter(); active_=&screen; model_.screen=id;
+    screen.enter(now); active_=&screen; model_.screen=id;
     return true;
 }
 void ScreenManager::animate(float transition,float scroll,TimeUs now) {
@@ -48,7 +49,11 @@ void ScreenManager::settleList(float velocity,TimeUs now) {
     model_.selection=std::clamp(int(std::lround(model_.scroll/spacing)),0,4);
 }
 bool ScreenManager::update(TimeUs now) {
+    now_=now;
     bool changed=false;
+    // The runtime's own display deadline is unset while an app screen covers
+    // the clock, so a screen that updates on its own gets its frames here.
+    if (active_ && now>=active_->nextUpdate()) changed=active_->tick(now) || changed;
     if (model_.toast && now>=toastUntil_) { model_.toast=nullptr; toastUntil_=INT64_MAX; changed=true; }
     if (animating_ && now>=nextFrame_) {
         const float t=std::clamp(float(now-animationStart_)/180000.0f,0.0f,1.0f);
@@ -70,6 +75,7 @@ TimeUs ScreenManager::nextUpdate() const {
     return std::min(std::min(nextFrame_,toastUntil_),active_ ? active_->nextUpdate() : INT64_MAX);
 }
 bool ScreenManager::handle(const Events& e,TimeUs now) {
+    now_=now;
     // A boot commit is not cancellable, so nothing reaches the screen and home
     // itself is suppressed until the API answers (plan.md 8.2 step 3).
     if (active_ && active_->exclusive()) return false;
@@ -77,7 +83,7 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         const int w=model_.width,h=model_.height; const auto homes=model_.homeCount+1;
         model_={}; model_.width=w; model_.height=h; model_.homeCount=homes;
         drag_=Drag::None; animating_=listSettling_=stopTouch_=false; nextFrame_=toastUntil_=INT64_MAX;
-        settings_.exit(); external_.exit(); active_=nullptr;
+        settings_.exit(); external_.exit(); stopwatchScreen_.exit(); active_=nullptr;
         return true;
     }
     bool changed=update(now);
@@ -150,15 +156,18 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
             if (listSettling_ && animating_) animate(1,model_.selection*rowSpacing(model_),now);
             if (row>=0) model_.selection=row;
             const auto& entry=AppRegistry[model_.selection];
-            if (entry.id==AppId::Settings && open(settings_,ScreenId::Settings)) return true;
+            if (entry.id==AppId::Stopwatch &&
+                open(stopwatchScreen_,ScreenId::Stopwatch,now)) return true;
+            if (entry.id==AppId::Settings && open(settings_,ScreenId::Settings,now)) return true;
             // Every external row opens, whatever the slot holds: the detail
             // screen is where an empty or broken slot explains itself.
             if (entry.kind==TargetKind::External) {
                 external_.select(entry.slot);
-                if (open(external_,ScreenId::External)) return true;
+                if (open(external_,ScreenId::External,now)) return true;
             }
-            // Until task 5 adds the stopwatch, opening it only acknowledges the
-            // input; the list itself does not advertise the missing target.
+            // Reached only when a screen is unavailable because its services
+            // were never bound: the input is acknowledged and nothing opens
+            // empty. The list itself never advertises a missing target.
             model_.toast="準備中";
             toastUntil_=now+1400000; return true;
         }

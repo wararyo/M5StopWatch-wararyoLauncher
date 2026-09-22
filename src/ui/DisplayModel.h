@@ -1,10 +1,11 @@
 #pragma once
 #include "input/InputController.h"
 #include "multifirm/SlotCatalog.h"
+#include "services/Stopwatch.h"
 #include "storage/Settings.h"
 #include <ctime>
 namespace launcher {
-enum class ScreenId { Home, AppList, Settings, External };
+enum class ScreenId { Home, AppList, Settings, External, Stopwatch };
 // Order matters: a menu cursor of 0..3 maps onto the view that follows Menu.
 enum class SettingsView : uint8_t { Menu, DateTime, Brightness, ScreenOff, Info };
 struct SettingsModel {
@@ -43,6 +44,7 @@ struct ScreenModel {
     const char* toast=nullptr;
     SettingsModel settings{};
     ExternalModel external{};
+    StopwatchModel stopwatch{};
     int brightness=Settings{}.brightness;   // Effective: preview while editing.
     int screenOffSec=Settings{}.screenOffSec; // Saved only; never previewed.
 };

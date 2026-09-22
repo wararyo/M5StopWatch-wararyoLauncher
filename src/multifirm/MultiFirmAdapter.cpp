@@ -80,10 +80,13 @@ void MultiFirmAdapter::scan() {
         vTaskDelay(1);
     }
 }
-void MultiFirmAdapter::shutdown(void*) {
+void MultiFirmAdapter::shutdown(void* context) {
     // Runs on the UI task, after the boot partition has been set and before the
-    // restart. Task 5 stops the stopwatch here; there is nothing else to stop.
+    // restart. The stopwatch is the only thing to stop, and a failed boot never
+    // reaches here, so a failed launch leaves it running (plan.md 8.2).
     std::printf("[Slots] boot committed; shutting down\n");
+    auto* self=static_cast<MultiFirmAdapter*>(context);
+    if (self && self->shutdown_) self->shutdown_->onBootCommitted();
 }
 bool MultiFirmAdapter::boot(int slot,const char** message) {
     std::printf("[Slots] booting slot=%d\n",slot);

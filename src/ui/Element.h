@@ -13,8 +13,8 @@ struct Element { Rect box{}; uint32_t fingerprint=0; bool valid=false; };
 class FramePlan {
 public:
     // Current maximum: 5 watch elements + 5 rows + toast + the open app screen
-    // (11 settings, 6 external app detail) = 22. A closed screen registers
-    // nothing, so the two never add up.
+    // (11 settings, 7 stopwatch, 6 external app detail) = 22. A closed screen
+    // registers nothing, so they never add up.
     // Extra room is for future faces; overflow is handled, never truncated.
     static constexpr int Capacity=32;
     void begin(bool full,int limit=Capacity) {

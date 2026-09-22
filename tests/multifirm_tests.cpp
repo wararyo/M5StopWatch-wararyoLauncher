@@ -100,7 +100,7 @@ void launchableRowStartsWithoutConfirmation() {
     CHECK(externalButtonCount(m.external)==0);
     // Still nothing called until the committing frame has been painted.
     CHECK(slots.bootRequests==0);
-    CHECK(s.commitPendingBoot());
+    CHECK(s.commitPendingBoot(now));
     CHECK(slots.bootRequests==1 && slots.bootSlot==1);
 }
 
@@ -130,15 +130,14 @@ void unusableSlotsOpenTheScreenInstead() {
     CHECK(m.external.phase==ExternalPhase::Browsing);
     // Nothing here starts a boot, and the way back lands on the row it came from.
     CHECK(slots.bootRequests==0);
-    CHECK(!s.commitPendingBoot());
+    CHECK(!s.commitPendingBoot(now));
     s.handle(press(false),now); now+=1000;
     m=s.model();
     CHECK(m.screen==ScreenId::AppList);
     CHECK(AppRegistry[m.selection].id==AppId::External1);
-    // The stopwatch is still the only row that just acknowledges the input.
+    // Every row now opens something; nothing falls through to the notice.
     openRow(s,now,AppId::Stopwatch);
-    m=s.model();
-    CHECK(m.screen==ScreenId::AppList && m.toast!=nullptr);
+    CHECK(s.model().screen==ScreenId::Stopwatch);
 }
 
 void commitSuppressesInputAndRecovers() {
@@ -160,19 +159,70 @@ void commitSuppressesInputAndRecovers() {
     CHECK(s.model().screen==ScreenId::External);
     CHECK(s.model().external.phase==ExternalPhase::BootCommitting);
     // The runtime issues the call only after the committing frame was painted.
-    CHECK(s.commitPendingBoot());
+    CHECK(s.commitPendingBoot(now));
     CHECK(slots.bootRequests==1 && slots.bootSlot==1);
     m=s.model();
     CHECK(m.external.phase==ExternalPhase::BootFailed);
     CHECK(std::string(m.external.message)=="ESP_ERR_IMAGE_INVALID");
     // Exactly once: a second pass must not retry.
-    CHECK(!s.commitPendingBoot());
+    CHECK(!s.commitPendingBoot(now));
     CHECK(slots.bootRequests==1);
     // Input and home work again, and the failure restarted nothing.
     CHECK(externalButtonCount(m.external)==1);
     CHECK(s.handle(home(),now));
     CHECK(s.model().screen==ScreenId::Home);
     CHECK(slots.bootRequests==1);
+}
+
+// The two conditions task 6 left open for task 5 (plan.md 8.2 steps 4 and 5).
+void failedBootKeepsMeasuring() {
+    FakeSlotService slots;
+    slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
+    ScreenManager s; TimeUs now=0;
+    s.bindSlots(&slots); s.setSlots(slots.catalog);
+    openRow(s,now,AppId::Stopwatch);
+    s.handle(press(false),now); now+=1000;                 // B starts it
+    CHECK(s.stopwatch().state()==StopwatchState::Running);
+    s.handle(home(),now); now+=1000;
+    openRow(s,now,AppId::External1);
+    now+=1000;
+    CHECK(s.commitPendingBoot(now));                       // the fake fails
+    CHECK(s.model().external.phase==ExternalPhase::BootFailed);
+    // A failed launch restarts nothing, so the measurement is untouched and
+    // still advancing (plan.md 8.2 step 4).
+    CHECK(s.stopwatch().state()==StopwatchState::Running);
+    const auto before=s.stopwatch().elapsed(now);
+    now+=500000;
+    CHECK(s.stopwatch().elapsed(now)>before);
+    // Home works again after a failure, and the screen shows it still running.
+    CHECK(s.handle(home(),now));
+    openRow(s,now,AppId::Stopwatch);
+    CHECK(s.model().stopwatch.state==StopwatchState::Running);
+}
+
+void successfulBootEndsTheMeasurement() {
+    FakeSlotService slots;
+    slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
+    slots.bootSucceeds=true;
+    ScreenManager s; TimeUs now=0;
+    s.bindSlots(&slots); s.setSlots(slots.catalog);
+    openRow(s,now,AppId::Stopwatch);
+    s.handle(press(false),now); now+=1000;
+    CHECK(s.stopwatch().state()==StopwatchState::Running);
+    s.handle(home(),now); now+=1000;
+    openRow(s,now,AppId::External1);
+    now+=1000;
+    // Returns without a failure: on a device this call ends in a restart, and
+    // the shutdown callback has already run on this task (plan.md 8.2 step 5).
+    CHECK(!s.commitPendingBoot(now));
+    CHECK(slots.bootRequests==1);
+    CHECK(s.stopwatch().state()==StopwatchState::Paused);
+    const auto frozen=s.stopwatch().elapsed(now);
+    now+=500000;
+    CHECK(s.stopwatch().elapsed(now)==frozen);
+    // The commit is still the one-way stretch it was: nothing takes input.
+    CHECK(s.model().external.phase==ExternalPhase::BootCommitting);
+    CHECK(!s.handle(home(),now));
 }
 
 void homeDuringScanKeepsResultsHarmless() {
@@ -193,7 +243,7 @@ void homeDuringScanKeepsResultsHarmless() {
     CHECK(std::string(m.names[2])=="KantanPlay");
     CHECK(!m.rowDimmed[2]);
     CHECK(slots.bootRequests==0);
-    CHECK(!s.commitPendingBoot());
+    CHECK(!s.commitPendingBoot(now));
 }
 
 void scanFinishingDuringDetailDoesNotLaunch() {
@@ -213,7 +263,7 @@ void scanFinishingDuringDetailDoesNotLaunch() {
     CHECK(m.external.phase==ExternalPhase::Browsing);
     CHECK(externalButtonCount(m.external)==1);
     CHECK(slots.bootRequests==0);
-    CHECK(!s.commitPendingBoot());
+    CHECK(!s.commitPendingBoot(now));
     // This is also the only way to read a launchable slot's version, since
     // deciding its row launches it instead of opening this screen.
     CHECK(std::string(m.external.version)=="1.2.0");
@@ -278,6 +328,8 @@ int main() {
     launchableRowStartsWithoutConfirmation();
     unusableSlotsOpenTheScreenInstead();
     commitSuppressesInputAndRecovers();
+    failedBootKeepsMeasuring();
+    successfulBootEndsTheMeasurement();
     homeDuringScanKeepsResultsHarmless();
     scanFinishingDuringDetailDoesNotLaunch();
     runtimeScansBehindTheFirstFrameAndPollsResults();

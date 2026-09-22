@@ -68,7 +68,7 @@ void AppRuntime::step() {
     // phase marks the frame dirty, so that draw happens in this same step.
     // Deliberately outside the draw branch: a screen that went off must not
     // strand the commit, because the screen itself takes no input until it ends.
-    if (screens_.commitPendingBoot()) dirty_ = true;
+    if (screens_.commitPendingBoot(now)) dirty_ = true;
 }
 void AppRuntime::wait() {
     const auto now = hal_.now();

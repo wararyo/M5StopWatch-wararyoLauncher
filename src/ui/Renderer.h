@@ -4,6 +4,7 @@
 #include "SettingsLayer.h"
 #include "StatsOverlay.h"
 #include "StopwatchLayer.h"
+#include "app/RenderPort.h"
 namespace launcher {
 class Renderer final : public RenderPort {
 public:
@@ -26,10 +27,10 @@ public:
 #endif
 private:
     struct Row { RowLayout layout{}; char name[96]{}; int handle=-1; };
-    void planList(const ScreenModel&);
-    void paintList(const ScreenModel&);
-    void planToast(const ScreenModel&);
-    void paintToast(const ScreenModel&);
+    void planList(Viewport,ListGeometry,const AppListModel&,bool hidden);
+    void paintList(Viewport,const AppListModel&);
+    void planToast(Viewport,const char*);
+    void paintToast(Viewport,const char*);
     M5GFX& display_;
     DigitalWatchFace digital_;
     SettingsLayer settings_;

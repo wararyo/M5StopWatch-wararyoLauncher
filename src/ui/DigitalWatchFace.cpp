@@ -1,5 +1,5 @@
 #include "DigitalWatchFace.h"
-#include "ListLayout.h"
+#include "ui/Scale.h"
 #include <cstdio>
 #include <cstring>
 namespace launcher {
@@ -27,9 +27,10 @@ bool DigitalWatchFace::begin(Gfx& g,bool disableCache) {
 void DigitalWatchFace::end() {
     cache_.deleteSprite(); cacheReady_=false; cached_[0]=0; elements_={};
 }
-void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const WatchData& d) {
-    model_=m; cx_=m.width/2; offset_=-int(m.transition*m.height);
-    clip_={0,0,m.width,std::max(0,m.height+offset_)};
+void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const DrawRegion& region,const WatchData& d) {
+    const auto& m=region.viewport;
+    viewport_=m; cx_=m.width/2; offset_=region.offsetY;
+    clip_=region.clip;
     const bool valid=d.timeValid && d.localTime.tm_hour>=0 && d.localTime.tm_hour<24 &&
         d.localTime.tm_min>=0 && d.localTime.tm_min<60 && d.localTime.tm_wday>=0 &&
         d.localTime.tm_wday<7 && d.localTime.tm_mon>=0 && d.localTime.tm_mon<12 &&
@@ -75,7 +76,7 @@ void DigitalWatchFace::paint(Gfx& g,const FramePlan& frame) {
         g.setTextDatum(middle_center); g.setTextSize(scale_);
         if(i==2) paintTime(g);
         else if(i==3) {
-            const int size=scaled(model_,10),gap=scaled(model_,20);
+            const int size=scaled(viewport_,10),gap=scaled(viewport_,20);
             for(int x=0;x<2;++x) for(int y=0;y<2;++y)
                 g.fillRect(boxes_[i].x+x*gap,boxes_[i].y+y*gap,size,size,Lime);
         } else {

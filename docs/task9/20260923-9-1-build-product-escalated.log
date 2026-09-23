@@ -1,0 +1,179 @@
+Processing m5stopwatch (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Library Manager: Installing m5stack/M5Unified @ 0.2.16
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: M5Unified@0.2.16 has been installed!
+Library Manager: Resolving dependencies...
+Library Manager: Installing M5GFX @ >=0.2.22
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: M5GFX@0.2.30 has been installed!
+Library Manager: Installing m5stack/M5GFX @ 0.2.28
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: M5GFX@0.2.28 has been installed!
+Library Manager: Installing git+https://github.com/wararyo/M5StopWatch-MultiFirm.git#f5a8fd88f50dfb50c6e6e1e82bccc491a936bd47
+git version 2.48.1.windows.1
+Cloning into 'C:\Users\wararyo\.platformio\.cache\tmp\pkg-installing-xs7x857o'...
+HEAD is now at f5a8fd8 ホストライブラリとスロット検証を実装
+Library Manager: M5StopWatch-MultiFirm@0.1.0+sha.f5a8fd8 has been installed!
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/m5stack-cores3.html
+PLATFORM: Espressif 32 (6.12.0) > M5Stack CoreS3
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-espidf @ 3.50500.0 (5.5.0) 
+ - tool-cmake @ 3.30.2 
+ - tool-esp-rom-elfs @ 0.0.1+20241011 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - tool-idf @ 1.0.1 
+ - tool-mconf @ 1.4060000.20190628 (406.0.0) 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-esp32ulp @ 1.23800.240113 (2.38.0) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20241119
+Reading CMake configuration...
+Generating assembly for certificate bundle...
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 4 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.16
+|-- M5GFX @ 0.2.28
+|-- M5StopWatch-MultiFirm @ 0.1.0+sha.f5a8fd8
+Building in release mode
+Generating assembly for .pio\build\m5stopwatch\GenShinGothicMedium28.vlw.S
+Generating assembly for .pio\build\m5stopwatch\AppIcons.bin.S
+Compiling .pio\build\m5stopwatch\src\main.cpp.o
+Compiling .pio\build\m5stopwatch\src\input\InputController.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\Element.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\DigitalWatchFace.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\Text.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\Renderer.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\VlwFont.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\IconSet.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\StatsOverlay.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\RenderDiagnostics.cpp.o
+Compiling .pio\build\m5stopwatch\src\app\ScreenManager.cpp.o
+Compiling .pio\build\m5stopwatch\src\app\AppRuntime.cpp.o
+Compiling .pio\build\m5stopwatch\src\hal\M5Hal.cpp.o
+Compiling .pio\build\m5stopwatch\src\hal\InputWake.cpp.o
+Compiling .pio\build\m5stopwatch\src\power\DrainLog.cpp.o
+Compiling .pio\build\m5stopwatch\src\power\UsbDiag.cpp.o
+Compiling .pio\build\m5stopwatch\src\services\TimeService.cpp.o
+Compiling .pio\build\m5stopwatch\src\services\LauncherData.cpp.o
+Compiling .pio\build\m5stopwatch\src\storage\SettingsStore.cpp.o
+Compiling .pio\build\m5stopwatch\src\storage\NvsBackend.cpp.o
+Compiling .pio\build\m5stopwatch\src\apps\SettingsScreen.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\SettingsLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\apps\ExternalAppScreen.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\ExternalLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\services\StopwatchService.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\stopwatch\StopwatchFormat.cpp.o
+Compiling .pio\build\m5stopwatch\src\apps\StopwatchScreen.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\StopwatchLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\multifirm\MultiFirmAdapter.cpp.o
+Compiling .pio\build\m5stopwatch\.pio\build\m5stopwatch\GenShinGothicMedium28.vlw.S.o
+Compiling .pio\build\m5stopwatch\.pio\build\m5stopwatch\AppIcons.bin.S.o
+Generating LD script .pio\build\m5stopwatch\esp-idf\esp_system\ld\memory.ld.in
+Generating LD script .pio\build\m5stopwatch\esp-idf\esp_system\ld\sections.ld.in
+Compiling .pio\build\m5stopwatch\app_trace\app_trace.c.o
+Generating LD script .pio\build\m5stopwatch\memory.ld
+Compiling .pio\build\m5stopwatch\app_trace\app_trace_util.c.o
+Compiling .pio\build\m5stopwatch\app_trace\host_file_io.c.o
+Compiling .pio\build\m5stopwatch\app_trace\port\port_uart.c.o
+Compiling .pio\build\m5stopwatch\app_update\esp_ota_ops.c.o
+Compiling .pio\build\m5stopwatch\app_update\esp_ota_app_desc.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_common.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_common_loader.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_clock_init.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_mem.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_random.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_efuse.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\flash_encrypt.c.o
+Archiving .pio\build\m5stopwatch\esp-idf\app_trace\libapp_trace.a
+Compiling .pio\build\m5stopwatch\bootloader_support\src\secure_boot.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_random_esp32s3.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\bootloader_flash\src\bootloader_flash.c.o
+Indexing .pio\build\m5stopwatch\esp-idf\app_trace\libapp_trace.a
+Compiling .pio\build\m5stopwatch\bootloader_support\bootloader_flash\src\flash_qio_mode.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\bootloader_flash\src\bootloader_flash_config_esp32s3.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_utility.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\flash_partitions.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\esp_image_format.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\bootloader_sha.c.o
+Compiling .pio\build\m5stopwatch\bootloader_support\src\esp32s3\secure_boot_secure_features.c.o
+Compiling .pio\build\m5stopwatch\cmock\CMock\src\cmock.c.o
+Archiving .pio\build\m5stopwatch\esp-idf\app_update\libapp_update.a
+Compiling .pio\build\m5stopwatch\console\commands.c.o
+Compiling .pio\build\m5stopwatch\console\esp_console_common.c.o
+Compiling .pio\build\m5stopwatch\console\esp_console_repl_internal.c.o
+Indexing .pio\build\m5stopwatch\esp-idf\app_update\libapp_update.a
+Compiling .pio\build\m5stopwatch\console\split_argv.c.o
+Compiling .pio\build\m5stopwatch\console\linenoise\linenoise.c.o
+Compiling .pio\build\m5stopwatch\console\esp_console_repl_chip.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_cmd.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_date.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_dbl.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_dstr.c.o
+Archiving .pio\build\m5stopwatch\esp-idf\cmock\libcmock.a
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_end.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_file.c.o
+Indexing .pio\build\m5stopwatch\esp-idf\cmock\libcmock.a
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_hashtable.c.o
+Archiving .pio\build\m5stopwatch\esp-idf\bootloader_support\libbootloader_support.a
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_int.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_lit.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_rem.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_rex.c.o
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_str.c.o
+Indexing .pio\build\m5stopwatch\esp-idf\bootloader_support\libbootloader_support.a
+In file included from src/ui/StatsOverlay.cpp:1:
+src/ui/StatsOverlay.h:33:17: error: 'TimeUs' has not been declared
+   33 |     void record(TimeUs start,TimeUs end);
+      |                 ^~~~~~
+src/ui/StatsOverlay.h:33:30: error: 'TimeUs' has not been declared
+   33 |     void record(TimeUs start,TimeUs end);
+      |                              ^~~~~~
+src/ui/StatsOverlay.h:44:5: error: 'TimeUs' does not name a type
+   44 |     TimeUs windowStart_=0,drawTotal_=0;
+      |     ^~~~~~
+src/ui/StatsOverlay.cpp:9:11: error: 'TimeUs' does not name a type
+    9 | constexpr TimeUs WindowUs=500000;
+      |           ^~~~~~
+src/ui/StatsOverlay.cpp:30:6: error: variable or field 'record' declared void
+   30 | void StatsOverlay::record(TimeUs start,TimeUs end) {
+      |      ^~~~~~~~~~~~
+src/ui/StatsOverlay.cpp:30:27: error: 'TimeUs' was not declared in this scope
+   30 | void StatsOverlay::record(TimeUs start,TimeUs end) {
+      |                           ^~~~~~
+Compiling .pio\build\m5stopwatch\console\argtable3\arg_utils.c.o
+src/ui/StatsOverlay.cpp:30:40: error: 'TimeUs' was not declared in this scope
+   30 | void StatsOverlay::record(TimeUs start,TimeUs end) {
+      |                                        ^~~~~~
+Compiling .pio\build\m5stopwatch\console\argtable3\argtable3.c.o
+Compiling .pio\build\m5stopwatch\cxx\cxx_exception_stubs.cpp.o
+Compiling .pio\build\m5stopwatch\cxx\cxx_guards.cpp.o
+Compiling .pio\build\m5stopwatch\cxx\cxx_init.cpp.o
+Compiling .pio\build\m5stopwatch\driver\deprecated\adc_legacy.c.o
+Compiling .pio\build\m5stopwatch\driver\deprecated\adc_dma_legacy.c.o
+Compiling .pio\build\m5stopwatch\driver\deprecated\timer_legacy.c.o
+src/ui/StatsOverlay.cpp:28:7: warning: 'float launcher::{anonymous}::capped(float)' defined but not used [-Wunused-function]
+   28 | float capped(float value) { return std::clamp(value,0.0f,99.9f); }
+      |       ^~~~~~
+Compiling .pio\build\m5stopwatch\driver\i2c\i2c.c.o
+Compiling .pio\build\m5stopwatch\driver\deprecated\i2s_legacy.c.o
+*** [.pio\build\m5stopwatch\src\ui\StatsOverlay.cpp.o] Error 1
+src/ui/SettingsLayer.cpp: In member function 'void launcher::SettingsLayer::build(launcher::Viewport, const launcher::SettingsModel&, bool)':
+src/ui/SettingsLayer.cpp:46:66: error: 'ScreenOffChoices' was not declared in this scope
+   46 |             std::snprintf(item.text,sizeof(item.text),"%d�b",int(ScreenOffChoices[s.fields[i]]));
+      |                                                                  ^~~~~~~~~~~~~~~~
+*** [.pio\build\m5stopwatch\src\ui\SettingsLayer.cpp.o] Error 1
+========================= [FAILED] Took 56.91 seconds =========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+m5stopwatch    FAILED    00:00:56.914
+==================== 1 failed, 0 succeeded in 00:00:56.914 ====================

@@ -1,5 +1,6 @@
 #pragma once
-#include "DisplayModel.h"
+#include "ui/Viewport.h"
+#include "core/Time.h"
 #include "Geometry.h"
 #include <M5Unified.h>
 namespace launcher {
@@ -33,7 +34,7 @@ public:
     void record(TimeUs start,TimeUs end);
     // Inside the frame's startWrite/endWrite, after every layer. `dirty` is
     // everything the frame erased and repainted.
-    void paint(M5GFX& g,const ScreenModel& m,const Rect& dirty);
+    void paint(M5GFX& g,const Viewport& viewport,const Rect& dirty);
 private:
     void render();
     // Both lines hold seven characters, so the chip never resizes as the

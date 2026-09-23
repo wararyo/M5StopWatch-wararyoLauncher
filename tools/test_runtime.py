@@ -19,7 +19,8 @@ def main():
                        "src/services/TimeService.cpp", "src/services/LauncherData.cpp",
                        "src/storage/SettingsStore.cpp", "src/apps/SettingsScreen.cpp",
                        "src/apps/ExternalAppScreen.cpp",
-                       "src/services/StopwatchService.cpp", "src/apps/StopwatchScreen.cpp"]
+                       "src/services/StopwatchService.cpp",
+                       "src/features/stopwatch/StopwatchFormat.cpp", "src/apps/StopwatchScreen.cpp"]
             subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
                             "-finput-charset=UTF-8", "-fexec-charset=UTF-8",
                             "-I", str(ROOT / "src"), *[str(ROOT / s) for s in sources],

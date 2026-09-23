@@ -9,9 +9,8 @@ constexpr uint16_t Panel=0x4249,Divider=0x5b2d,TimeInk=0xdf9f,NoLapInk=0x7410;
 constexpr uint16_t LeftFill=0xb67f,StartFill=0x9f96,StopFill=0xfcf5;
 constexpr uint16_t LeftInk=0x2a4f,StartInk=0x1366,StopInk=0x78c4;
 }
-void StopwatchLayer::build(const ScreenModel& m) {
+void StopwatchLayer::build(Viewport m,const StopwatchModel& s) {
     count_=0;
-    const auto& s=m.stopwatch;
     auto add=[&](Kind kind,Rect box,int index) -> Item& {
         Item& item=items_[count_++];
         item=Item{}; item.kind=kind; item.box=box; item.index=index;
@@ -46,13 +45,14 @@ void StopwatchLayer::build(const ScreenModel& m) {
         }
     }
 }
-void StopwatchLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font) {
+void StopwatchLayer::plan(FramePlan& frame,Gfx& g,Viewport m,const StopwatchModel& s,
+                          bool visible,const lgfx::IFont* font) {
     (void)font;
     count_=0;
     // Closed: register nothing. The screen change already forces a full repaint,
     // so there is no leftover to erase and the frame keeps its capacity free.
-    if (m.screen!=ScreenId::Stopwatch) return;
-    build(m);
+    if (!visible) return;
+    build(m,s);
     // The elapsed time is sized to its own fixed box rather than to a guessed
     // multiplier, so the widest value it can hold always fits.
     g.setFont(&fonts::FreeSansBold24pt7b); g.setTextSize(1);
@@ -67,8 +67,8 @@ void StopwatchLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgf
         handles_[i]=frame.add(elements_[i],item.box,hash);
     }
 }
-void StopwatchLayer::paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,const lgfx::IFont* font) {
-    if (m.screen!=ScreenId::Stopwatch) return;
+void StopwatchLayer::paint(Gfx& g,const FramePlan& frame,Viewport m,bool visible,const lgfx::IFont* font) {
+    if (!visible) return;
     const float scale=float(std::min(m.width,m.height))/468;
     if (frame.full()) {
         const auto panel=stopwatchPanelBox(m);

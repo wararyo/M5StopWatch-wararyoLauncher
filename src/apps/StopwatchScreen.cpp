@@ -1,10 +1,5 @@
 #include "StopwatchScreen.h"
 namespace launcher {
-ScreenModel StopwatchScreen::layoutModel() const {
-    ScreenModel m; m.width=width_; m.height=height_; m.screen=ScreenId::Stopwatch;
-    m.stopwatch=model_;
-    return m;
-}
 void StopwatchScreen::sample(TimeUs now) {
     if (!stopwatch_) return;
     model_.state=stopwatch_->state();
@@ -47,7 +42,7 @@ ScreenOutcome StopwatchScreen::handle(const Events& e,TimeUs now) {
     if (!available()) { out.leave=true; return out; }
     bool acted=false;
     if (e.gesture==Gesture::Tap) {
-        const auto hit=hitStopwatch(layoutModel(),e.x,e.y);
+        const auto hit=hitStopwatch({width_,height_},e.x,e.y);
         if (hit.kind==StopwatchHit::Left) acted=pressLeft(now);
         else if (hit.kind==StopwatchHit::Right) acted=pressRight(now);
     } else if (e.next) acted=pressLeft(now);

@@ -1,8 +1,8 @@
 #pragma once
+#include "core/Time.h"
 #include <cstdint>
 
 namespace launcher {
-using TimeUs = int64_t;
 struct InputSnapshot { bool a = false, b = false, touching = false; int x = 0, y = 0; };
 enum class Gesture { None, TouchStart, Tap, DragStart, DragMove, DragEnd, Cancel };
 struct Events {

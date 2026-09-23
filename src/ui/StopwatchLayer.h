@@ -15,8 +15,9 @@ namespace launcher {
 // disappearing already forces a full repaint (Renderer::draw).
 class StopwatchLayer {
 public:
-    void plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font);
-    void paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,const lgfx::IFont* font);
+    void plan(FramePlan& frame,Gfx& g,Viewport viewport,const StopwatchModel& model,
+              bool visible,const lgfx::IFont* font);
+    void paint(Gfx& g,const FramePlan& frame,Viewport viewport,bool visible,const lgfx::IFont* font);
 private:
     // Clock, hundredths, two buttons, three lap rows.
     static constexpr int Capacity=4+StopwatchLapRows;
@@ -28,7 +29,7 @@ private:
         uint16_t fill=0,ink=0;
         char text[24]{},trailing[24]{};
     };
-    void build(const ScreenModel& m);
+    void build(Viewport viewport,const StopwatchModel& model);
     Item items_[Capacity]{};
     Element elements_[Capacity]{};
     int handles_[Capacity]{};

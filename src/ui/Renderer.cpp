@@ -38,14 +38,12 @@ bool Renderer::begin(bool disableCache) {
     registerFace(digital_);
     return display_.width()>0 && display_.height()>0 && selectFace("digital",disableCache);
 }
-void Renderer::planList(const ScreenModel& m) {
+void Renderer::planList(Viewport m,ListGeometry geometry,const AppListModel& list,bool hidden) {
     const float scale=float(std::min(m.width,m.height))/468;
     // An app screen covers the list rather than sliding it away, so the rows
     // are planned empty and their last painted boxes still get erased.
-    const bool hidden=m.screen==ScreenId::Settings || m.screen==ScreenId::External ||
-        m.screen==ScreenId::Stopwatch;
     for(int i=0;i<5;++i) {
-        auto& row=plannedRows_[i]; row.layout=hidden ? RowLayout{} : layoutRow(m,i);
+        auto& row=plannedRows_[i]; row.layout=hidden ? RowLayout{} : layoutRow(geometry,i);
         const auto& box=row.layout.box;
         if(box.empty()) {
             row.name[0]=0;
@@ -55,15 +53,15 @@ void Renderer::planList(const ScreenModel& m) {
         display_.setFont(nameFont_); display_.setTextSize(scale);
         // A width that does not depend on the row's position, so a name is
         // shortened only when it cannot fit the screen at all.
-        fitText(display_,m.names[i] ? m.names[i] : AppRegistry[i].name,row.name,sizeof(row.name),labelWidth(m));
-        uint32_t hash=hashValue(uint32_t(i==m.selection)|(uint32_t(m.rowDimmed[i])<<1),
+        fitText(display_,list.names[i] ? list.names[i] : AppRegistry[i].name,row.name,sizeof(row.name),labelWidth(m));
+        uint32_t hash=hashValue(uint32_t(i==list.selection)|(uint32_t(list.rowDimmed[i])<<1),
                                 hashString(row.name));
         hash=hashValue(row.layout.centerY,hashValue(row.layout.iconX,hash));
         row.handle=frame_.add(rows_[i],box,hash);
     }
 }
-void Renderer::planToast(const ScreenModel& m) {
-    if(!m.toast) { toastBox_={}; toastHandle_=frame_.add(toast_,{},0); return; }
+void Renderer::planToast(Viewport m,const char* toast) {
+    if(!toast) { toastBox_={}; toastHandle_=frame_.add(toast_,{},0); return; }
     display_.setFont(nameFont_); display_.setTextSize(float(std::min(m.width,m.height))/468);
     const int height=scaled(m,46),centreY=scaled(m,360);
     // Width follows the text: the settings notices are three times as long as
@@ -72,18 +70,18 @@ void Renderer::planToast(const ScreenModel& m) {
     const int radius=std::min(m.width,m.height)/2;
     const int dy=std::abs(centreY+height/2-m.height/2);
     const int chord=int(std::sqrt(float(radius)*radius-float(dy)*dy))-scaled(m,6);
-    const int width=std::min(2*chord,int(display_.textWidth(m.toast))+2*scaled(m,22));
+    const int width=std::min(2*chord,int(display_.textWidth(toast))+2*scaled(m,22));
     toastBox_={m.width/2-width/2,centreY-height/2,width,height};
-    toastHandle_=frame_.add(toast_,toastBox_,hashString(m.toast));
+    toastHandle_=frame_.add(toast_,toastBox_,hashString(toast));
     display_.setTextSize(1);
 }
-void Renderer::paintList(const ScreenModel& m) {
+void Renderer::paintList(Viewport m,const AppListModel& list) {
     const float scale=float(std::min(m.width,m.height))/468;
     for(int i=0;i<5;++i) {
         const auto& row=plannedRows_[i]; const auto& r=row.layout; const auto& b=r.box;
         if(b.empty() || !frame_.shouldPaint(row.handle)) continue;
         display_.setClipRect(b.x,b.y,b.w,b.h);
-        const int radius=r.radius-(i==m.selection ? 0 : selectionGrowth(m));
+        const int radius=r.radius-(i==list.selection ? 0 : selectionGrowth(m));
         // An even diameter, so the circle centres on the pixel boundary at
         // (iconX, centerY) where the 44px mask and the even height text box
         // centre too. fillCircle would cover 2r+1 and land half a pixel off.
@@ -105,12 +103,12 @@ void Renderer::paintList(const ScreenModel& m) {
         display_.setTextDatum(middle_left);
         // A slot that cannot be launched greys its name out. The icon is left
         // alone so the rows still scan as one column.
-        display_.setTextColor(i==m.selection ? Lime : (m.rowDimmed[i] ? Dimmed : White),0);
+        display_.setTextColor(i==list.selection ? Lime : (list.rowDimmed[i] ? Dimmed : White),0);
         display_.drawString(row.name,r.labelX,r.centerY);
     }
     display_.clearClipRect(); display_.setTextSize(1);
 }
-void Renderer::paintToast(const ScreenModel& m) {
+void Renderer::paintToast(Viewport m,const char* toast) {
     if(toastBox_.empty() || !frame_.shouldPaint(toastHandle_)) return;
     const auto& b=toastBox_;
     display_.setClipRect(b.x,b.y,b.w,b.h);
@@ -118,7 +116,7 @@ void Renderer::paintToast(const ScreenModel& m) {
     display_.setFont(nameFont_); display_.setTextSize(float(std::min(m.width,m.height))/468);
     // A notice too long even for the chord is shortened, never silently clipped.
     char fitted[96];
-    fitText(display_,m.toast,fitted,sizeof(fitted),b.w-2*scaled(m,12));
+    fitText(display_,toast,fitted,sizeof(fitted),b.w-2*scaled(m,12));
     display_.setTextDatum(middle_center); display_.setTextColor(White,0x2104);
     display_.drawString(fitted,b.x+b.w/2,b.y+b.h/2);
     display_.clearClipRect(); display_.setTextSize(1);
@@ -139,12 +137,17 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
 #else
     frame_.begin(full_);
 #endif
-    face_->plan(frame_,display_,m,watch);
-    planList(m);
-    settings_.plan(frame_,display_,m,nameFont_);
-    external_.plan(frame_,display_,m,nameFont_);
-    stopwatch_.plan(frame_,display_,m,nameFont_);
-    planToast(m);
+    face_->plan(frame_,display_,m.homeRegion,watch);
+    const bool listHidden=m.screen==ScreenId::Settings || m.screen==ScreenId::External ||
+        m.screen==ScreenId::Stopwatch;
+    planList(m.viewport(),listGeometry(m),m,listHidden);
+    settings_.plan(frame_,display_,m.viewport(),m.settings,
+                   m.screen==ScreenId::Settings,m.stats,nameFont_);
+    external_.plan(frame_,display_,m.viewport(),m.external,
+                   m.screen==ScreenId::External,nameFont_);
+    stopwatch_.plan(frame_,display_,m.viewport(),m.stopwatch,
+                    m.screen==ScreenId::Stopwatch,nameFont_);
+    planToast(m.viewport(),m.toast);
     frame_.resolve();
     if(frame_.anyPaint()) {
         display_.startWrite(); display_.clearClipRect();
@@ -156,16 +159,19 @@ void Renderer::draw(const ScreenModel& m,const WatchData& watch) {
         // Full fallback paints every view, even those whose add() returned -1.
         // The toast is the topmost layer: it was being drawn before settings,
         // so the save and cancel buttons landed on top of the notice.
-        face_->paint(display_,frame_); paintList(m);
-        settings_.paint(display_,frame_,m,nameFont_);
-        external_.paint(display_,frame_,m,nameFont_);
-        stopwatch_.paint(display_,frame_,m,nameFont_); paintToast(m);
+        face_->paint(display_,frame_); paintList(m.viewport(),m);
+        settings_.paint(display_,frame_,m.viewport(),m.settings,
+                    m.screen==ScreenId::Settings,nameFont_);
+        external_.paint(display_,frame_,m.viewport(),
+                    m.screen==ScreenId::External,nameFont_);
+        stopwatch_.paint(display_,frame_,m.viewport(),
+                     m.screen==ScreenId::Stopwatch,nameFont_); paintToast(m.viewport(),m.toast);
         // Last of all, and outside the plan: the chip owns its own rectangle
         // and pushes it whole, so nothing below can leave it half erased. It is
         // given the frame's dirty box so it can leave its pixels alone when
         // nothing reached them (see StatsOverlay).
         if(m.stats && !statsSuppressed_)
-            stats_.paint(display_,m,frame_.full() ? Rect{0,0,m.width,m.height} : frame_.dirtyBounds());
+            stats_.paint(display_,m.viewport(),frame_.full() ? Rect{0,0,m.width,m.height} : frame_.dirtyBounds());
         display_.endWrite(); ++paints_;
         // After endWrite, which is where this panel flushes the modified region
         // over QSPI. [RenderDiag] measures the same span, so the two agree.

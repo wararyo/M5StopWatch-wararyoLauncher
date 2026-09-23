@@ -1,6 +1,7 @@
 #include "RenderDiagnostics.h"
 #ifdef LAUNCHER_RENDER_METRICS
 #include "Renderer.h"
+#include "storage/Settings.h"
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
@@ -63,7 +64,7 @@ public:
     const char* id() const override { return "test-overlap"; }
     bool begin(Gfx&,bool) override { a_={}; b_={}; return true; }
     void end() override {}
-    void plan(FramePlan& f,Gfx&,const ScreenModel&,const WatchData& d) override {
+    void plan(FramePlan& f,Gfx&,const DrawRegion&,const WatchData& d) override {
         ha_=f.add(a_,{40,100,170,100},hashValue(d.localTime.tm_min));
         hb_=f.add(b_,{130,120,170,100},1);
     }
@@ -210,7 +211,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                 // transition=1: row 0 sits at the centre with its full radius.
                 ScreenModel probe; probe.width=w; probe.height=h; probe.transition=1;
                 const float iconScale=float(std::min(w,h))/468;
-                const int radius=layoutRow(probe,0).radius-selectionGrowth(probe);
+                const int radius=layoutRow(listGeometry(probe),0).radius-selectionGrowth(probe.viewport());
                 for(const auto& entry:AppRegistry) {
                     const auto* icon=appIcon(entry.icon); ++checks;
                     if(!icon) { ++failures; std::printf("[Verify] FAIL missing icon: %s\n",entry.name); continue; }
@@ -223,6 +224,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                 }
             }
             auto check=[&](const char* name,ScreenModel m,WatchData d) {
+                composeHomeRegion(m);
                 renderer.draw(m,d); display.readRect(0,0,w,h,incremental);
                 renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,reference);
                 ++checks;
@@ -241,7 +243,8 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             for(int variant=0;variant<24;++variant) {
                 m.transition=float(variant%21)/20;
                 for(int i=0;i<=17+variant*5;++i) {
-                    m.scroll=float((i*3)%(4*rowSpacing(m)+1)); m.selection=(i/11)%5;
+                    m.scroll=float((i*3)%(4*rowSpacing(m.viewport())+1)); m.selection=(i/11)%5;
+                    composeHomeRegion(m);
                     renderer.draw(m,d);
                     if(i%8==0) vTaskDelay(1);
                 }
@@ -253,17 +256,19 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             }
             m.screen=ScreenId::AppList; m.transition=1;
             for(int i=0;i<5;++i) {
-                m.selection=i; m.scroll=i*rowSpacing(m);
+                m.selection=i; m.scroll=i*rowSpacing(m.viewport());
                 check("five-rows",m,d);
                 m.toast="準備中"; check("toast-on",m,d);
                 m.scroll+=8; check("toast-overlap",m,d);
                 m.toast=nullptr; check("toast-off",m,d);
             }
             m.names[2]="非常に長い外部アプリ名と未収録文字😀";
-            m.scroll=2*rowSpacing(m); check("long-japanese",m,d);
+            m.scroll=2*rowSpacing(m.viewport()); check("long-japanese",m,d);
             // Settings covers the list rather than sliding it away, so the rows
             // it hides have to be erased by the same differential plan.
             m.names[2]=nullptr; m.screen=ScreenId::Settings; m.settings=SettingsModel{};
+            m.settings.savedBrightness=Settings{}.brightness;
+            m.settings.savedScreenOffSec=Settings{}.screenOffSec;
             m.settings.lines[0]="wararyoLauncher";
             m.settings.lines[1]="0.0.0-verify"; m.settings.lines[2]="5.5.0";
             for(int row=0;row<SettingsMenuRows;++row) {
@@ -306,7 +311,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             check("settings-left",m,d);
             // A row that only changed colour still has to repaint, so the dim
             // flag has to reach the fingerprint.
-            m.scroll=2*rowSpacing(m); m.selection=2;
+            m.scroll=2*rowSpacing(m.viewport()); m.selection=2;
             for(int i=2;i<5;++i) m.rowDimmed[i]=true;
             check("list-dimmed",m,d);
             m.names[2]=catalog.slots[0].name; m.rowDimmed[2]=false;

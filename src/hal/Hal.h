@@ -1,4 +1,5 @@
 #pragma once
+#include "input/InputController.h"
 #include "power/PowerManager.h"
 #include "services/CivilTime.h"
 namespace launcher {

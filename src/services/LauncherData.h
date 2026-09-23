@@ -1,6 +1,6 @@
 #pragma once
 #include "services/TimeService.h"
-#include "ui/DisplayModel.h"
+#include "features/home/DisplayDataSource.h"
 namespace launcher {
 // The battery is read at most this often: the face shows whole percent, and the
 // read is an I2C transaction the UI task pays for (plan.md 6.2). The clock's own

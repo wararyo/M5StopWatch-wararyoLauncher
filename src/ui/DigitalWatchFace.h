@@ -6,7 +6,7 @@ public:
     const char* id() const override { return "digital"; }
     bool begin(Gfx&,bool disableCache=false) override;
     void end() override;
-    void plan(FramePlan&,Gfx&,const ScreenModel&,const WatchData&) override;
+    void plan(FramePlan&,Gfx&,const DrawRegion&,const WatchData&) override;
     void paint(Gfx&,const FramePlan&) override;
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return nextMinute(now,data); }
 private:
@@ -18,7 +18,7 @@ private:
     std::array<Element,5> elements_{};
     std::array<Rect,5> boxes_{};
     std::array<int,5> handles_{};
-    ScreenModel model_{};
+    Viewport viewport_{};
     Rect clip_{},timeBox_{};
     int offset_=0,cx_=0;
     float scale_=1;

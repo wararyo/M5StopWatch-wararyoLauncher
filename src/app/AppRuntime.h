@@ -1,6 +1,8 @@
 #pragma once
 #include "hal/Hal.h"
 #include "app/ScreenManager.h"
+#include "app/RenderPort.h"
+#include "features/home/DisplayDataSource.h"
 #include <algorithm>
 namespace launcher {
 class AppRuntime {

@@ -1,5 +1,5 @@
 #pragma once
-#include "input/InputController.h"
+#include "core/Time.h"
 #include "storage/Settings.h"
 namespace launcher {
 enum class DisplayState { Active, WatchIdle, ScreenOff };

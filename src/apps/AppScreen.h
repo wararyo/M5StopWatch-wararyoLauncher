@@ -1,13 +1,12 @@
 #pragma once
-#include "ui/DisplayModel.h"
+#include "input/InputController.h"
 namespace launcher {
 struct ScreenOutcome {
     bool changed=false,leave=false;
     const char* notice=nullptr; // Shown by ScreenManager as the usual toast.
 };
-// The contract from plan.md 4.1, extracted now that settings and the external
-// app detail make it two implementations. The display model stays per-screen:
-// ScreenManager composes it, so it is not part of this interface.
+// The contract from plan.md 4.1. ScreenManager composes feature display models;
+// this input and lifetime interface does not depend on them.
 class AppScreen {
 public:
     virtual ~AppScreen()=default;

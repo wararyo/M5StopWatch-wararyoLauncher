@@ -1,4 +1,5 @@
 #include "SettingsLayer.h"
+#include "storage/Settings.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -11,9 +12,9 @@ constexpr const char* Titles[]={"","日時","輝度","消灯時間","情報"};
 // the label says what it does rather than naming a state to toggle.
 constexpr const char* ActionNames[]={"統計情報を表示"};
 }
-void SettingsLayer::build(const ScreenModel& m) {
+void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
+    SettingsGeometry m{{viewport.width,viewport.height},s.view,s.cursor};
     count_=0;
-    const auto& s=m.settings;
     auto add=[&](Kind kind,Rect box,int index,bool selected) -> Item& {
         Item& item=items_[count_++];
         item=Item{}; item.kind=kind; item.box=box; item.index=index; item.selected=selected;
@@ -26,8 +27,8 @@ void SettingsLayer::build(const ScreenModel& m) {
             item.labelX=settingsMenuLabelX(m,row); item.centerY=row.centerY;
             // The value lives on the row so the menu answers "what is it now?"
             // without opening the editor.
-            if (i==1) std::snprintf(item.text,sizeof(item.text),"%s  %d",MenuNames[i],m.brightness);
-            else if (i==2) std::snprintf(item.text,sizeof(item.text),"%s  %d秒",MenuNames[i],m.screenOffSec);
+            if (i==1) std::snprintf(item.text,sizeof(item.text),"%s  %d",MenuNames[i],s.savedBrightness);
+            else if (i==2) std::snprintf(item.text,sizeof(item.text),"%s  %d秒",MenuNames[i],s.savedScreenOffSec);
             else std::snprintf(item.text,sizeof(item.text),"%s",MenuNames[i]);
         }
         return;
@@ -57,7 +58,7 @@ void SettingsLayer::build(const ScreenModel& m) {
     const int actions=settingsActionCount(s.view);
     for (int i=0;i<actions;++i) {
         Item& item=add(Action,settingsActionBox(m,i),i,s.cursor==fields+i);
-        item.done=m.stats;
+        item.done=stats;
         std::snprintf(item.text,sizeof(item.text),"%s",ActionNames[i]);
     }
     for (int i=0;i<settingsButtonCount(s.view);++i) {
@@ -66,13 +67,14 @@ void SettingsLayer::build(const ScreenModel& m) {
         std::snprintf(item.text,sizeof(item.text),"%s",label);
     }
 }
-void SettingsLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font) {
+void SettingsLayer::plan(FramePlan& frame,Gfx& g,Viewport viewport,const SettingsModel& s,
+                         bool visible,bool stats,const lgfx::IFont* font) {
     (void)g; (void)font;
     count_=0;
     // Closed: register nothing. The screen change already forces a full repaint,
     // so there is no leftover to erase and the frame keeps its capacity free.
-    if (m.screen!=ScreenId::Settings) return;
-    build(m);
+    if (!visible) return;
+    build(viewport,s,stats);
     for (int i=0;i<Capacity;++i) {
         const bool used=i<count_;
         // Unused slots are registered empty so a view with fewer elements
@@ -88,8 +90,10 @@ void SettingsLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx
         handles_[i]=frame.add(elements_[i],used ? items_[i].box : Rect{},hash);
     }
 }
-void SettingsLayer::paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,const lgfx::IFont* font) {
-    if (m.screen!=ScreenId::Settings) return;
+void SettingsLayer::paint(Gfx& g,const FramePlan& frame,Viewport viewport,const SettingsModel& s,
+                          bool visible,const lgfx::IFont* font) {
+    if (!visible) return;
+    SettingsGeometry m{{viewport.width,viewport.height},s.view,s.cursor};
     const float scale=float(std::min(m.width,m.height))/468;
     const int arrowW=offsetPx(m,22),arrowH=offsetPx(m,12);
     for (int i=0;i<count_;++i) {

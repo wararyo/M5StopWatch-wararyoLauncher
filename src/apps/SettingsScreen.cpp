@@ -8,10 +8,6 @@ int wrap(int value,int low,int high,int delta,int step=1) {
     return next;
 }
 }
-ScreenModel SettingsScreen::layoutModel() const {
-    ScreenModel m; m.width=width_; m.height=height_; m.settings=model_;
-    return m;
-}
 int SettingsScreen::brightness() const {
     if (!store_) return Settings{}.brightness;
     // The preview is simply the open editor's field, so cancelling, going home
@@ -73,7 +69,7 @@ const char* SettingsScreen::confirm() {
     // nothing to save, so it never reaches the notice paths below. Action 0 is
     // the statistics overlay, which only ever turns on (docs/plan.md 5.4).
     if (action>=0 && action<actions) {
-        if (action==0) stats_=true;
+        if (action==0 && runtime_) runtime_->stats=true;
         return nullptr;
     }
     const bool cancel=settingsButtonCount(model_.view)==2 && model_.cursor==fields+actions+1;
@@ -105,7 +101,7 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs) {
     if (!available()) return out;
     const int fields=settingsFieldCount(model_.view);
     if (e.gesture==Gesture::Tap) {
-        const auto hit=hitSettings(layoutModel(),e.x,e.y);
+        const auto hit=hitSettings({{width_,height_},model_.view,model_.cursor},e.x,e.y);
         switch (hit.kind) {
         case SettingsHit::MenuRow:
             model_.cursor=hit.index; out.changed=true; activate(out); break;

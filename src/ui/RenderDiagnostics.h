@@ -3,7 +3,9 @@
 // The verification half below adds synthetic data and the boot-time pixel
 // check, so it stays behind its own macro (plan.md work 7).
 #ifdef LAUNCHER_RENDER_METRICS
-#include "DisplayModel.h"
+#include "app/FrameModel.h"
+#include "app/RenderPort.h"
+#include "features/home/DisplayDataSource.h"
 #include <M5GFX.h>
 namespace launcher {
 class Renderer;

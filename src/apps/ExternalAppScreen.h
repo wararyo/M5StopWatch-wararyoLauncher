@@ -23,7 +23,6 @@ public:
     // the model changed, which only happens if the API came back with a failure.
     bool commitPendingBoot();
 private:
-    ScreenModel layoutModel() const;
     SlotService* slots_=nullptr;
     const SlotCatalog* catalog_=nullptr;
     int slot_=1;

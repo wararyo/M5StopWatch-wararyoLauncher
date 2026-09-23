@@ -7,8 +7,9 @@ namespace launcher {
 // screen is actually open.
 class ExternalLayer {
 public:
-    void plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font);
-    void paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,const lgfx::IFont* font);
+    void plan(FramePlan& frame,Gfx& g,Viewport viewport,const ExternalModel& model,
+              bool visible,const lgfx::IFont* font);
+    void paint(Gfx& g,const FramePlan& frame,Viewport viewport,bool visible,const lgfx::IFont* font);
 private:
     // Title, three detail lines and two buttons.
     static constexpr int Capacity=6;
@@ -20,7 +21,7 @@ private:
         bool selected=false,alert=false;
         char text[64]{};
     };
-    void build(Gfx& g,const lgfx::IFont* font,const ScreenModel& m);
+    void build(Gfx& g,const lgfx::IFont* font,Viewport viewport,const ExternalModel& model);
     Item items_[Capacity]{};
     Element elements_[Capacity]{};
     int handles_[Capacity]{};

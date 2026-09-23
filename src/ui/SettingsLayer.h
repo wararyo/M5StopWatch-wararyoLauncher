@@ -6,8 +6,10 @@ namespace launcher {
 // the frame cost is only paid while settings is open.
 class SettingsLayer {
 public:
-    void plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font);
-    void paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,const lgfx::IFont* font);
+    void plan(FramePlan& frame,Gfx& g,Viewport viewport,const SettingsModel& model,
+              bool visible,bool stats,const lgfx::IFont* font);
+    void paint(Gfx& g,const FramePlan& frame,Viewport viewport,const SettingsModel& model,
+               bool visible,const lgfx::IFont* font);
 private:
     // The busiest view is the date editor: title, five fields, three
     // separators and two buttons. Information needs six: title, three lines,
@@ -24,7 +26,7 @@ private:
         bool done=false;
         char text[40]{};
     };
-    void build(const ScreenModel& m);
+    void build(Viewport viewport,const SettingsModel& model,bool stats);
     Item items_[Capacity]{};
     Element elements_[Capacity]{};
     int handles_[Capacity]{};

@@ -135,14 +135,14 @@ void touchHitsTheSameButtons() {
     TimeUs now=0;
     screen.enter(now);
     ScreenModel m; m.width=468; m.height=468; m.screen=ScreenId::Stopwatch;
-    const auto left=stopwatchButtonBox(m,0),right=stopwatchButtonBox(m,1);
+    const auto left=stopwatchButtonBox(m.viewport(),0),right=stopwatchButtonBox(m.viewport(),1);
     screen.handle(tap(right.x+right.w/2,right.y+right.h/2),now);
     CHECK(sw.state()==StopwatchState::Running);
     now+=Second;
     screen.handle(tap(left.x+left.w/2,left.y+left.h/2),now);
     CHECK(sw.lapCount()==1);
     // A tap on the panel is not a button.
-    CHECK(!screen.handle(tap(m.width/2,stopwatchPanelBox(m).y+10),now).changed);
+    CHECK(!screen.handle(tap(m.width/2,stopwatchPanelBox(m.viewport()).y+10),now).changed);
     CHECK(sw.lapCount()==1);
     CHECK(sw.state()==StopwatchState::Running);
 }

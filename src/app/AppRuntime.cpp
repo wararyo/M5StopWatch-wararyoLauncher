@@ -60,12 +60,11 @@ void AppRuntime::step() {
     }
     if (!power_.screenOff() && (dirty_ || now >= nextDisplay_)) {
         const auto model = screens_.model();
-        // Both come from the display model, so a preview, a cancel and a home
-        // discard all travel the same single path down to the HAL.
-        if (model.brightness != appliedBrightness_) {
-            hal_.setBrightness(model.brightness); appliedBrightness_ = model.brightness;
+        const auto effective=screens_.effectiveSettings();
+        if (effective.brightness != appliedBrightness_) {
+            hal_.setBrightness(effective.brightness); appliedBrightness_ = effective.brightness;
         }
-        power_.setTimeout(TimeUs(model.screenOffSec) * 1000000);
+        power_.setTimeout(TimeUs(effective.screenOffSec) * 1000000);
         const auto watch = data_.sample(now);
         renderer_.draw(model, watch);
         nextDisplay_ = model.transition < 1 ?

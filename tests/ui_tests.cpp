@@ -17,11 +17,14 @@ void navigation() {
         now+=180000; s.update(now);
     };
     drag(-50); CHECK(s.model().screen==ScreenId::Home && s.model().transition==0);
+    CHECK((s.model().homeRegion.offsetY==0 &&
+           s.model().homeRegion.clip==Rect{0,0,468,468}));
     drag(-51); CHECK(s.model().screen==ScreenId::AppList && s.model().transition==1);
+    CHECK(s.model().homeRegion.offsetY==-468 && s.model().homeRegion.clip.empty());
     for(int i=1;i<=5;++i) {
         e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
         CHECK(s.model().selection==i%5);
-        const auto row=layoutRow(s.model(),i%5);
+        const auto row=layoutRow(listGeometry(s.model()),i%5);
         CHECK(row.box.contains(row.labelX,row.centerY));
     }
     drag(50); CHECK(s.model().screen==ScreenId::AppList);
@@ -34,7 +37,7 @@ void navigation() {
     e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
     e={}; e.gesture=Gesture::Tap; e.x=0; e.y=0;
     CHECK(!s.handle(e,now) && !s.model().toast);
-    const auto row=layoutRow(s.model(),1);
+    const auto row=layoutRow(listGeometry(s.model()),1);
     e.x=row.labelX; e.y=row.centerY; s.handle(e,now);
     CHECK(s.model().selection==1 && s.model().toast);
     CHECK(s.nextUpdate()==now+1400000);
@@ -55,9 +58,9 @@ void navigation() {
     ScreenManager rapid; e={}; e.next=true;
     rapid.handle(e,0); rapid.handle(e,10000); rapid.handle(e,20000);
     CHECK(rapid.model().selection==2);
-    rapid.update(200000); CHECK(rapid.model().transition==1 && rapid.model().scroll==2*rowSpacing(rapid.model()));
+    rapid.update(200000); CHECK(rapid.model().transition==1 && rapid.model().scroll==2*rowSpacing(rapid.model().viewport()));
     for(int side: {400,466,468}) {
-        ScreenModel m; m.width=m.height=side; m.transition=1;
+        ListGeometry m; m.width=m.height=side; m.transition=1;
         int previousX=side,previousDy=-side,highest=side,lowest=0;
         for(int scroll=0;scroll<=4*rowSpacing(m);scroll+=3) {
             m.scroll=scroll;

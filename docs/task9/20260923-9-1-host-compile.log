@@ -1,0 +1,90 @@
+PASS: buttons, touch, power, screens, runtime/registry, interrupts, overload/early-wake
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp: In function 'void navigation()':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:24:41: error: invalid initialization of reference of type 'const launcher::ListGeometry&' from expression of type 'launcher::ScreenModel'
+   24 |         const auto row=layoutRow(s.model(),i%5);
+      |                                  ~~~~~~~^~
+In file included from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/SettingsLayout.h:2,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/apps/SettingsScreen.h:5,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/ScreenManager.h:4,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:3,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:1:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:53:48: note: in passing argument 1 of 'launcher::RowLayout launcher::layoutRow(const ListGeometry&, int)'
+   53 | inline RowLayout layoutRow(const ListGeometry& m,int index) {
+      |                            ~~~~~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:37:37: error: invalid initialization of reference of type 'const launcher::ListGeometry&' from expression of type 'launcher::ScreenModel'
+   37 |     const auto row=layoutRow(s.model(),1);
+      |                              ~~~~~~~^~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:53:48: note: in passing argument 1 of 'launcher::RowLayout launcher::layoutRow(const ListGeometry&, int)'
+   53 | inline RowLayout layoutRow(const ListGeometry& m,int index) {
+      |                            ~~~~~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:58:110: error: invalid initialization of reference of type 'const launcher::Viewport&' from expression of type 'launcher::ScreenModel'
+   58 |     rapid.update(200000); CHECK(rapid.model().transition==1 && rapid.model().scroll==2*rowSpacing(rapid.model()));
+      |                                                                                                   ~~~~~~~~~~~^~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:8:28: note: in definition of macro 'CHECK'
+    8 | #define CHECK(x) do { if(!(x)) { std::cerr<<__LINE__<<": " #x "\n"; std::exit(1); } } while(false)
+      |                            ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:9:39: note: in passing argument 1 of 'int launcher::rowSpacing(const Viewport&)'
+    9 | inline int rowSpacing(const Viewport& m) { return scaled(m,84); }
+      |                       ~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:62:47: error: invalid initialization of reference of type 'const launcher::Viewport&' from expression of type 'launcher::ScreenModel'
+   62 |         for(int scroll=0;scroll<=4*rowSpacing(m);scroll+=3) {
+      |                                               ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:9:39: note: in passing argument 1 of 'int launcher::rowSpacing(const Viewport&)'
+    9 | inline int rowSpacing(const Viewport& m) { return scaled(m,84); }
+      |                       ~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:65:40: error: invalid initialization of reference of type 'const launcher::ListGeometry&' from expression of type 'launcher::ScreenModel'
+   65 |                 const auto r=layoutRow(m,i); const auto box=r.box;
+      |                                        ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:53:48: note: in passing argument 1 of 'launcher::RowLayout launcher::layoutRow(const ListGeometry&, int)'
+   53 | inline RowLayout layoutRow(const ListGeometry& m,int index) {
+      |                            ~~~~~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:76:42: error: invalid initialization of reference of type 'const launcher::Viewport&' from expression of type 'launcher::ScreenModel'
+   76 |                 CHECK(r.iconX>=iconHomeX(m));
+      |                                          ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:8:28: note: in definition of macro 'CHECK'
+    8 | #define CHECK(x) do { if(!(x)) { std::cerr<<__LINE__<<": " #x "\n"; std::exit(1); } } while(false)
+      |                            ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:25:38: note: in passing argument 1 of 'int launcher::iconHomeX(const Viewport&)'
+   25 | inline int iconHomeX(const Viewport& m) { return listMargin(m)+iconRadius(m); }
+      |                      ~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:77:33: error: invalid initialization of reference of type 'const launcher::Viewport&' from expression of type 'launcher::ScreenModel'
+   77 |                 CHECK(iconHomeX(m)-r.radius==listMargin(m));
+      |                                 ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:8:28: note: in definition of macro 'CHECK'
+    8 | #define CHECK(x) do { if(!(x)) { std::cerr<<__LINE__<<": " #x "\n"; std::exit(1); } } while(false)
+      |                            ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:25:38: note: in passing argument 1 of 'int launcher::iconHomeX(const Viewport&)'
+   25 | inline int iconHomeX(const Viewport& m) { return listMargin(m)+iconRadius(m); }
+      |                      ~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:77:57: error: invalid initialization of reference of type 'const launcher::Viewport&' from expression of type 'launcher::ScreenModel'
+   77 |                 CHECK(iconHomeX(m)-r.radius==listMargin(m));
+      |                                                         ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:8:28: note: in definition of macro 'CHECK'
+    8 | #define CHECK(x) do { if(!(x)) { std::cerr<<__LINE__<<": " #x "\n"; std::exit(1); } } while(false)
+      |                            ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ListLayout.h:10:39: note: in passing argument 1 of 'int launcher::listMargin(const Viewport&)'
+   10 | inline int listMargin(const Viewport& m) { return scaled(m,24); }
+      |                       ~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:83:39: error: invalid initialization of reference of type 'const launcher::Viewport&' from expression of type 'launcher::ScreenModel'
+   83 |                 const int mask=scaled(m,IconMaskPx),small=r.radius-selectionGrowth(m);
+      |                                       ^
+In file included from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/ExternalLayout.h:2,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/apps/ExternalAppScreen.h:4,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/ScreenManager.h:3:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/Scale.h:5:35: note: in passing argument 1 of 'int launcher::scaled(const Viewport&, int)'
+    5 | inline int scaled(const Viewport& v,int px) { return std::max(1,px*std::min(v.width,v.height)/468); }
+      |                   ~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:85:36: error: 'small' was not declared in this scope
+   85 |                 CHECK(mask*mask/2<=small*small);
+      |                                    ^~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\ui_tests.cpp:8:28: note: in definition of macro 'CHECK'
+    8 | #define CHECK(x) do { if(!(x)) { std::cerr<<__LINE__<<": " #x "\n"; std::exit(1); } } while(false)
+      |                            ^
+Traceback (most recent call last):
+  File "C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 31, in <module>
+    main()
+  File "C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 24, in main
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
+  File "C:\Users\wararyo\.platformio\python3\Lib\subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['C:\\msys64\\ucrt64\\bin\\g++.EXE', '-std=c++17', '-Wall', '-Wextra', '-Werror', '-finput-charset=UTF-8', '-fexec-charset=UTF-8', '-I', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\tests\\ui_tests.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\input\\InputController.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\app\\ScreenManager.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\app\\AppRuntime.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\ui\\Element.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\TimeService.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\LauncherData.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\storage\\SettingsStore.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\SettingsScreen.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\ExternalAppScreen.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\StopwatchService.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\features\\stopwatch\\StopwatchFormat.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\StopwatchScreen.cpp', '-o', 'C:\\Users\\wararyo\\AppData\\Local\\Temp\\launcher-runtime-3cg5xlio\\ui_tests.exe']' returned non-zero exit status 1.

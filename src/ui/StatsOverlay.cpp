@@ -1,5 +1,5 @@
 #include "StatsOverlay.h"
-#include "ListLayout.h"
+#include "ui/Scale.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -22,7 +22,7 @@ constexpr int LineH=int(GlyphH*TextSize);
 // Anchored by its right edge in the 468 basis: clear of the stopwatch buttons
 // above, which end at y=127, and inside the bezel at every corner (the farthest
 // is 207 of the 234 radius).
-Rect chipBox(const ScreenModel& m) {
+Rect chipBox(const Viewport& m) {
     return {offsetPx(m,418)-ChipW,offsetPx(m,140),ChipW,ChipH};
 }
 float capped(float value) { return std::clamp(value,0.0f,99.9f); }
@@ -49,7 +49,7 @@ void StatsOverlay::render() {
     cache_.drawString(fps_,ChipW-PadX,PadY);
     cache_.drawString(draw_,ChipW-PadX,PadY+LineH);
 }
-void StatsOverlay::paint(M5GFX& g,const ScreenModel& m,const Rect& dirty) {
+void StatsOverlay::paint(M5GFX& g,const Viewport& m,const Rect& dirty) {
     const Rect b=chipBox(m);
     // Nothing touched the chip and it still reads right: leave the pixels
     // alone. Writing them would widen the frame's flush rectangle for no gain.

@@ -19,9 +19,8 @@ const char* statusText(SlotStatus status) {
     return "";
 }
 }
-void ExternalLayer::build(Gfx& g,const lgfx::IFont* font,const ScreenModel& m) {
+void ExternalLayer::build(Gfx& g,const lgfx::IFont* font,Viewport m,const ExternalModel& e) {
     count_=0;
-    const auto& e=m.external;
     g.setFont(font); g.setTextSize(float(std::min(m.width,m.height))/468);
     auto add=[&](Kind kind,Rect box,int index,bool selected) -> Item& {
         Item& item=items_[count_++];
@@ -65,12 +64,13 @@ void ExternalLayer::build(Gfx& g,const lgfx::IFont* font,const ScreenModel& m) {
         std::snprintf(item.text,sizeof(item.text),"戻る");
     }
 }
-void ExternalLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx::IFont* font) {
+void ExternalLayer::plan(FramePlan& frame,Gfx& g,Viewport m,const ExternalModel& e,
+                         bool visible,const lgfx::IFont* font) {
     count_=0;
     // Closed: register nothing. The screen change already forces a full repaint,
     // so there is no leftover to erase and the frame keeps its capacity free.
-    if (m.screen!=ScreenId::External) return;
-    build(g,font,m);
+    if (!visible) return;
+    build(g,font,m,e);
     for (int i=0;i<Capacity;++i) {
         const bool used=i<count_;
         // Unused slots are registered empty so a phase with fewer elements
@@ -85,8 +85,8 @@ void ExternalLayer::plan(FramePlan& frame,Gfx& g,const ScreenModel& m,const lgfx
         handles_[i]=frame.add(elements_[i],used ? items_[i].box : Rect{},hash);
     }
 }
-void ExternalLayer::paint(Gfx& g,const FramePlan& frame,const ScreenModel& m,const lgfx::IFont* font) {
-    if (m.screen!=ScreenId::External) return;
+void ExternalLayer::paint(Gfx& g,const FramePlan& frame,Viewport m,bool visible,const lgfx::IFont* font) {
+    if (!visible) return;
     const float scale=float(std::min(m.width,m.height))/468;
     for (int i=0;i<count_;++i) {
         const auto& item=items_[i];

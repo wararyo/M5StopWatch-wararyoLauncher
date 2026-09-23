@@ -26,7 +26,6 @@ public:
     bool tick(TimeUs now) override;
     const StopwatchModel& model() const { return model_; }
 private:
-    ScreenModel layoutModel() const;
     void sample(TimeUs now);
     // False when the press did nothing, so a dead button does not cost a
     // repaint. Only A in Reset can do that.

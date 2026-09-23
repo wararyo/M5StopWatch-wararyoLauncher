@@ -146,15 +146,16 @@ void saveAndCancel() {
     // Brightness: the model previews immediately and reverts on cancel.
     screens.handle(press(true),now); screens.handle(press(false),now);
     CHECK(screens.model().settings.view==SettingsView::Brightness);
-    CHECK(screens.model().brightness==90);
+    CHECK(screens.effectiveSettings().brightness==90);
     screens.handle(press(false),now); screens.handle(press(true),now);
-    CHECK(screens.model().settings.fields[0]==105 && screens.model().brightness==105);
+    CHECK(screens.model().settings.fields[0]==105 && screens.effectiveSettings().brightness==105);
+    CHECK(screens.model().settings.savedBrightness==90); // The menu label still reflects storage.
     screens.handle(press(false),now);             // leave the field
     screens.handle(press(true),now);              // -> save
     screens.handle(press(true),now);              // -> cancel
     screens.handle(press(false),now);             // cancel
     CHECK(screens.model().settings.view==SettingsView::Menu);
-    CHECK(screens.model().brightness==90 && store.get().brightness==90);
+    CHECK(screens.effectiveSettings().brightness==90 && store.get().brightness==90);
     // Same edit, confirmed this time.
     screens.handle(press(false),now);             // menu row 1 is still focused
     CHECK(screens.model().settings.view==SettingsView::Brightness);
@@ -163,15 +164,16 @@ void saveAndCancel() {
     screens.handle(press(true),now);              // -> save
     screens.handle(press(false),now);
     CHECK(screens.model().settings.view==SettingsView::Menu);
-    CHECK(store.get().brightness==105 && screens.model().brightness==105);
+    CHECK(store.get().brightness==105 && screens.effectiveSettings().brightness==105);
+    CHECK(screens.model().settings.savedBrightness==105);
     CHECK(screens.model().toast && std::strcmp(screens.model().toast,"保存しました")==0);
     // Home drops an unsaved preview as well.
     screens.handle(press(false),now);
     screens.handle(press(false),now); screens.handle(press(true),now);
-    CHECK(screens.model().brightness==120);
+    CHECK(screens.effectiveSettings().brightness==120);
     Events home{}; home.home=true;
     screens.handle(home,now);
-    CHECK(screens.model().screen==ScreenId::Home && screens.model().brightness==105);
+    CHECK(screens.model().screen==ScreenId::Home && screens.effectiveSettings().brightness==105);
 }
 void dateSaving() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
@@ -181,7 +183,8 @@ void dateSaving() {
     openSettings(screens,now);
     screens.handle(press(false),now); // date editor, 2026-09-21 00:00 JST
     // Tap the day's up arrow ten times: 21 -> 31, an impossible September date.
-    ScreenModel probe=screens.model();
+    const auto frame=screens.model();
+    SettingsGeometry probe{{frame.width,frame.height},frame.settings.view,frame.settings.cursor};
     const Rect up=settingsArrowBox(probe,2,true);
     for (int i=0;i<10;++i) screens.handle(tap(up.x+up.w/2,up.y+up.h/2),now);
     CHECK(screens.model().settings.fields[2]==31);
@@ -273,8 +276,11 @@ void statisticsAction() {
     for (int i=0;i<3;++i) tapped.handle(press(true),t2);
     tapped.handle(press(false),t2);
     CHECK(tapped.model().settings.view==SettingsView::Info && !tapped.model().stats);
-    const Rect action=settingsActionBox(tapped.model(),0);
-    const Rect back=settingsButtonBox(tapped.model(),0);
+    const auto tappedFrame=tapped.model();
+    const SettingsGeometry infoGeometry{{tappedFrame.width,tappedFrame.height},
+                                        tappedFrame.settings.view,tappedFrame.settings.cursor};
+    const Rect action=settingsActionBox(infoGeometry,0);
+    const Rect back=settingsButtonBox(infoGeometry,0);
     CHECK(!action.contains(back.x+back.w/2,back.y+back.h/2));
     tapped.handle(tap(action.x+action.w/2,action.y+action.h/2),t2);
     CHECK(tapped.model().stats && tapped.model().settings.view==SettingsView::Info);

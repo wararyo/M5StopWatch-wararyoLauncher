@@ -14,11 +14,6 @@ ExternalModel ExternalAppScreen::model() const {
     // and the button is drawn selected from the moment the screen opens.
     return m;
 }
-ScreenModel ExternalAppScreen::layoutModel() const {
-    ScreenModel m; m.width=width_; m.height=height_; m.screen=ScreenId::External;
-    m.external=model();
-    return m;
-}
 void ExternalAppScreen::enter(TimeUs) {
     issued_=false; message_=nullptr;
     // A launchable slot was already decided in the list, so there is nothing
@@ -39,7 +34,7 @@ ScreenOutcome ExternalAppScreen::handle(const Events& e,TimeUs) {
     // drops every event until the API has answered (plan.md 8.2 step 3).
     if (phase_==ExternalPhase::BootCommitting) return out;
     if (e.gesture==Gesture::Tap) {
-        if (hitExternal(layoutModel(),e.x,e.y).kind==ExternalHit::Button) out.leave=true;
+        if (hitExternal({width_,height_},model(),e.x,e.y).kind==ExternalHit::Button) out.leave=true;
         return out;
     }
     // One button, whatever the state: B leaves, and A has nowhere to move to.

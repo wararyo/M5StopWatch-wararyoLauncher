@@ -33,6 +33,8 @@ struct StubHal : Hal {
     UsbState sampleUsb() override { return {}; }
     void setScreenOff(bool) override {}
     void waitUs(TimeUs) override {}
+    // A low-level interrupt: pending for as long as anything is pressed.
+    bool inputPending() override { return input.a || input.b || input.touching; }
     bool readRtc(CivilTime& utc) override { utc=rtc; return true; }
     bool writeRtc(const CivilTime& utc) override { if(!rtcWritable) return false; rtc=utc; return true; }
     void setUtcClock(int64_t seconds) override { clockUs=seconds*1000000; }

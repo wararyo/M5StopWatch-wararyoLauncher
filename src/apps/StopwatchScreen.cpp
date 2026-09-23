@@ -33,7 +33,13 @@ bool StopwatchScreen::pressRight(TimeUs now) {
 }
 bool StopwatchScreen::tick(TimeUs now) {
     if (!available()) return false;
+    const TimeUs due=next_;
     sample(now);
+    // Keep the 40Hz cadence on the deadlines themselves. The runtime sleeps
+    // right up to them (work 8-4) and wakes up to a tick late, which counted
+    // from `now` would stretch every period. A late frame is never replayed:
+    // once a whole period is lost, the next one is timed from now.
+    if (next_!=INT64_MAX && due!=INT64_MAX && due+StopwatchFrameUs>now) next_=due+StopwatchFrameUs;
     return true;
 }
 ScreenOutcome StopwatchScreen::handle(const Events& e,TimeUs now) {

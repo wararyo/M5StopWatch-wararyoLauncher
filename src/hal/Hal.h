@@ -10,6 +10,9 @@ public:
     virtual UsbState sampleUsb() = 0;
     virtual void setScreenOff(bool off) = 0;
     virtual void waitUs(TimeUs delay) = 0;
+    // True once after a press or touch interrupt (or a slot result) ended a
+    // wait, so the input is read now instead of at a far deadline (work 8-4).
+    virtual bool inputPending() = 0;
     // The RTC is read and written as UTC (plan.md 7.3). The system clock is
     // what the launcher actually reads each frame, so it sits behind the HAL
     // too: settimeofday is not available on the PC toolchain, and routing it

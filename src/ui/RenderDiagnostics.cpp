@@ -50,7 +50,7 @@ uint32_t pauses[IntervalModes]{};
 TimeUs longestPause[IntervalModes]{};
 TimeUs lastEnd=0,windowStart=0,inputAt=-1,wakeAt=-1;
 int lastMode=-1;
-uint32_t lastLayouts=0,lastPaints=0;
+uint32_t lastLayouts=0,lastPaints=0,loops=0;
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 WatchData sampleData() {
     WatchData d; d.timeValid=true; d.localTime.tm_hour=9; d.localTime.tm_min=41;
@@ -89,6 +89,7 @@ WatchData DiagnosticDataSource::sample(TimeUs now) {
 #endif
 void recordInput(TimeUs now) { if(recording && inputAt<0) inputAt=now; }
 void recordWake(TimeUs now) { if(recording) wakeAt=now; }
+void recordLoop() { ++loops; }
 void recordRender(const ScreenModel& m,TimeUs start,TimeUs end,bool painted,uint32_t) {
     if(!recording) return;
     if(!painted) { inputAt=-1; return; }
@@ -109,7 +110,7 @@ void recordRender(const ScreenModel& m,TimeUs start,TimeUs end,bool painted,uint
 }
 void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
     if(!recording) return;
-    if(!windowStart) { windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); return; }
+    if(!windowStart) { windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0; return; }
     if(now-windowStart<60000000) return;
     const char* drawNames[]={"transition-draw","scroll-draw","stopwatch-draw","single-draw"};
     const char* gapNames[]={"transition-interval","scroll-interval","stopwatch-interval"};
@@ -125,8 +126,8 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
             unsigned(pauses[i]),static_cast<unsigned long long>(longestPause[i]));
     }
     inputLatency.print("sampled-input-to-end"); wakeLatency.print("wake-request-to-end");
-    std::printf("[RenderDiag] window_us=%lld layouts=%u paints=%u stack_free=%u internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u\n",
-        static_cast<long long>(now-windowStart),unsigned(renderer.layouts()-lastLayouts),unsigned(renderer.paints()-lastPaints),
+    std::printf("[RenderDiag] window_us=%lld loops=%u layouts=%u paints=%u stack_free=%u internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u\n",
+        static_cast<long long>(now-windowStart),unsigned(loops),unsigned(renderer.layouts()-lastLayouts),unsigned(renderer.paints()-lastPaints),
         unsigned(uxTaskGetStackHighWaterMark(nullptr)),unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),
         unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
         unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
@@ -136,7 +137,7 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
     for(auto& p:pauses) p=0;
     for(auto& p:longestPause) p=0;
     inputLatency={}; wakeLatency={}; lastMode=-1; lastEnd=0;
-    windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints();
+    windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0;
 }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalog) {

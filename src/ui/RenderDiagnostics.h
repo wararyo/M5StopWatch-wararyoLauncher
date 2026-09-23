@@ -10,6 +10,8 @@ class Renderer;
 void recordRender(const ScreenModel&,TimeUs start,TimeUs end,bool painted,uint32_t layouts);
 void recordInput(TimeUs now);
 void recordWake(TimeUs now);
+// One pass of the main loop; idle passes are what work 8-4 removes.
+void recordLoop();
 void reportRenderDiagnostics(const Renderer&,TimeUs now);
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 class DiagnosticDataSource final : public DisplayDataSource {

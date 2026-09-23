@@ -26,6 +26,14 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     void draw(const ScreenModel& m, const WatchData&) override { ++draws; rendered = m; }
     TimeUs nextUpdate(TimeUs now, const WatchData& d) const override { return nextMinute(now,d); }
     void waitUs(TimeUs delay) override { waited = delay; time += delay - earlyWakeUs; }
+    // A low-level interrupt: pending for as long as anything is pressed, or
+    // once for an interrupt raised before anything reads as pressed.
+    bool interrupt = false;
+    bool inputPending() override {
+        const bool pending = interrupt || input.a || input.b || input.touching;
+        interrupt = false;
+        return pending;
+    }
 };
 void buttons() {
     InputController c;
@@ -132,9 +140,15 @@ void screens() {
 void runtime() {
     FakeHal h;
     AppRuntime r(h, h, h, 468, 468); r.begin(); r.step(); CHECK(h.draws == 1);
-    for (int i = 0; i < 100; ++i) { r.wait(); r.step(); }
-    CHECK(h.draws == 1); // USB sampling and idle polling do not redraw.
+    // Idle: nothing is sampled between interrupts, so each wait runs to the
+    // next deadline (the 1s USB sample) instead of the 10ms input period.
+    const int idleSamples = h.inputSamples;
+    for (int i = 0; i < 20; ++i) { r.wait(); CHECK(h.waited > 10000); r.step(); }
+    CHECK(h.draws == 1); // USB sampling and idle waits do not redraw.
+    CHECK(h.inputSamples == idleSamples && h.usbSamples >= 20);
     h.input.a = true; r.wait(); r.step();
+    CHECK(h.inputSamples == idleSamples + 1); // The interrupt makes it read at once.
+    r.wait(); CHECK(h.waited <= 10000); // Held: followed at the input period.
     h.input.a = false; r.wait(); r.step();
     CHECK(r.model().screen == ScreenId::AppList);
     h.time += 200000; r.step();
@@ -155,11 +169,29 @@ void runtime() {
     h.time += 30000000; r.step();
     h.time += 10000; h.input.a = true; r.step();
     h.time += 10000; h.input.a = false; r.step(); CHECK(r.model().screen == ScreenId::AppList);
-    h.time += 40000; r.wait(); CHECK(h.waited >= 1000 && h.waited <= 10000);
+    h.time += 400000; r.step(); r.wait(); CHECK(h.waited > 10000); // Released and settled.
     CHECK(AppRuntime::waitDelay(100000, 90000) == 1000);
     CHECK(AppRuntime::waitDelay(100000, 105000) == 5000);
     CHECK(AppRegistry.size() == 5 && AppRegistry[2].slot == 1 && AppRegistry[4].slot == 3);
     for (const auto& entry : AppRegistry) CHECK(entry.name && entry.name[0]);
+}
+void interrupts() {
+    // Work 8-4: the touch controller raises INT before its first report is
+    // readable, so an interrupt that reads nothing still starts a short stretch
+    // of polling at the input period, and interrupts never bring a read
+    // forward while one is being followed.
+    FakeHal h;
+    AppRuntime r(h, h, h, 468, 468); r.begin(); r.step();
+    r.wait(); r.step();
+    const int idle = h.inputSamples;
+    h.interrupt = true; r.step();
+    CHECK(h.inputSamples == idle + 1);
+    h.time += 3000; h.interrupt = true; r.step();
+    CHECK(h.inputSamples == idle + 1); // Not brought forward.
+    h.time += 7000; r.step(); CHECK(h.inputSamples == idle + 2);
+    r.wait(); CHECK(h.waited <= 10000); // Still following although nothing was read.
+    for (int i = 0; i < 10; ++i) { h.time += 10000; r.step(); }
+    r.wait(); CHECK(h.waited > 10000); // The stretch ended: back to deadlines.
 }
 void overload() {
     // vTaskDelay counts tick boundaries, so elapsed time can be shorter than
@@ -180,8 +212,11 @@ void overload() {
         for (int i = 0; i < 5; ++i) cycle();
         CHECK(r.model().screen == ScreenId::AppList);
         h.input = {true, true};
+        const int heldSamples = h.inputSamples;
         for (int i = 0; i < 20; ++i) cycle();
         CHECK(r.model().homeCount == 1);
+        // Overruns never postpone a held input: every cycle still reads it.
+        CHECK(h.inputSamples - heldSamples == 20);
         h.input = {};
         for (int i = 0; i < 800; ++i) cycle();
         CHECK(r.power().screenOff());
@@ -191,11 +226,11 @@ void overload() {
         h.input = {};
         for (int i = 0; i < 3; ++i) cycle();
         CHECK(r.model().screen == ScreenId::Home); // Wake touch was consumed.
-        CHECK(h.inputSamples > 800 && h.usbSamples > 30);
+        CHECK(h.usbSamples > 30);
     }
 }
 int main() {
-    buttons(); touch(); releaseVelocity(); power(); screens(); runtime();
+    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts();
     overload();
-    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, overload/early-wake\n";
+    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, overload/early-wake\n";
 }

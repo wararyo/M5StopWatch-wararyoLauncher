@@ -8,12 +8,17 @@ public:
     UsbState sampleUsb() override;
     void setScreenOff(bool off) override;
     void waitUs(TimeUs delay) override;
+    bool inputPending() override;
+    // Call on the UI task: it is the task the interrupts notify.
+    void beginInputWake();
     bool readRtc(CivilTime& utc) override;
     bool writeRtc(const CivilTime& utc) override;
     void setUtcClock(int64_t unixSeconds) override;
     int64_t utcClockUs() override;
     BatteryState sampleBattery() override;
     void setBrightness(int level) override;
+private:
+    bool inputWake_ = false, pending_ = false;
 };
 // Dynamic frequency scaling between the two limits; no light sleep yet.
 void beginPowerManagement(int maxMhz, int minMhz);

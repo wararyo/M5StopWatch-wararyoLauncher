@@ -17,6 +17,8 @@ SlotStatus translate(multifirm::host::SlotState state) {
 }
 void MultiFirmAdapter::begin() {
     lock_=xSemaphoreCreateMutex();
+    // begin() runs on the UI task, which may be waiting for its next deadline.
+    ui_=xTaskGetCurrentTaskHandle();
     // One flash read of the whole partition table; never called again.
     catalog_.layoutSupported=multifirm::host::isMultiFirmLayout();
     for (auto& entry:catalog_.slots)
@@ -26,11 +28,14 @@ void MultiFirmAdapter::begin() {
 }
 void MultiFirmAdapter::publish() {
     generation_.fetch_add(1,std::memory_order_release);
+    if (ui_) xTaskNotifyGive(ui_);
 }
 bool MultiFirmAdapter::poll(SlotCatalog& out) {
     const auto generation=generation_.load(std::memory_order_acquire);
     if (generation==seen_) return false;
-    if (lock_ && xSemaphoreTake(lock_,0)!=pdTRUE) return false; // Retry next pass.
+    // Blocking: the worker holds the lock only to fill one entry, and a failed
+    // try would leave the result waiting for a wakeup that may be a second away.
+    if (lock_) xSemaphoreTake(lock_,portMAX_DELAY);
     out=catalog_;
     seen_=generation;
     if (lock_) xSemaphoreGive(lock_);

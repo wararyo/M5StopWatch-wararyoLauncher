@@ -3,6 +3,8 @@
 #include <esp_timer.h>
 #include <driver/usb_serial_jtag.h>
 #include <esp_pm.h>
+#include "InputWake.h"
+#include <algorithm>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <sys/time.h>
@@ -82,10 +84,23 @@ void beginPowerManagement(int maxMhz, int minMhz) {
     const auto err = esp_pm_configure(&config);
     std::printf("[Power] dfs max=%dMHz min=%dMHz result=%s\n", maxMhz, minMhz, esp_err_to_name(err));
 }
+void M5Hal::beginInputWake() {
+    inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle());
+}
 void M5Hal::waitUs(TimeUs delay) {
+    // Without the interrupts nothing would end a long wait on a press, so fall
+    // back to the 10ms polling the runtime used before work 8-4.
+    // The cap only keeps the tick count in range; some deadline always comes first.
+    delay = std::min<TimeUs>(delay, inputWake_ ? 3600000000LL : 10000);
     constexpr TimeUs tickUs = 1000000 / configTICK_RATE_HZ;
     const auto ticks = static_cast<TickType_t>((delay + tickUs - 1) / tickUs);
-    vTaskDelay(ticks ? ticks : 1);
+    rearmInputWake();
+    pending_ = ulTaskNotifyTake(pdTRUE, ticks ? ticks : 1) != 0 || pending_;
+}
+bool M5Hal::inputPending() {
+    const bool pending = pending_;
+    pending_ = false;
+    return pending;
 }
 #ifdef LAUNCHER_RUNTIME_DIAGNOSTICS
 namespace {

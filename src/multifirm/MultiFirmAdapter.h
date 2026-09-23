@@ -2,6 +2,7 @@
 #include "SlotService.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <freertos/task.h>
 #include <atomic>
 namespace launcher {
 // MultiFirm's host API behind the launcher's port.
@@ -22,6 +23,7 @@ private:
     void scan();
     void publish();
     SemaphoreHandle_t lock_=nullptr;
+    TaskHandle_t ui_=nullptr; // Woken on every publish (work 8-4).
     SlotCatalog catalog_{};
     std::atomic<uint32_t> generation_{0};
     uint32_t seen_=0;

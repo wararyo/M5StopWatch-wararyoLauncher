@@ -130,6 +130,7 @@ extern "C" void app_main() {
     runtime.setInfo(app->project_name, app->version, esp_get_idf_version());
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    hal.beginInputWake();
     runtime.begin();
     launcher::beginRuntimeDiagnostics();
 #ifdef LAUNCHER_DRAIN_LOG
@@ -145,6 +146,7 @@ extern "C" void app_main() {
         launcher::usbDiag(hal.now(), runtime.power());
 #endif
 #ifdef LAUNCHER_RENDER_METRICS
+        launcher::recordLoop();
         launcher::reportRenderDiagnostics(renderer, hal.now());
 #endif
         runtime.wait();

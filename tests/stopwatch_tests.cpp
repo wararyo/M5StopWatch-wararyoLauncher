@@ -15,6 +15,8 @@ struct StubHal : Hal {
     UsbState sampleUsb() override { return {}; }
     void setScreenOff(bool) override {}
     void waitUs(TimeUs) override {}
+    // A low-level interrupt: pending for as long as anything is pressed.
+    bool inputPending() override { return input.a || input.b || input.touching; }
     bool readRtc(CivilTime&) override { return false; }
     bool writeRtc(const CivilTime&) override { return false; }
     void setUtcClock(int64_t) override {}
@@ -205,6 +207,13 @@ void managerDrivesTheScreensOwnDeadline() {
     now=due;
     CHECK(s.update(now));                        // Due: the screen re-sampled.
     CHECK(s.model().stopwatch.elapsedUs==StopwatchFrameUs);
+    CHECK(s.nextUpdate()==now+StopwatchFrameUs);
+    // Waking a little late keeps the cadence on the deadlines (work 8-4)...
+    const auto next=s.nextUpdate();
+    now=next+700; CHECK(s.update(now));
+    CHECK(s.nextUpdate()==next+StopwatchFrameUs);
+    // ...but a whole lost period is not replayed: it restarts from now.
+    now=s.nextUpdate()+StopwatchFrameUs+1000; CHECK(s.update(now));
     CHECK(s.nextUpdate()==now+StopwatchFrameUs);
 }
 

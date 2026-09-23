@@ -7,7 +7,14 @@ void AppRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal
 void AppRuntime::step() {
     const TimeUs now = hal_.now();
     const bool wasOff = power_.screenOff();
-    if (now >= nextInput_) {
+    // Asked every pass so a notification is consumed even when input is due
+    // anyway. It only brings a read forward while nothing is being followed:
+    // the touch driver skips its I2C read when asked again within 10ms of a
+    // read that saw no touch and INT is already high again, so reads while
+    // following stay one input period apart (docs/task8/plan.md 8-4).
+    const bool pending = hal_.inputPending();
+    if (pending) followUntil_ = std::max(followUntil_, now + FollowUs);
+    if (now >= nextInput_ || (pending && nextInput_ == INT64_MAX)) {
         const auto raw = hal_.sampleInput();
         const auto e = input_.update(now, raw, wasOff && raw.touching);
         // Release edges also count as activity. Process home before screen events.
@@ -19,10 +26,17 @@ void AppRuntime::step() {
 #endif
             dirty_ = changed || dirty_;
         }
-        nextInput_ = now + 10000;
+        // A held button or finger is followed at the input period: its
+        // release, the 600ms home hold and drags need samples between
+        // interrupts. So is the short stretch after an interrupt, because the
+        // touch controller raises INT before its first report is readable.
+        // Otherwise the next interrupt ends the wait (work 8-4), so an idle
+        // loop wakes only for its deadlines.
+        const bool follow = raw.a || raw.b || raw.touching || now < followUntil_;
+        nextInput_ = follow ? now + 10000 : INT64_MAX;
     } else power_.update(now, false, screens_.active());
-    // Cheap enough to do every pass: the loop already wakes at the input
-    // period, so results reach the list without any extra wakeup.
+    // Cheap enough to do every pass. The worker notifies the UI task when it
+    // publishes, so a result also ends a long idle wait.
     if (slots_) {
         SlotCatalog catalog;
         if (slots_->poll(catalog)) { screens_.setSlots(catalog); dirty_ = true; }

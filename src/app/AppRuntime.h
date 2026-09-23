@@ -30,6 +30,9 @@ private:
     ScreenManager screens_;
     PowerManager power_;
     TimeUs nextInput_ = 0, nextUsb_ = 0;
+    // How long input is still read at its period after an interrupt.
+    static constexpr TimeUs FollowUs = 100000;
+    TimeUs followUntil_ = 0;
     TimeUs nextDisplay_ = INT64_MAX;
     int appliedBrightness_ = -1; // Forced re-apply after every wake.
     bool dirty_ = true;

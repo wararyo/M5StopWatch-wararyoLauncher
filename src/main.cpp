@@ -24,8 +24,16 @@
 #ifdef LAUNCHER_DRAIN_LOG
 #include "power/DrainLog.h"
 #endif
+#ifdef LAUNCHER_USB_DIAG
+#include "power/UsbDiag.h"
+#endif
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 #include "multifirm/FakeSlotService.h"
+#endif
+
+// Work 8-3. Building with 240 restores the fixed-frequency behaviour of work 7.
+#ifndef LAUNCHER_CPU_MIN_MHZ
+#define LAUNCHER_CPU_MIN_MHZ 80
 #endif
 
 #if !defined(MULTIFIRM_HOST) || MULTIFIRM_HOST != 1
@@ -50,6 +58,7 @@ extern "C" void app_main() {
     cfg.output_power = false;
     cfg.clear_display = true;
     M5.begin(cfg);
+    launcher::beginPowerManagement(240, LAUNCHER_CPU_MIN_MHZ);
     // The stored level is applied once NVS has been read; this only keeps the
     // boot screen visible until then.
     M5.Display.setBrightness(launcher::Settings{}.brightness);
@@ -131,6 +140,9 @@ extern "C" void app_main() {
         launcher::runtimeDiagnostics();
 #ifdef LAUNCHER_DRAIN_LOG
         launcher::drainLog(hal.now(), runtime.power());
+#endif
+#ifdef LAUNCHER_USB_DIAG
+        launcher::usbDiag(hal.now(), runtime.power());
 #endif
 #ifdef LAUNCHER_RENDER_METRICS
         launcher::reportRenderDiagnostics(renderer, hal.now());

@@ -15,6 +15,8 @@ public:
     BatteryState sampleBattery() override;
     void setBrightness(int level) override;
 };
+// Dynamic frequency scaling between the two limits; no light sleep yet.
+void beginPowerManagement(int maxMhz, int minMhz);
 void beginRuntimeDiagnostics();
 void runtimeDiagnostics();
 }

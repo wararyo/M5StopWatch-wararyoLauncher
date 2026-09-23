@@ -2,6 +2,7 @@
 #include <M5Unified.h>
 #include <esp_timer.h>
 #include <driver/usb_serial_jtag.h>
+#include <esp_pm.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <sys/time.h>
@@ -72,6 +73,14 @@ BatteryState M5Hal::sampleBattery() {
 }
 void M5Hal::setBrightness(int level) {
     M5.Display.setBrightness(uint8_t(level < 0 ? 0 : level > 255 ? 255 : level));
+}
+void beginPowerManagement(int maxMhz, int minMhz) {
+    // No lock of our own: IDF holds CPU_FREQ_MAX on each core whenever it runs
+    // anything but the idle task, so every frame is drawn at the maximum and
+    // only the waits between them drop to the minimum.
+    const esp_pm_config_t config{maxMhz, minMhz, false};
+    const auto err = esp_pm_configure(&config);
+    std::printf("[Power] dfs max=%dMHz min=%dMHz result=%s\n", maxMhz, minMhz, esp_err_to_name(err));
 }
 void M5Hal::waitUs(TimeUs delay) {
     constexpr TimeUs tickUs = 1000000 / configTICK_RATE_HZ;

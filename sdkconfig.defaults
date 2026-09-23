@@ -16,8 +16,9 @@ CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 CONFIG_ESP32S3_INSTRUCTION_CACHE_16KB=y
 CONFIG_ESP32S3_DATA_CACHE_64KB=y
 CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
-# Keep the existing MultiFirm bootloader compatible; no power management yet.
-CONFIG_PM_ENABLE=n
+# Power management is app-side only (MuteHid runs it under the same MultiFirm
+# bootloader). Work 8-3 uses DFS alone; light sleep and tickless idle come in 8-5.
+CONFIG_PM_ENABLE=y
 CONFIG_FREERTOS_USE_TICKLESS_IDLE=n
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=n
 CONFIG_SECURE_BOOT=n

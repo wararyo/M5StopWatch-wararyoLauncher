@@ -35,7 +35,7 @@ EXPECTED = {
     "ESP32S3_INSTRUCTION_CACHE_SIZE": 16384,
     "ESP32S3_DATA_CACHE_SIZE": 65536,
     "ESP32S3_DATA_CACHE_LINE_SIZE": 64,
-    "PM_ENABLE": False,
+    "PM_ENABLE": True,
     "FREERTOS_USE_TICKLESS_IDLE": False,
     "BOOTLOADER_APP_ROLLBACK_ENABLE": False,
     "SECURE_BOOT": False,
@@ -101,8 +101,10 @@ def main():
             "Frame metrics do not match the selected environment")
     require((b"[Drain] enabled" in image_bytes) == (environment == "m5stopwatch-drain"),
             "Battery drain record does not match the selected environment")
+    require((b"[UsbDiag] history" in image_bytes) == (environment == "m5stopwatch-measure"),
+            "USB bus-activity history does not match the selected environment")
     print("[OK] overload diagnostics / synthetic clock / pixel checks / frame metrics / "
-          "drain record isolated by environment")
+          "drain record / USB history isolated by environment")
     print(f"[OK] firmware SHA-256={hashlib.sha256(image.read_bytes()).hexdigest()}")
     print(f"[Build] project={description['project_name']} "
           f"version={description['project_version']} IDF={description['git_revision']}")

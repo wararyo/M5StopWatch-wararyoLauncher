@@ -21,6 +21,9 @@
 #ifdef LAUNCHER_RENDER_METRICS
 #include "ui/RenderDiagnostics.h"
 #endif
+#ifdef LAUNCHER_DRAIN_LOG
+#include "power/DrainLog.h"
+#endif
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
 #include "multifirm/FakeSlotService.h"
 #endif
@@ -120,9 +123,15 @@ extern "C" void app_main() {
     logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     runtime.begin();
     launcher::beginRuntimeDiagnostics();
+#ifdef LAUNCHER_DRAIN_LOG
+    launcher::beginDrainLog(); // After nvs.begin(): the record lives in NVS.
+#endif
     while (true) {
         runtime.step();
         launcher::runtimeDiagnostics();
+#ifdef LAUNCHER_DRAIN_LOG
+        launcher::drainLog(hal.now(), runtime.power());
+#endif
 #ifdef LAUNCHER_RENDER_METRICS
         launcher::reportRenderDiagnostics(renderer, hal.now());
 #endif

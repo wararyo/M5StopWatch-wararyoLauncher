@@ -75,6 +75,7 @@ CPU は 240 MHz のまま light sleep に入っていません。電池側の電
 描画検証版だけに合成データを注入します。
 作業7の基準測定には `pio run -e m5stopwatch-measure` を使います。こちらは実時刻・実スロット・
 保存済み設定のまま `[RenderDiag]` の集計だけを出す製品構成で、合成データもピクセル検証も含みません。
+作業8の電池駆動の測定には `pio run -e m5stopwatch-drain` を使い、記録は `python tools/battery_drain.py COM11 <CSV>` で吸い出します（[作業8の詳細計画](docs/task8/plan.md)）。
 長時間のログ取得は `python tools/capture_serial.py COM11 <秒> <出力ファイル> [reset]`。[構成・操作・実機手順](docs/task3/rendering.md)と
 [検証記録](docs/task3/task3-validation.md)を参照してください。
 

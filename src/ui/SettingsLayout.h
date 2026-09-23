@@ -1,5 +1,5 @@
 #pragma once
-#include "ListLayout.h"
+#include "ui/list/ListLayout.h"
 #include "features/settings/SettingsModel.h"
 namespace launcher {
 struct SettingsGeometry : Viewport { SettingsView view=SettingsView::Menu; int cursor=0; };
@@ -21,15 +21,14 @@ inline int settingsSlotCount(SettingsView view) {
 // Five rows centred on the panel. They all fit, so the menu never scrolls and
 // the cursor is the only thing that moves; the arc placement is still the app
 // list's, so the two screens read as the same kind of list.
+// Until 9-3 moves the menu onto ListView, this is a thin shim over the shared
+// placement; the arc itself is computed only in ui/list/ListLayout.h.
 inline RowLayout settingsMenuRow(const SettingsGeometry& m,int index) {
-    ListGeometry laid; laid.width=m.width; laid.height=m.height;
-    laid.transition=1; laid.scroll=float(2*rowSpacing(m));
-    return layoutRow(laid,index);
+    return layoutListRow(fullListPlacement(m,float(2*rowSpacing(m))),index,false);
 }
-// Menu text starts where an app list row's circle would, so both line up.
-inline int settingsMenuLabelX(const SettingsGeometry& m,const RowLayout& row) {
-    return row.iconX-iconRadius(m);
-}
+// Menu text starts where an app list row's circle would, so both line up:
+// the shared layout's rule for a row without an icon.
+inline int settingsMenuLabelX(const SettingsGeometry&,const RowLayout& row) { return row.labelX; }
 inline void settingsFieldCentre(const SettingsGeometry& m,int index,int& cx,int& cy) {
     if (m.view==SettingsView::DateTime) {
         constexpr int dx[]={-96,0,96,-54,54};

@@ -12,15 +12,20 @@ inline uint32_t hashValue(uint32_t v,uint32_t h=2166136261u) {
 struct Element { Rect box{}; uint32_t fingerprint=0; bool valid=false; };
 class FramePlan {
 public:
-    // Current maximum: 5 watch elements + 5 rows + toast + the open app screen
-    // (11 settings, 7 stopwatch, 6 external app detail) = 22. A closed screen
-    // registers nothing, so they never add up.
+    // Current maximum: 5 watch elements + 8 list slots (ListVisibleSlots,
+    // registered even while hidden so they erase) + toast + the open app
+    // screen (11 settings, 7 stopwatch, 6 external app detail) = 25. A closed
+    // screen registers nothing, so they never add up.
     // Extra room is for future faces; overflow is handled, never truncated.
     static constexpr int Capacity=32;
     void begin(bool full,int limit=Capacity) {
         count_=0; full_=full; overflow_=false; limit_=std::clamp(limit,0,Capacity);
     }
     int add(Element& element,Rect box,uint32_t fingerprint);
+    // For a part that cannot describe this frame by its elements alone: a
+    // list drawing more rows than it has slots, a notice coming or going. Any
+    // time before resolve(); every element then paints over a cleared screen.
+    void forceFull() { full_=true; }
     void resolve();
     bool shouldPaint(int handle) const { return full_ || (handle>=0 && handle<count_ && entries_[handle].paint); }
     bool full() const { return full_; }

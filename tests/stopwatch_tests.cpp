@@ -176,7 +176,7 @@ void homeKeepsMeasuringAndTheListOpensIt() {
     ScreenManager s; TimeUs now=0;
     s.handle(home(),now); now+=1000;
     s.handle(press(true),now); now+=200000; s.update(now);   // clock -> list
-    CHECK(AppRegistry[s.model().selection].id==AppId::Stopwatch);
+    CHECK(AppRegistry[s.model().list.selection].id==AppId::Stopwatch);
     s.handle(press(false),now); now+=1000;
     CHECK(s.model().screen==ScreenId::Stopwatch);
     s.handle(press(false),now); now+=1000;

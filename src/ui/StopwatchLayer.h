@@ -1,5 +1,6 @@
 #pragma once
-#include "WatchFace.h"
+#include "Element.h"
+#include "ui/graphics/Gfx.h"
 #include "StopwatchLayout.h"
 namespace launcher {
 // The stopwatch layer. The rounded panel and its divider are NOT plan elements:

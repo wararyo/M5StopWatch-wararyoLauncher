@@ -16,6 +16,7 @@ def main():
             binary = Path(directory) / (suite + ".exe")
             sources = [f"tests/{suite}.cpp", "src/input/InputController.cpp",
                        "src/app/ScreenManager.cpp", "src/app/AppRuntime.cpp", "src/ui/Element.cpp",
+                       "src/ui/list/ListController.cpp",
                        "src/services/TimeService.cpp", "src/services/LauncherData.cpp",
                        "src/storage/SettingsStore.cpp", "src/apps/SettingsScreen.cpp",
                        "src/apps/ExternalAppScreen.cpp",

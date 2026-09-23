@@ -1,12 +1,18 @@
 #include "app/AppRuntime.h"
+#include "features/launcher/AppListLayout.h"
 #include "ui/Element.h"
-#include "ui/ListLayout.h"
+#include "ui/list/ListController.h"
+#include "ui/list/ListLayout.h"
 #include <array>
 #include <cstdlib>
 #include <iostream>
 #include <random>
 #define CHECK(x) do { if(!(x)) { std::cerr<<__LINE__<<": " #x "\n"; std::exit(1); } } while(false)
 using namespace launcher;
+// The placement input and the renderer both use for this frame of the launcher.
+ListPlacement placementOf(const ScreenModel& m) {
+    return appListPlacement(m.viewport(),m.transition,m.list.scroll);
+}
 void navigation() {
     ScreenManager s; TimeUs now=0; Events e{};
     e.gesture=Gesture::Tap; e.x=234; e.y=234;
@@ -23,23 +29,23 @@ void navigation() {
     CHECK(s.model().homeRegion.offsetY==-468 && s.model().homeRegion.clip.empty());
     for(int i=1;i<=5;++i) {
         e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
-        CHECK(s.model().selection==i%5);
-        const auto row=layoutRow(listGeometry(s.model()),i%5);
+        CHECK(s.model().list.selection==i%5);
+        const auto row=layoutListRow(placementOf(s.model()),i%5);
         CHECK(row.box.contains(row.labelX,row.centerY));
     }
     drag(50); CHECK(s.model().screen==ScreenId::AppList);
     drag(51); CHECK(s.model().screen==ScreenId::Home);
     e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
-    drag(-200); CHECK(s.model().scroll>0);
+    drag(-200); CHECK(s.model().list.scroll>0);
     // Hitting the top during a list gesture does not turn it into Home.
-    drag(1000); CHECK(s.model().scroll==0 && s.model().screen==ScreenId::AppList);
+    drag(1000); CHECK(s.model().list.scroll==0 && s.model().screen==ScreenId::AppList);
     drag(100); CHECK(s.model().screen==ScreenId::Home);
     e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
     e={}; e.gesture=Gesture::Tap; e.x=0; e.y=0;
     CHECK(!s.handle(e,now) && !s.model().toast);
-    const auto row=layoutRow(listGeometry(s.model()),1);
+    const auto row=layoutListRow(placementOf(s.model()),1);
     e.x=row.labelX; e.y=row.centerY; s.handle(e,now);
-    CHECK(s.model().selection==1 && s.model().toast);
+    CHECK(s.model().list.selection==1 && s.model().toast);
     CHECK(s.nextUpdate()==now+1400000);
     now+=1400000; s.update(now); CHECK(!s.model().toast && s.nextUpdate()==INT64_MAX);
     e={}; e.gesture=Gesture::DragStart; e.totalX=100; e.totalY=10;
@@ -57,22 +63,22 @@ void navigation() {
     b.update(10000000); CHECK(b.model().transition==1 && b.nextUpdate()==INT64_MAX);
     ScreenManager rapid; e={}; e.next=true;
     rapid.handle(e,0); rapid.handle(e,10000); rapid.handle(e,20000);
-    CHECK(rapid.model().selection==2);
-    rapid.update(200000); CHECK(rapid.model().transition==1 && rapid.model().scroll==2*rowSpacing(rapid.model().viewport()));
+    CHECK(rapid.model().list.selection==2);
+    rapid.update(200000); CHECK(rapid.model().transition==1 && rapid.model().list.scroll==2*rowSpacing(rapid.model().viewport()));
     for(int side: {400,466,468}) {
-        ListGeometry m; m.width=m.height=side; m.transition=1;
+        const Viewport m{side,side};
         int previousX=side,previousDy=-side,highest=side,lowest=0;
         for(int scroll=0;scroll<=4*rowSpacing(m);scroll+=3) {
-            m.scroll=scroll;
+            const auto p=appListPlacement(m,1,float(scroll));
             for(int i=0;i<5;++i) {
-                const auto r=layoutRow(m,i); const auto box=r.box;
+                const auto r=layoutListRow(p,i); const auto box=r.box;
                 if(box.empty()) continue;
                 CHECK(box.x>=0 && box.y>=0 && box.x+box.w<=side && box.y+box.h<=side);
                 // The box reaches the right edge so it covers a name the bezel
                 // cuts off; only the icon has to stay on the panel.
                 CHECK(box.x+box.w==side && box.x<=r.iconX-r.radius);
                 CHECK(r.iconX-r.radius>=0 && r.iconX+r.radius<=side);
-                CHECK(hitRow(m,box.x+box.w/2,box.y+box.h/2)==i);
+                CHECK(hitListRow(p,5,box.x+box.w/2,box.y+box.h/2)==i);
                 const int dy=r.centerY-side/2;
                 // A vertically centred row stops `listMargin` clear of the
                 // bezel; every other row swings right of it, without steps.
@@ -103,25 +109,25 @@ void flick() {
     };
     ScreenManager slow,fast,sparse;
     release(slow,0); release(fast,1000); release(sparse,1000);
-    float previous=fast.model().scroll;
+    float previous=fast.model().list.scroll;
     for(int t=266000;t<430000;t+=16000) {
         fast.update(t);
-        CHECK(fast.model().scroll>=previous && fast.model().scroll<=168);
-        previous=fast.model().scroll;
+        CHECK(fast.model().list.scroll>=previous && fast.model().list.scroll<=168);
+        previous=fast.model().list.scroll;
     }
     sparse.update(426000);
-    CHECK(std::abs(fast.model().scroll-sparse.model().scroll)<0.001f);
+    CHECK(std::abs(fast.model().list.scroll-sparse.model().list.scroll)<0.001f);
     slow.update(450000); fast.update(450000);
-    CHECK(slow.model().scroll==84 && fast.model().scroll==168);
+    CHECK(slow.model().list.scroll==84 && fast.model().list.scroll==168);
     CHECK(!fast.active() && fast.nextUpdate()==INT64_MAX);
     CHECK(!fast.update(1000000));
     for(float speed: {-100000.0f,-1000.0f,0.0f,1000.0f,100000.0f}) {
         ScreenManager s; release(s,speed,-200);
-        float last=s.model().scroll;
-        s.update(430000); const float end=s.model().scroll;
+        float last=s.model().list.scroll;
+        s.update(430000); const float end=s.model().list.scroll;
         ScreenManager sample; release(sample,speed,-200);
         for(int t=266000;t<=442000;t+=16000) {
-            sample.update(t); const float pos=sample.model().scroll;
+            sample.update(t); const float pos=sample.model().list.scroll;
             CHECK(pos>=0 && pos<=336);
             CHECK(end>=200 ? pos>=last && pos<=end : pos<=last && pos>=end);
             last=pos;
@@ -130,28 +136,181 @@ void flick() {
     }
     ScreenManager stopped; release(stopped,1000);
     Events e{}; e.gesture=Gesture::TouchStart; stopped.handle(e,282000);
-    const float pos=stopped.model().scroll;
-    CHECK(!stopped.active()); stopped.update(350000); CHECK(stopped.model().scroll==pos);
+    const float pos=stopped.model().list.scroll;
+    CHECK(!stopped.active()); stopped.update(350000); CHECK(stopped.model().list.scroll==pos);
     e.gesture=Gesture::Tap; e.x=234; e.y=234; stopped.handle(e,360000);
     CHECK(!stopped.model().toast); stopped.update(540000);
     CHECK(!stopped.active());
     ScreenManager resumed; release(resumed,1000);
     e={}; e.gesture=Gesture::TouchStart; resumed.handle(e,282000);
-    const float held=resumed.model().scroll;
+    const float held=resumed.model().list.scroll;
     e.gesture=Gesture::DragStart; e.totalY=-15; resumed.handle(e,300000);
-    CHECK(std::abs(resumed.model().scroll-held-15)<0.001f);
+    CHECK(std::abs(resumed.model().list.scroll-held-15)<0.001f);
     e.gesture=Gesture::DragEnd; resumed.handle(e,320000); resumed.update(500000);
     CHECK(!resumed.active() && !resumed.model().toast);
     ScreenManager edge; release(edge,100000,-1000); edge.update(450000);
-    CHECK(edge.model().scroll==336 && edge.model().screen==ScreenId::AppList);
+    CHECK(edge.model().list.scroll==336 && edge.model().screen==ScreenId::AppList);
     ScreenManager decide; release(decide,1000);
     e={}; e.decide=true; decide.handle(e,282000); decide.update(462000);
-    CHECK(decide.model().toast && decide.model().scroll==decide.model().selection*84);
+    CHECK(decide.model().toast && decide.model().list.scroll==decide.model().list.selection*84);
     ScreenManager buttons; release(buttons,1000);
     e={}; e.next=true; buttons.handle(e,282000); buttons.update(462000);
-    CHECK(buttons.model().scroll==buttons.model().selection*84);
+    CHECK(buttons.model().list.scroll==buttons.model().list.selection*84);
     e={}; e.home=true; buttons.handle(e,470000);
     CHECK(!buttons.active() && buttons.model().screen==ScreenId::Home);
+}
+// The launcher's use of the shared list: leaving for a screen mid-animation,
+// and presses that must not open anything.
+void launcherList() {
+    Events e{};
+    // Wrap to the stopwatch row with A and open it before the scroll lands:
+    // the list arrives at once, leaves no deadline and comes back in place.
+    ScreenManager s; e.next=true; s.handle(e,0); s.update(180000);
+    for(int i=0;i<5;++i) { e={}; e.next=true; s.handle(e,200000+i*40000); s.update(216000+i*40000); }
+    CHECK(s.model().list.selection==0 && s.model().list.animating);
+    e={}; e.decide=true; s.handle(e,380000);
+    auto m=s.model();
+    CHECK(m.screen==ScreenId::Stopwatch && !m.list.animating && m.list.scroll==0 && m.transition==1);
+    CHECK(s.nextUpdate()==INT64_MAX || s.nextUpdate()>380000+ListController::FrameUs);
+    e={}; e.home=true; s.handle(e,400000);
+    // Opening from a half raised list completes the slide too, so the clock
+    // never shows under the opened screen.
+    ScreenManager half; e={}; e.next=true; half.handle(e,0); half.update(48000);
+    CHECK(half.model().transition>0 && half.model().transition<1);
+    const auto first=layoutListRow(placementOf(half.model()),0);
+    e={}; e.gesture=Gesture::Tap; e.x=first.labelX; e.y=first.centerY; half.handle(e,50000);
+    CHECK(half.model().screen==ScreenId::Stopwatch && half.model().transition==1 && !half.active());
+    // A vertical scroll ends without deciding the row it passed over.
+    ScreenManager scroll; e={}; e.next=true; scroll.handle(e,0); scroll.update(180000);
+    e={}; e.gesture=Gesture::DragStart; e.totalY=-100; scroll.handle(e,200000);
+    e.gesture=Gesture::DragMove; e.totalY=-120; scroll.handle(e,210000);
+    e.gesture=Gesture::DragEnd; e.velocityY=0; scroll.handle(e,220000);
+    scroll.update(500000);
+    CHECK(scroll.model().screen==ScreenId::AppList && !scroll.model().toast && !scroll.active());
+    CHECK(scroll.model().list.scroll==scroll.model().list.selection*84);
+    // Home resets the list to its first row, with nothing left running.
+    e={}; e.home=true; scroll.handle(e,600000);
+    CHECK(scroll.model().list.selection==0 && scroll.model().list.scroll==0 && !scroll.active());
+}
+// The shared list at counts other than the launcher's five, including none.
+void listLayout() {
+    for(int side: {400,466,468}) {
+        const Viewport v{side,side};
+        CHECK(maxVisibleListRows(v)<=ListVisibleSlots);
+        CHECK(labelWidth(v,false)==labelWidth(v,true)+labelOffset(v)+iconRadius(v));
+        for(int count: {0,1,2,5,7,12,40}) {
+            const int maxScroll=std::max(0,count-1)*rowSpacing(v);
+            for(float transition: {0.0f,0.3f,1.0f})
+            for(int scroll=0;scroll<=maxScroll;scroll+=7) {
+                const auto p=appListPlacement(v,transition,float(scroll));
+                int first=0,last=-1;
+                const bool any=visibleListRows(p,count,first,last);
+                // Exactly the rows the layout gives a box, and never more
+                // than the view keeps slots for.
+                int visible=0;
+                for(int i=0;i<count;++i) {
+                    const auto icon=layoutListRow(p,i,true),plain=layoutListRow(p,i,false);
+                    CHECK(icon.box==plain.box);
+                    if(icon.box.empty()) { CHECK(!any || i<first || i>last); continue; }
+                    ++visible;
+                    CHECK(any && i>=first && i<=last);
+                    CHECK(icon.labelX==icon.iconX+labelOffset(v) && plain.labelX==icon.iconX-icon.radius);
+                    // Drawing and hit testing share the box.
+                    CHECK(hitListRow(p,count,icon.box.x+icon.box.w/2,icon.box.y+icon.box.h/2)==i);
+                    CHECK(hitListRow(p,count,icon.box.x+icon.box.w,icon.box.y+icon.box.h/2)!=i);
+                }
+                CHECK(any==(visible>0) && (!any || last-first+1==visible));
+                CHECK(visible<=maxVisibleListRows(v));
+                if(count==0) CHECK(!any && hitListRow(p,count,side/2,side/2)==-1);
+            }
+        }
+    }
+    // A clip of nothing shows nothing, whatever the count.
+    int first=0,last=-1;
+    CHECK(!visibleListRows(appListPlacement({468,468},0,0),5,first,last));
+}
+void listController() {
+    const Viewport v{468,468};
+    const float spacing=float(rowSpacing(v));
+    std::array<ListRow,12> storage{};
+    for(int i=0;i<12;++i) { storage[i].id=RowId(100+i); storage[i].label="row"; }
+    auto rows=[&](int count) { return ListRows{storage.data(),count}; };
+    const auto rest=fullListPlacement(v,0);
+    // Nothing to select, decide or scroll, and no deadline left behind.
+    ListController empty; empty.resize(v); empty.setRows(rows(0));
+    CHECK(empty.selection()==-1 && !empty.next(0) && !empty.decide(0).changed);
+    CHECK(!empty.tap(rest,234,234,0).changed);
+    empty.dragStart(); CHECK(empty.dragMove(-300) && empty.scroll()==0);
+    empty.dragEnd(-5000,0); empty.update(1000000);
+    CHECK(empty.scroll()==0 && !empty.active() && empty.nextUpdate()==INT64_MAX);
+    // One row: A stays on it and nothing ever scrolls.
+    ListController one; one.resize(v); one.setRows(rows(1));
+    CHECK(one.selection()==0 && one.next(0) && one.selection()==0 && !one.active());
+    one.dragStart(); one.dragMove(-200); CHECK(one.scroll()==0);
+    one.dragEnd(3000,0); CHECK(one.nextUpdate()==INT64_MAX);
+    auto d=one.decide(0); CHECK(d.decided && d.id==100 && d.index==0);
+    // Seven rows: A walks to the end and wraps to the first, each time
+    // scrolled to where the row is centred.
+    ListController seven; seven.resize(v); seven.setRows(rows(7));
+    TimeUs now=0;
+    for(int i=1;i<=7;++i) {
+        CHECK(seven.next(now) && seven.selection()==i%7);
+        now+=ListController::AnimationUs; seven.update(now);
+        CHECK(seven.scroll()==(i%7)*spacing && seven.nextUpdate()==INT64_MAX);
+        const auto hit=seven.tap(fullListPlacement(v,seven.scroll()),300,v.height/2,now);
+        CHECK(hit.decided && hit.index==i%7 && hit.id==RowId(100+i%7));
+    }
+    // Rapid presses retarget from wherever the animation has got to.
+    seven.reset(); seven.next(0); seven.next(10000); seven.next(20000); seven.update(30000);
+    CHECK(seven.selection()==3 && seven.scroll()<3*spacing);
+    seven.update(20000+ListController::AnimationUs); CHECK(seven.scroll()==3*spacing);
+    // A row that may not be decided is still selected, and yields no decision.
+    storage[3].enabled=false;
+    d=seven.decide(0); CHECK(d.changed && !d.decided && d.index==3);
+    d=seven.tap(fullListPlacement(v,seven.scroll()),300,v.height/2,0);
+    CHECK(d.changed && !d.decided && seven.selection()==3);
+    storage[3].enabled=true;
+    // A drag scrolls, clamps to the rows there are, and never decides.
+    seven.reset(); seven.dragStart(); seven.dragMove(-10000);
+    CHECK(seven.scroll()==6*spacing && seven.selection()==6 && !seven.next(0) && !seven.decide(0).changed);
+    seven.dragEnd(0,0); CHECK(!seven.active());
+    // A touch while coasting stops it; the release then settles, never decides.
+    seven.reset(); seven.dragStart(); seven.dragMove(-60); seven.dragEnd(1000,0);
+    seven.update(16000); CHECK(seven.settling());
+    const float held=seven.scroll();
+    CHECK(seven.touchStart() && !seven.active() && seven.nextUpdate()==INT64_MAX);
+    seven.update(100000); CHECK(seven.scroll()==held);
+    CHECK(seven.releaseAfterStop(100000) && !seven.releaseAfterStop(100000));
+    seven.update(100000+ListController::AnimationUs);
+    CHECK(seven.scroll()==seven.selection()*spacing && !seven.active());
+    // A touch that finds it still is an ordinary press.
+    CHECK(!seven.touchStart() && !seven.releaseAfterStop(0));
+    // A tap lands on whatever row is under it mid-scroll: the hit test uses
+    // the same placement the frame was drawn with.
+    seven.reset(); seven.next(0); seven.update(90000);
+    const auto moving=fullListPlacement(v,seven.scroll());
+    const auto row=layoutListRow(moving,0);
+    CHECK(seven.tap(moving,row.labelX,row.centerY,90000).index==0);
+    // Leaving: finish arrives at once and leaves no deadline; cancel aligns.
+    seven.reset(); seven.next(0); seven.update(16000); seven.finish();
+    CHECK(seven.scroll()==spacing && seven.nextUpdate()==INT64_MAX && !seven.active());
+    seven.dragStart(); seven.dragMove(-30); seven.cancel(0);
+    CHECK(!seven.state().dragging && seven.active());
+    seven.update(ListController::AnimationUs); CHECK(seven.scroll()==seven.selection()*spacing);
+    // Rows change: the selection follows its id, or falls back into range.
+    seven.reset(); for(int i=0;i<4;++i) seven.next(0);
+    seven.finish(); CHECK(seven.selection()==4 && seven.scroll()==4*spacing);
+    std::swap(storage[4],storage[1]); seven.setRows(rows(7));
+    CHECK(seven.selection()==1 && seven.scroll()==spacing && seven.state().selection==1);
+    seven.setRows(rows(1)); CHECK(seven.selection()==0 && seven.scroll()==0);
+    seven.setRows(rows(0)); CHECK(seven.selection()==-1 && !seven.active());
+    seven.setRows(rows(3)); CHECK(seven.selection()==0);
+    std::swap(storage[4],storage[1]);
+    // Handing a press to the owner forgets the stop, so its release is the
+    // owner's to act on.
+    seven.setRows(rows(7)); seven.dragStart(); seven.dragMove(-60); seven.dragEnd(1000,0);
+    seven.update(16000); CHECK(seven.touchStart());
+    seven.handOff(); CHECK(!seven.releaseAfterStop(0) && !seven.active());
 }
 struct Platform : Hal,RenderPort,DisplayDataSource {
     TimeUs time=0; InputSnapshot input{}; int draws=0,invalidations=0,samples=0;
@@ -254,9 +413,17 @@ void repaint() {
     plan.begin(false);
     for(int i=0;i<N;++i) plan.add(elements[i],intersect(boxes[i],{0,0,W,H}),colors[i]);
     plan.resolve(); CHECK(!plan.anyPaint());
+    // A part registered last (a notice, a list out of slots) can still turn
+    // the whole frame into a full repaint of everything already registered.
+    plan.begin(false);
+    std::array<int,N> handles{};
+    for(int i=0;i<N;++i) handles[i]=plan.add(elements[i],intersect(boxes[i],{0,0,W,H}),colors[i]);
+    plan.forceFull(); plan.resolve();
+    CHECK(plan.full() && plan.anyPaint());
+    for(int i=0;i<N;++i) CHECK(plan.shouldPaint(handles[i]));
 }
 int main() {
-    navigation(); flick(); deadlines(); repaint();
-    std::cout<<"PASS: navigation/geometry, display deadlines, "
+    navigation(); flick(); launcherList(); listLayout(); listController(); deadlines(); repaint();
+    std::cout<<"PASS: navigation/geometry, shared list layout/controller, display deadlines, "
                "3000 differential framebuffer cases with dirty bounds\n";
 }

@@ -5,16 +5,26 @@
 #include "apps/StopwatchScreen.h"
 #include "app/FrameModel.h"
 #include "app/EffectiveSettings.h"
+#include "features/launcher/AppListRows.h"
+#include "ui/list/ListController.h"
+#include <array>
 namespace launcher {
 // It implements BootShutdown itself: it owns the stopwatch service, and the
 // launch that has to end a measurement is the one it started (plan.md 8.2).
 class ScreenManager final : public BootShutdown {
 public:
     ScreenManager(int width=468,int height=468) {
-        model_.width=width; model_.height=height;
+        nav_.width=width; nav_.height=height;
         settings_.resize(width,height); external_.resize(width,height);
         stopwatchScreen_.resize(width,height); stopwatchScreen_.bind(&stopwatch_);
+        list_.resize({width,height});
+        // Input reads only the ids, which never change; names are drawn from
+        // the frame's model instead.
+        list_.setRows(buildAppListRows(AppListModel{},rows_));
     }
+    // The list borrows rows_, so a copy would point into the original.
+    ScreenManager(const ScreenManager&)=delete;
+    ScreenManager& operator=(const ScreenManager&)=delete;
     // Without a store and a clock the settings entry stays unavailable, exactly
     // as the unimplemented entries do. Nothing else in the launcher changes.
     void bind(SettingsStore* store,TimeService* time) { settings_.bind(store,time,&runtimeSettings_); }
@@ -45,10 +55,11 @@ public:
         return {settings_.brightness(),settings_.screenOffSec()};
     }
     TimeUs nextUpdate() const;
-    bool active() const { return model_.dragging || animating_; }
+    bool active() const { return drag_!=Drag::None || transitionAnimating_ || list_.active(); }
 private:
-    void animate(float transition,float scroll,TimeUs now);
-    void settleList(float velocity,TimeUs now);
+    // Home to list and back. The list's own scrolling is ListController's.
+    void animateTransition(float transition,TimeUs now);
+    void stopTransition() { transitionAnimating_=false; transitionFrame_=INT64_MAX; }
     bool open(AppScreen& screen,ScreenId id,TimeUs now);
     SettingsScreen settings_;
     RuntimeSettings runtimeSettings_{};
@@ -57,20 +68,22 @@ private:
     StopwatchScreen stopwatchScreen_;
     SlotCatalog slots_{};
     AppScreen* active_=nullptr;
-    struct NavigationState : AppListModel {
+    struct NavigationState {
         ScreenId screen=ScreenId::Home;
         int width=468,height=468;
         uint32_t homeCount=0;
         const char* toast=nullptr;
+        float transition=0;
         Viewport viewport() const { return {width,height}; }
-    } model_{};
+    } nav_{};
+    ListController list_;
+    std::array<ListRow,AppListCount> rows_{};
+    // Who owns the current drag, fixed when it starts: the clock's pull up,
+    // the list's pull back home from its top, or the list's own scrolling.
     enum class Drag { None,Watch,List,Return } drag_=Drag::None;
-    bool animating_=false;
-    bool listSettling_=false,stopTouch_=false;
-    float scrollTangent_=0;
-    float fromTransition_=0,toTransition_=0,fromScroll_=0,toScroll_=0;
-    float dragScroll_=0,dragTransition_=0;
-    TimeUs animationStart_=0,nextFrame_=INT64_MAX,toastUntil_=INT64_MAX;
+    bool transitionAnimating_=false;
+    float fromTransition_=0,toTransition_=0,dragTransition_=0;
+    TimeUs transitionStart_=0,transitionFrame_=INT64_MAX,toastUntil_=INT64_MAX;
     // Last time the manager was driven, so the boot shutdown callback can end
     // the measurement without the API handing it a clock.
     TimeUs now_=0;

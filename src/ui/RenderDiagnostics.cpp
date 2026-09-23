@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cstdio>
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
-#include "IconSet.h"
+#include "features/launcher/AppIcons.h"
 #include "Text.h"
 #include "VlwFont.h"
 #include "app/AppRegistry.h"
@@ -95,7 +95,7 @@ void recordRender(const ScreenModel& m,TimeUs start,TimeUs end,bool painted,uint
     if(!recording) return;
     if(!painted) { inputAt=-1; return; }
     const int mode=m.transition>0 && m.transition<1 ? ModeTransition
-        : m.dragging || m.animating ? ModeScroll
+        : m.list.dragging || m.list.animating ? ModeScroll
         : m.screen==ScreenId::Stopwatch && m.stopwatch.state==StopwatchState::Running ? ModeStopwatch
         : ModeSingle;
     drawTime[mode].add(end-start);
@@ -132,6 +132,11 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
         unsigned(uxTaskGetStackHighWaterMark(nullptr)),unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),
         unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
         unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
+    // Cumulative since boot. Text images live in PSRAM, one per display slot.
+    const auto& cache=renderer.listView().cacheStats();
+    std::printf("[RenderDiag] list_cache bytes=%u allocations=%u failures=%u fits=%u renders=%u\n",
+        unsigned(cache.bytes),unsigned(cache.allocations),unsigned(cache.failures),
+        unsigned(cache.fits),unsigned(cache.renders));
     for(auto& d:drawTime) d={};
     for(auto& d:interval) d={};
     for(auto& d:continuous) d={};
@@ -208,10 +213,9 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             // smaller unselected circle: pushGrayscaleImage paints the whole
             // rectangle, so an overhang would show as a square corner.
             {
-                // transition=1: row 0 sits at the centre with its full radius.
-                ScreenModel probe; probe.width=w; probe.height=h; probe.transition=1;
+                const Viewport probe{w,h};
                 const float iconScale=float(std::min(w,h))/468;
-                const int radius=layoutRow(listGeometry(probe),0).radius-selectionGrowth(probe.viewport());
+                const int radius=iconRadius(probe)-selectionGrowth(probe);
                 for(const auto& entry:AppRegistry) {
                     const auto* icon=appIcon(entry.icon); ++checks;
                     if(!icon) { ++failures; std::printf("[Verify] FAIL missing icon: %s\n",entry.name); continue; }
@@ -223,10 +227,7 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                     }
                 }
             }
-            auto check=[&](const char* name,ScreenModel m,WatchData d) {
-                composeHomeRegion(m);
-                renderer.draw(m,d); display.readRect(0,0,w,h,incremental);
-                renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,reference);
+            auto compare=[&](const char* name) {
                 ++checks;
                 if(std::memcmp(incremental,reference,bytes)!=0) {
                     ++failures; size_t count=0; int x0=w,y0=h,x1=0,y1=0;
@@ -237,13 +238,30 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
                     std::printf("[Verify] FAIL %s pixels=%u box=%d,%d-%d,%d\n",name,unsigned(count),x0,y0,x1,y1);
                 }
             };
+            auto check=[&](const char* name,ScreenModel m,WatchData d) {
+                composeHomeRegion(m);
+                renderer.draw(m,d); display.readRect(0,0,w,h,incremental);
+                renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,reference);
+                compare(name);
+            };
+            // The list's cached name images against the same names drawn as
+            // glyphs, both on a full repaint: the cache has to be invisible.
+            auto& view=renderer.listViewForTest();
+            auto direct=[&](const char* name,ScreenModel m,WatchData d) {
+                composeHomeRegion(m);
+                renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,incremental);
+                view.textImagesForTest(false);
+                renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,reference);
+                view.textImagesForTest(true);
+                compare(name);
+            };
             ScreenModel m; m.width=w; m.height=h; auto d=sampleData();
             renderer.invalidate();
             // Preserve the original 24 sweeps, expanded to all five rows.
             for(int variant=0;variant<24;++variant) {
                 m.transition=float(variant%21)/20;
                 for(int i=0;i<=17+variant*5;++i) {
-                    m.scroll=float((i*3)%(4*rowSpacing(m.viewport())+1)); m.selection=(i/11)%5;
+                    m.list.scroll=float((i*3)%(4*rowSpacing(m.viewport())+1)); m.list.selection=(i/11)%5;
                     composeHomeRegion(m);
                     renderer.draw(m,d);
                     if(i%8==0) vTaskDelay(1);
@@ -256,14 +274,14 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             }
             m.screen=ScreenId::AppList; m.transition=1;
             for(int i=0;i<5;++i) {
-                m.selection=i; m.scroll=i*rowSpacing(m.viewport());
+                m.list.selection=i; m.list.scroll=i*rowSpacing(m.viewport());
                 check("five-rows",m,d);
                 m.toast="準備中"; check("toast-on",m,d);
-                m.scroll+=8; check("toast-overlap",m,d);
+                m.list.scroll+=8; check("toast-overlap",m,d);
                 m.toast=nullptr; check("toast-off",m,d);
             }
             m.names[2]="非常に長い外部アプリ名と未収録文字😀";
-            m.scroll=2*rowSpacing(m.viewport()); check("long-japanese",m,d);
+            m.list.scroll=2*rowSpacing(m.viewport()); check("long-japanese",m,d);
             // Settings covers the list rather than sliding it away, so the rows
             // it hides have to be erased by the same differential plan.
             m.names[2]=nullptr; m.screen=ScreenId::Settings; m.settings=SettingsModel{};
@@ -308,14 +326,79 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             m.settings.view=SettingsView::DateTime; m.settings.cursor=0;
             m.settings.fields[0]=2099; check("settings-widest",m,d);
             m.screen=ScreenId::AppList; m.settings=SettingsModel{};
-            check("settings-left",m,d);
+            check("settings-left",m,d); direct("list-image-reentry",m,d);
             // A row that only changed colour still has to repaint, so the dim
             // flag has to reach the fingerprint.
-            m.scroll=2*rowSpacing(m.viewport()); m.selection=2;
+            m.list.scroll=2*rowSpacing(m.viewport()); m.list.selection=2;
             for(int i=2;i<5;++i) m.rowDimmed[i]=true;
             check("list-dimmed",m,d);
             m.names[2]=catalog.slots[0].name; m.rowDimmed[2]=false;
             check("list-named",m,d);
+            // The shared list's caches (docs/task9/plan-9-2.md 9-2e).
+            for(int i=0;i<5;++i) {
+                m.list.selection=i; m.list.scroll=i*rowSpacing(m.viewport());
+                direct("list-image",m,d);
+            }
+            direct("list-image-dimmed-named",m,d);
+            m.names[2]="非常に長い外部アプリ名と未収録文字😀"; direct("list-image-long",m,d);
+            m.names[2]=""; check("list-empty-name",m,d); direct("list-image-empty",m,d);
+            // New content under the same id, then the same name under two ids.
+            m.names[2]="外部アプリA"; check("list-content",m,d);
+            m.names[2]="外部アプリB"; check("list-content-change",m,d); direct("list-image-content",m,d);
+            m.names[2]=m.names[3]="同じ名前"; m.rowDimmed[3]=false;
+            check("list-same-name",m,d); direct("list-image-same-name",m,d);
+            m.names[3]=nullptr; m.rowDimmed[3]=true;
+            // Moving rows must not shorten or render their names again: one
+            // sweep to warm every slot, then a second that may not add any.
+            {
+                ScreenModel sweep=m; sweep.list.selection=2;
+                for(int pass=0;pass<2;++pass) {
+                    const auto before=view.cacheStats();
+                    for(int y=0;y<=4*rowSpacing(sweep.viewport());y+=6) {
+                        sweep.list.scroll=float(y); composeHomeRegion(sweep); renderer.draw(sweep,d);
+                        if(y%60==0) vTaskDelay(1);
+                    }
+                    const auto after=view.cacheStats();
+                    if(pass==1) {
+                        ++checks;
+                        if(after.fits!=before.fits || after.renders!=before.renders || after.allocations!=before.allocations) {
+                            ++failures;
+                            std::printf("[Verify] FAIL list cache rebuilt on scroll: fits+%u renders+%u allocations+%u\n",
+                                unsigned(after.fits-before.fits),unsigned(after.renders-before.renders),
+                                unsigned(after.allocations-before.allocations));
+                        }
+                    }
+                }
+                check("list-scroll-cached",sweep,d);
+            }
+            // Slots handed from row to row, and more visible rows than slots:
+            // three slots, over transitions that show from one row to six.
+            view.slotLimitForTest(3);
+            for(int step=1;step<=20;++step) {
+                m.transition=float(step)/20;
+                for(int y: {0,50,2*rowSpacing(m.viewport()),4*rowSpacing(m.viewport())}) {
+                    m.list.scroll=float(y); check("list-slot-reuse",m,d);
+                }
+                vTaskDelay(1);
+            }
+            view.slotLimitForTest(ListVisibleSlots); check("list-slot-restored",m,d);
+            // An image that cannot be allocated draws the name directly, and
+            // the same key is not allocated again on the next frame.
+            view.releaseCache(); view.failAllocationsForTest(true);
+            check("list-alloc-fail",m,d); direct("list-image-alloc-fail",m,d);
+            {
+                const auto failed=view.cacheStats().failures;
+                renderer.invalidate(); composeHomeRegion(m); renderer.draw(m,d);
+                renderer.invalidate(); renderer.draw(m,d);
+                ++checks;
+                if(!failed || view.cacheStats().failures!=failed) {
+                    ++failures;
+                    std::printf("[Verify] FAIL list image allocation retried: failures=%u then %u\n",
+                        unsigned(failed),unsigned(view.cacheStats().failures));
+                }
+            }
+            view.failAllocationsForTest(false); view.releaseCache();
+            check("list-alloc-recovered",m,d); direct("list-image-recovered",m,d);
             m.names[2]=nullptr;
             for(int i=0;i<5;++i) m.rowDimmed[i]=false;
             // The external screen: every state a slot can report, then the two
@@ -408,6 +491,11 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }
             std::printf("[Verify] lifecycle internal_free_before=%u after=%u\n",unsigned(before),
                 unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+            {
+                const auto& c=view.cacheStats();
+                std::printf("[Verify] list cache bytes=%u allocations=%u failures=%u fits=%u renders=%u\n",
+                    unsigned(c.bytes),unsigned(c.allocations),unsigned(c.failures),unsigned(c.fits),unsigned(c.renders));
+            }
             std::printf("[Verify] checks=%u mismatches=%u result=%s\n",checks,failures,failures ? "FAIL" : "PASS");
         }
     }

@@ -1,6 +1,7 @@
 #pragma once
 #include "ExternalLayout.h"
-#include "WatchFace.h"
+#include "Element.h"
+#include "ui/graphics/Gfx.h"
 namespace launcher {
 // The external app detail layer. Like the settings layer it registers nothing
 // at all while its screen is closed, so the frame budget is only spent when the

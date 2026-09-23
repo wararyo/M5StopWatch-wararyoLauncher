@@ -56,7 +56,7 @@ void openSettings(ScreenManager& s,TimeUs& now) {
     Events home{}; home.home=true; s.handle(home,now); now+=1000;
     Events e{}; e.next=true;
     s.handle(e,now); now+=200000; s.update(now);      // clock -> list
-    while (AppRegistry[s.model().selection].id!=AppId::Settings) { s.handle(e,now); now+=200000; s.update(now); }
+    while (AppRegistry[s.model().list.selection].id!=AppId::Settings) { s.handle(e,now); now+=200000; s.update(now); }
     Events decide{}; decide.decide=true;
     s.handle(decide,now); now+=1000;
     CHECK(s.model().screen==ScreenId::Settings);
@@ -109,10 +109,10 @@ void menuAndEditors() {
     screens.handle(press(true),now);
     CHECK(screens.model().settings.cursor==0);
     // The last row leaves back to the list, keeping its selection.
-    const int listRow=screens.model().selection;
+    const int listRow=screens.model().list.selection;
     for (int i=0;i<4;++i) screens.handle(press(true),now);
     screens.handle(press(false),now);
-    CHECK(screens.model().screen==ScreenId::AppList && screens.model().selection==listRow);
+    CHECK(screens.model().screen==ScreenId::AppList && screens.model().list.selection==listRow);
     openSettings(screens,now);
     // Row 0 opens the date editor, seeded with the current time.
     screens.handle(press(false),now);

@@ -1,10 +1,9 @@
 #pragma once
-#include <M5GFX.h>
 #include "features/home/HomeModel.h"
+#include "ui/graphics/Gfx.h"
 #include "ui/Viewport.h"
 #include "Element.h"
 namespace launcher {
-using Gfx=m5gfx::LovyanGFX;
 class WatchFace {
 public:
     virtual ~WatchFace()=default;

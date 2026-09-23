@@ -6,7 +6,6 @@
 #include "features/external/ExternalModel.h"
 #include "features/stopwatch/StopwatchModel.h"
 #include "ui/Viewport.h"
-#include "ui/ListLayout.h"
 #include <algorithm>
 namespace launcher {
 // Composed for one frame by the app. Feature layers receive only their own model.
@@ -26,10 +25,5 @@ inline void composeHomeRegion(ScreenModel& m) {
     const int offset=-int(m.transition*m.height);
     m.homeRegion={{m.width,m.height},offset,
                   {0,0,m.width,std::max(0,m.height+offset)}};
-}
-inline ListGeometry listGeometry(const ScreenModel& m) {
-    ListGeometry g; g.width=m.width; g.height=m.height;
-    g.transition=m.transition; g.scroll=m.scroll;
-    return g;
 }
 }

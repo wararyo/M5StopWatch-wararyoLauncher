@@ -1,5 +1,5 @@
 #pragma once
-#include "WatchFace.h"
+#include "ui/graphics/Gfx.h"
 namespace launcher {
 // Embedded VLW font subset (tools/build_font.py). A VLW holds one weight at one
 // size, so another face means another asset and another accessor here.

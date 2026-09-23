@@ -1,0 +1,13 @@
+PASS: buttons, touch, power, screens, runtime/registry, interrupts, overload/early-wake
+422: plan.full() && plan.anyPaint() && plan.dirtyBounds().empty()
+Traceback (most recent call last):
+  File "C:\Users\wararyo\.codex\worktrees\2d63\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 32, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\wararyo\.codex\worktrees\2d63\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 29, in main
+    subprocess.run([str(binary)], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['C:\\Users\\wararyo\\AppData\\Local\\Temp\\launcher-runtime-acbj5cqg\\ui_tests.exe']' returned non-zero exit status 1.

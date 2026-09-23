@@ -40,7 +40,7 @@ void openRow(ScreenManager& s,TimeUs& now,AppId id) {
     s.handle(home(),now); now+=1000;
     const Events next=press(true);
     s.handle(next,now); now+=200000; s.update(now);        // clock -> list
-    while (AppRegistry[s.model().selection].id!=id) { s.handle(next,now); now+=200000; s.update(now); }
+    while (AppRegistry[s.model().list.selection].id!=id) { s.handle(next,now); now+=200000; s.update(now); }
     s.handle(press(false),now); now+=1000;
 }
 
@@ -136,7 +136,7 @@ void unusableSlotsOpenTheScreenInstead() {
     s.handle(press(false),now); now+=1000;
     m=s.model();
     CHECK(m.screen==ScreenId::AppList);
-    CHECK(AppRegistry[m.selection].id==AppId::External1);
+    CHECK(AppRegistry[m.list.selection].id==AppId::External1);
     // Every row now opens something; nothing falls through to the notice.
     openRow(s,now,AppId::Stopwatch);
     CHECK(s.model().screen==ScreenId::Stopwatch);
@@ -315,7 +315,7 @@ void runtimeIssuesTheBootAfterPaintingTheCommitFrame() {
         hal.time+=200000; runtime.step();
     };
     pressA();                                   // clock -> list
-    while (AppRegistry[runtime.model().selection].id!=AppId::External1) pressA();
+    while (AppRegistry[runtime.model().list.selection].id!=AppId::External1) pressA();
     const int drawsBefore=render.draws;
     pressB();                                   // decide == launch
     // The committing frame reached the renderer, and only then the API ran.

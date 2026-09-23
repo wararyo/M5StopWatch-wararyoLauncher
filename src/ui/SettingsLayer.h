@@ -1,5 +1,6 @@
 #pragma once
-#include "WatchFace.h"
+#include "Element.h"
+#include "ui/graphics/Gfx.h"
 #include "SettingsLayout.h"
 namespace launcher {
 // The settings layer. It plans nothing at all on the clock and the app list, so

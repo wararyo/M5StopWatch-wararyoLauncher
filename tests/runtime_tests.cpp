@@ -1,6 +1,6 @@
 #include "app/AppRuntime.h"
 #include "app/AppRegistry.h"
-#include "ui/ListLayout.h"
+#include "ui/list/ListLayout.h"
 #include <cstdlib>
 #include <iostream>
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
@@ -126,7 +126,7 @@ void screens() {
     Events e{}; e.next = true;
     CHECK(s.handle(e,0) && s.model().screen==ScreenId::AppList);
     CHECK(s.active()); s.update(180000); CHECK(!s.active() && s.model().transition==1);
-    s.handle(e,200000); s.update(380000); CHECK(s.model().selection==1);
+    s.handle(e,200000); s.update(380000); CHECK(s.model().list.selection==1);
     e={}; e.decide=true; s.handle(e,400000);
     CHECK(s.model().screen==ScreenId::AppList && s.model().toast);
     s.update(1800000); CHECK(!s.model().toast);
@@ -135,7 +135,7 @@ void screens() {
     e.home=e.next=e.decide=true;
     s.handle(e,2000000); CHECK(s.model().screen==ScreenId::Home && !s.active() && s.model().homeCount==1);
     e={}; e.gesture=Gesture::Tap; e.x=234; e.y=390;
-    s.handle(e,2100000); CHECK(s.model().screen==ScreenId::AppList && s.model().selection==0);
+    s.handle(e,2100000); CHECK(s.model().screen==ScreenId::AppList && s.model().list.selection==0);
 }
 void runtime() {
     FakeHal h;

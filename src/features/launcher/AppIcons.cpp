@@ -1,4 +1,4 @@
-#include "IconSet.h"
+#include "AppIcons.h"
 #include <array>
 #include <cstdio>
 #include <cstring>

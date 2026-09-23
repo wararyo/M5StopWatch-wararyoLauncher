@@ -15,7 +15,17 @@ ScreenModel ScreenManager::model() const {
     m.external=external_.model();
     m.stopwatch=stopwatchScreen_.model();
     applySlots(slots_,m);
+    m.activity=activity();
     return m;
+}
+FrameActivity ScreenManager::activity() const {
+    if (nav_.transition>0 && nav_.transition<1) return FrameActivity::Transition;
+    if (active_==&settings_)
+        return settings_.active() ? FrameActivity::SettingsScroll : FrameActivity::SettingsSingle;
+    if (!active_ && list_.active()) return FrameActivity::LauncherScroll;
+    if (active_==&stopwatchScreen_ && stopwatchScreen_.model().state==StopwatchState::Running)
+        return FrameActivity::Stopwatch;
+    return FrameActivity::Single;
 }
 bool ScreenManager::open(AppScreen& screen,ScreenId id,TimeUs now) {
     if (!screen.available()) return false;
@@ -39,7 +49,9 @@ bool ScreenManager::update(TimeUs now) {
     // the clock, so a screen that updates on its own gets its frames here.
     if (active_ && now>=active_->nextUpdate()) changed=active_->tick(now) || changed;
     if (nav_.toast && now>=toastUntil_) { nav_.toast=nullptr; toastUntil_=INT64_MAX; changed=true; }
-    if (transitionAnimating_ && now>=transitionFrame_) {
+    // The launcher's motion is stopped whenever a screen opens (open()), so
+    // this only ever runs while the launcher is what is shown.
+    if (!active_ && transitionAnimating_ && now>=transitionFrame_) {
         const float t=std::clamp(float(now-transitionStart_)/float(ListController::AnimationUs),0.0f,1.0f);
         const float eased=1-(1-t)*(1-t)*(1-t);
         nav_.transition=fromTransition_+(toTransition_-fromTransition_)*eased;
@@ -47,12 +59,12 @@ bool ScreenManager::update(TimeUs now) {
         transitionFrame_=transitionAnimating_ ? now+ListController::FrameUs : INT64_MAX;
         changed=true;
     }
-    changed=list_.update(now) || changed;
+    if (!active_) changed=list_.update(now) || changed;
     return changed;
 }
 TimeUs ScreenManager::nextUpdate() const {
-    const TimeUs motion=std::min(transitionFrame_,list_.nextUpdate());
-    return std::min(std::min(motion,toastUntil_),active_ ? active_->nextUpdate() : INT64_MAX);
+    const TimeUs shown=active_ ? active_->nextUpdate() : std::min(transitionFrame_,list_.nextUpdate());
+    return std::min(shown,toastUntil_);
 }
 bool ScreenManager::handle(const Events& e,TimeUs now) {
     now_=now;

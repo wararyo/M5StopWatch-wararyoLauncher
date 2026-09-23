@@ -14,8 +14,10 @@ class FramePlan {
 public:
     // Current maximum: 5 watch elements + 8 list slots (ListVisibleSlots,
     // registered even while hidden so they erase) + toast + the open app
-    // screen (11 settings, 7 stopwatch, 6 external app detail) = 25. A closed
-    // screen registers nothing, so they never add up.
+    // screen (11 settings editor elements or the settings menu's 8 list
+    // slots, 7 stopwatch, 6 external app detail) = 25. A closed screen, and
+    // the half of settings that is not shown, registers nothing, so they
+    // never add up.
     // Extra room is for future faces; overflow is handled, never truncated.
     static constexpr int Capacity=32;
     void begin(bool full,int limit=Capacity) {

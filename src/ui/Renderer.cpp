@@ -28,7 +28,7 @@ bool Renderer::selectFace(const char* id,bool disableCache) {
 bool Renderer::begin(bool disableCache) {
     // The list keeps working on the built-in font if the embedded subset fails.
     if(const auto* embedded=vlwFont()) nameFont_=embedded;
-    appList_.begin(nameFont_); toast_.begin(nameFont_);
+    appList_.begin(nameFont_); settings_.begin(nameFont_); toast_.begin(nameFont_);
     registerFace(digital_);
     return display_.width()>0 && display_.height()>0 && selectFace("digital",disableCache);
 }

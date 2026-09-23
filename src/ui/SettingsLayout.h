@@ -1,9 +1,12 @@
 #pragma once
-#include "ui/list/ListLayout.h"
+#include "ui/Geometry.h"
+#include "ui/Scale.h"
+#include "ui/Viewport.h"
 #include "features/settings/SettingsModel.h"
 namespace launcher {
+// The editor and information views. The top menu is a shared list
+// (features/settings/SettingsMenu.h) and has no geometry here.
 struct SettingsGeometry : Viewport { SettingsView view=SettingsView::Menu; int cursor=0; };
-constexpr int SettingsMenuRows=5;
 inline int settingsFieldCount(SettingsView view) {
     return view==SettingsView::DateTime ? 5 :
         (view==SettingsView::Brightness || view==SettingsView::ScreenOff) ? 1 : 0;
@@ -14,21 +17,12 @@ inline int settingsButtonCount(SettingsView view) { return view==SettingsView::I
 // the view, so it sits between the fields and the buttons in the cursor order.
 // A view that has none keeps exactly the slots it had before.
 inline int settingsActionCount(SettingsView view) { return view==SettingsView::Info ? 1 : 0; }
+// The cursor stops of an editor or of information. The menu has none: its
+// selection belongs to its list controller.
 inline int settingsSlotCount(SettingsView view) {
-    return view==SettingsView::Menu ? SettingsMenuRows
+    return view==SettingsView::Menu ? 0
         : settingsFieldCount(view)+settingsActionCount(view)+settingsButtonCount(view);
 }
-// Five rows centred on the panel. They all fit, so the menu never scrolls and
-// the cursor is the only thing that moves; the arc placement is still the app
-// list's, so the two screens read as the same kind of list.
-// Until 9-3 moves the menu onto ListView, this is a thin shim over the shared
-// placement; the arc itself is computed only in ui/list/ListLayout.h.
-inline RowLayout settingsMenuRow(const SettingsGeometry& m,int index) {
-    return layoutListRow(fullListPlacement(m,float(2*rowSpacing(m))),index,false);
-}
-// Menu text starts where an app list row's circle would, so both line up:
-// the shared layout's rule for a row without an icon.
-inline int settingsMenuLabelX(const SettingsGeometry&,const RowLayout& row) { return row.labelX; }
 inline void settingsFieldCentre(const SettingsGeometry& m,int index,int& cx,int& cy) {
     if (m.view==SettingsView::DateTime) {
         constexpr int dx[]={-96,0,96,-54,54};
@@ -87,14 +81,10 @@ inline Rect settingsActionBox(const SettingsGeometry& m,int index) {
 }
 // Drawing and hit testing share these rectangles, so nothing outside a painted
 // target can be tapped.
-struct SettingsHit { enum Kind { None,MenuRow,Field,Up,Down,Action,Button } kind=None; int index=0; };
+struct SettingsHit { enum Kind { None,Field,Up,Down,Action,Button } kind=None; int index=0; };
 inline SettingsHit hitSettings(const SettingsGeometry& m,int x,int y) {
     const auto view=m.view;
-    if (view==SettingsView::Menu) {
-        for (int i=0;i<SettingsMenuRows;++i)
-            if (settingsMenuRow(m,i).box.contains(x,y)) return {SettingsHit::MenuRow,i};
-        return {};
-    }
+    if (view==SettingsView::Menu) return {};
     for (int i=0;i<settingsFieldCount(view);++i) {
         if (settingsArrowBox(m,i,true).contains(x,y)) return {SettingsHit::Up,i};
         if (settingsArrowBox(m,i,false).contains(x,y)) return {SettingsHit::Down,i};

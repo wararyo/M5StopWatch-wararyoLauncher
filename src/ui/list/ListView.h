@@ -34,6 +34,11 @@ public:
     void plan(FramePlan& frame,Gfx& g,const ListPlacement& placement,ListRows rows,
               const ListState& state,bool visible);
     void paint(Gfx& g,const FramePlan& frame);
+    // Forgets what every slot last painted, for an owner that stops planning
+    // this view for a while (another set of elements takes over its pixels)
+    // and repaints in full when it returns. Until the next plan() the view
+    // paints nothing. The caches stay: they are keyed by content.
+    void invalidate();
     // Frees every text image and forgets every shortened name. The next frame
     // rebuilds what it shows.
     void releaseCache();

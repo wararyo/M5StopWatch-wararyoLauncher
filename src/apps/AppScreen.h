@@ -28,6 +28,10 @@ public:
     // runtime's own display deadline is unset while an app screen covers the
     // clock (AppRuntime::step, `model.transition<1`).
     virtual bool tick(TimeUs now) { (void)now; return false; }
+    // True while the screen's own content is in motion under the user's hand
+    // or settling after it (a list drag or its inertia). The runtime keeps the
+    // display active for it; the hidden launcher's motion never counts here.
+    virtual bool active() const { return false; }
     // True while the screen is in a stretch that must not be interrupted, not
     // even by home. Only the boot commit of plan.md 8.2 uses it.
     virtual bool exclusive() const { return false; }

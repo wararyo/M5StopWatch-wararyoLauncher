@@ -36,10 +36,22 @@ struct Distribution {
             unsigned((p95==255 ? 255 : p95+1)*1000),unsigned(over));
     }
 };
-// A frame is classified by what the model was doing, so one window can mix
-// scenarios and still report each of them separately.
-enum Mode { ModeTransition, ModeScroll, ModeStopwatch, ModeSingle, ModeCount };
-constexpr int IntervalModes=ModeSingle; // Continuous by nature; single frames are not.
+// A frame is classified by the activity the app composed into its model, so
+// one window can mix scenarios and still report each of them separately.
+// `scroll` keeps its name for the launcher so earlier records stay comparable.
+enum Mode { ModeTransition, ModeScroll, ModeSettingsScroll, ModeStopwatch,
+            ModeSettingsSingle, ModeSingle, ModeCount };
+constexpr int IntervalModes=ModeSettingsSingle; // Continuous by nature; single frames are not.
+Mode modeOf(FrameActivity activity) {
+    switch(activity) {
+    case FrameActivity::Transition: return ModeTransition;
+    case FrameActivity::LauncherScroll: return ModeScroll;
+    case FrameActivity::SettingsScroll: return ModeSettingsScroll;
+    case FrameActivity::Stopwatch: return ModeStopwatch;
+    case FrameActivity::SettingsSingle: return ModeSettingsSingle;
+    default: return ModeSingle;
+    }
+}
 // An interval only describes a stretch where the operation keeps producing
 // frames. A longer gap is a pause - a stopped finger, a screen with nothing to
 // update - and goes to a counter instead of the continuous figures, so it is
@@ -94,10 +106,7 @@ void recordLoop() { ++loops; }
 void recordRender(const ScreenModel& m,TimeUs start,TimeUs end,bool painted,uint32_t) {
     if(!recording) return;
     if(!painted) { inputAt=-1; return; }
-    const int mode=m.transition>0 && m.transition<1 ? ModeTransition
-        : m.list.dragging || m.list.animating ? ModeScroll
-        : m.screen==ScreenId::Stopwatch && m.stopwatch.state==StopwatchState::Running ? ModeStopwatch
-        : ModeSingle;
+    const int mode=modeOf(m.activity);
     drawTime[mode].add(end-start);
     if(mode<IntervalModes && lastMode==mode && lastEnd) {
         const TimeUs gap=end-lastEnd;
@@ -113,8 +122,10 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
     if(!recording) return;
     if(!windowStart) { windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0; return; }
     if(now-windowStart<60000000) return;
-    const char* drawNames[]={"transition-draw","scroll-draw","stopwatch-draw","single-draw"};
-    const char* gapNames[]={"transition-interval","scroll-interval","stopwatch-interval"};
+    const char* drawNames[]={"transition-draw","scroll-draw","settings-scroll-draw","stopwatch-draw",
+                             "settings-single-draw","single-draw"};
+    const char* gapNames[]={"transition-interval","scroll-interval","settings-scroll-interval",
+                            "stopwatch-interval"};
     for(int i=0;i<ModeCount;++i) drawTime[i].print(drawNames[i]);
     for(int i=0;i<IntervalModes;++i) {
         interval[i].print(gapNames[i]);
@@ -132,11 +143,16 @@ void reportRenderDiagnostics(const Renderer& renderer,TimeUs now) {
         unsigned(uxTaskGetStackHighWaterMark(nullptr)),unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),
         unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
         unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
-    // Cumulative since boot. Text images live in PSRAM, one per display slot.
-    const auto& cache=renderer.listView().cacheStats();
-    std::printf("[RenderDiag] list_cache bytes=%u allocations=%u failures=%u fits=%u renders=%u\n",
-        unsigned(cache.bytes),unsigned(cache.allocations),unsigned(cache.failures),
-        unsigned(cache.fits),unsigned(cache.renders));
+    // Cumulative since boot. Text images live in PSRAM, one per display slot
+    // of each list; the two lists never share them.
+    auto printCache=[](const char* name,const ListView& view) {
+        const auto& cache=view.cacheStats();
+        std::printf("[RenderDiag] %s bytes=%u allocations=%u failures=%u fits=%u renders=%u\n",name,
+            unsigned(cache.bytes),unsigned(cache.allocations),unsigned(cache.failures),
+            unsigned(cache.fits),unsigned(cache.renders));
+    };
+    printCache("list_cache",renderer.listView());
+    printCache("settings_list_cache",renderer.settingsListView());
     for(auto& d:drawTime) d={};
     for(auto& d:interval) d={};
     for(auto& d:continuous) d={};
@@ -247,14 +263,16 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             // The list's cached name images against the same names drawn as
             // glyphs, both on a full repaint: the cache has to be invisible.
             auto& view=renderer.listViewForTest();
-            auto direct=[&](const char* name,ScreenModel m,WatchData d) {
+            auto& settingsLayer=renderer.settingsForTest();
+            auto directWith=[&](ListView& list,const char* name,ScreenModel m,WatchData d) {
                 composeHomeRegion(m);
                 renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,incremental);
-                view.textImagesForTest(false);
+                list.textImagesForTest(false);
                 renderer.invalidate(); renderer.draw(m,d); display.readRect(0,0,w,h,reference);
-                view.textImagesForTest(true);
+                list.textImagesForTest(true);
                 compare(name);
             };
+            auto direct=[&](const char* name,ScreenModel m,WatchData d) { directWith(view,name,m,d); };
             ScreenModel m; m.width=w; m.height=h; auto d=sampleData();
             renderer.invalidate();
             // Preserve the original 24 sweeps, expanded to all five rows.
@@ -289,9 +307,46 @@ void runRepaintCheck(Renderer& renderer,M5GFX& display,const SlotCatalog& catalo
             m.settings.savedScreenOffSec=Settings{}.screenOffSec;
             m.settings.lines[0]="wararyoLauncher";
             m.settings.lines[1]="0.0.0-verify"; m.settings.lines[2]="5.5.0";
-            for(int row=0;row<SettingsMenuRows;++row) {
-                m.settings.cursor=row; check("settings-menu",m,d);
+            // The menu is the shared list without icons (docs/task9/plan-9-3.md):
+            // every row selected where A leaves it, then scroll positions
+            // between rows, as a drag or the inertia leaves them.
+            const int spacing=rowSpacing(m.viewport());
+            for(int row=0;row<SettingsMenuCount;++row) {
+                m.settings.menu.selection=row; m.settings.menu.scroll=float(row*spacing);
+                check("settings-menu",m,d);
+                directWith(settingsLayer.menuViewForTest(),"settings-menu-image",m,d);
             }
+            m.settings.menu.selection=2;
+            for(int y=0;y<=(SettingsMenuCount-1)*spacing;y+=29) {
+                m.settings.menu.scroll=float(y); check("settings-menu-scroll",m,d);
+                if(y%87==0) vTaskDelay(1);
+            }
+            // Its notice, a name that has to be shortened, and an empty one.
+            m.settings.menu.scroll=float(2*spacing);
+            m.toast="保存しました"; check("settings-menu-toast-on",m,d);
+            m.settings.menu.scroll+=8; check("settings-menu-toast-overlap",m,d);
+            m.toast=nullptr; check("settings-menu-toast-off",m,d);
+            m.settings.menu.selection=0; m.settings.menu.scroll=0;
+            settingsLayer.menuLabelForTest("非常に長い設定項目の名前と未収録文字😀を含む行");
+            check("settings-menu-long",m,d);
+            directWith(settingsLayer.menuViewForTest(),"settings-menu-image-long",m,d);
+            settingsLayer.menuLabelForTest(""); check("settings-menu-empty",m,d);
+            settingsLayer.menuLabelForTest(nullptr); check("settings-menu-restored",m,d);
+            // Menu to an editor and back from a position between rows: the
+            // switch keeps the screen id, so only the layer's own full repaint
+            // stands between these frames and the other half's leftovers.
+            m.settings.menu.selection=3; m.settings.menu.scroll=float(3*spacing-37);
+            check("settings-menu-mid",m,d);
+            for(const auto view:{SettingsView::Brightness,SettingsView::Info}) {
+                m.settings.view=view; m.settings.cursor=0; m.settings.fields[0]=90;
+                check("settings-menu-to-view",m,d);
+                m.settings.view=SettingsView::Menu; check("settings-view-to-menu",m,d);
+            }
+            // Leaving from there and entering again, at the top as a new
+            // visit starts, and once more where the last one was.
+            m.screen=ScreenId::AppList; check("settings-menu-left",m,d);
+            m.screen=ScreenId::Settings; check("settings-menu-return",m,d);
+            m.settings.menu=ListState{}; m.settings.menu.selection=0; check("settings-menu-reentry",m,d);
             for(const auto view:{SettingsView::DateTime,SettingsView::Brightness,
                                  SettingsView::ScreenOff,SettingsView::Info}) {
                 m.settings.view=view; m.settings.editing=false;

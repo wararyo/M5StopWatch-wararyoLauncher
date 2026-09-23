@@ -103,6 +103,10 @@ bool ListView::prepareImage(Gfx& g,TextImage& im,const char* text,uint16_t color
     im.ready=true;
     return true;
 }
+void ListView::invalidate() {
+    for (auto& slot:slots_) { slot.element=Element{}; slot.handle=-1; slot.index=-1; }
+    first_=0; last_=-1; direct_=wasDirect_=false;
+}
 void ListView::releaseCache() {
     for (auto& slot:slots_) {
         // Field by field: the sprite owns its buffer and is not assignable.

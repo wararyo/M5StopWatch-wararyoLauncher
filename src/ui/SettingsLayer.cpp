@@ -6,7 +6,6 @@
 namespace launcher {
 namespace {
 constexpr uint16_t White=0xf7be,Muted=0xad75,Lime=0xb7e0,Panel=0x2104,Ink=0x0000;
-constexpr const char* MenuNames[]={"日時","輝度","消灯時間","情報","戻る"};
 constexpr const char* Titles[]={"","日時","輝度","消灯時間","情報"};
 // Information's one action. Taking it cannot be undone before a restart, so
 // the label says what it does rather than naming a state to toggle.
@@ -20,19 +19,6 @@ void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
         item=Item{}; item.kind=kind; item.box=box; item.index=index; item.selected=selected;
         return item;
     };
-    if (s.view==SettingsView::Menu) {
-        for (int i=0;i<SettingsMenuRows;++i) {
-            const auto row=settingsMenuRow(m,i);
-            Item& item=add(MenuRow,row.box,i,i==s.cursor);
-            item.labelX=settingsMenuLabelX(m,row); item.centerY=row.centerY;
-            // The value lives on the row so the menu answers "what is it now?"
-            // without opening the editor.
-            if (i==1) std::snprintf(item.text,sizeof(item.text),"%s  %d",MenuNames[i],s.savedBrightness);
-            else if (i==2) std::snprintf(item.text,sizeof(item.text),"%s  %d秒",MenuNames[i],s.savedScreenOffSec);
-            else std::snprintf(item.text,sizeof(item.text),"%s",MenuNames[i]);
-        }
-        return;
-    }
     Item& title=add(Title,settingsTitleBox(m),0,false);
     std::snprintf(title.text,sizeof(title.text),"%s",Titles[int(s.view)]);
     const int fields=settingsFieldCount(s.view);
@@ -69,11 +55,28 @@ void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
 }
 void SettingsLayer::plan(FramePlan& frame,Gfx& g,Viewport viewport,const SettingsModel& s,
                          bool visible,bool stats,const lgfx::IFont* font) {
-    (void)g; (void)font;
+    (void)font;
     count_=0;
-    // Closed: register nothing. The screen change already forces a full repaint,
-    // so there is no leftover to erase and the frame keeps its capacity free.
-    if (!visible) return;
+    const Shown shown=!visible ? Shown::None : s.view==SettingsView::Menu ? Shown::Menu : Shown::Items;
+    if (shown!=shown_) {
+        // Another set of elements takes over these pixels, and neither the
+        // list's slots nor the items know what the other painted: repaint
+        // everything, and drop both histories so that nothing compares
+        // against a box from before the switch.
+        frame.forceFull();
+        menu_.invalidate();
+        for (auto& element:elements_) element=Element{};
+        shown_=shown;
+    }
+    // Closed: register nothing, so the frame keeps its capacity free. The
+    // closing frame is a full repaint (above, and the renderer's screen change).
+    if (shown==Shown::None) return;
+    if (shown==Shown::Menu) {
+        const ListRows rows=buildSettingsMenuRows(rows_,&s,&labels_);
+        if (labelForTest_) rows_[0].label=labelForTest_;
+        menu_.plan(frame,g,settingsMenuPlacement(viewport,s.menu.scroll),rows,s.menu,true);
+        return;
+    }
     build(viewport,s,stats);
     for (int i=0;i<Capacity;++i) {
         const bool used=i<count_;
@@ -85,14 +88,14 @@ void SettingsLayer::plan(FramePlan& frame,Gfx& g,Viewport viewport,const Setting
             hash=hashString(item.text,hashValue(uint32_t(item.kind),0x9e3779b9u));
             hash=hashValue(uint32_t(item.selected)|(uint32_t(item.editing)<<1)|
                            (uint32_t(item.done)<<2),hash);
-            hash=hashValue(uint32_t(item.centerY),hashValue(uint32_t(item.labelX),hash));
         }
         handles_[i]=frame.add(elements_[i],used ? items_[i].box : Rect{},hash);
     }
 }
 void SettingsLayer::paint(Gfx& g,const FramePlan& frame,Viewport viewport,const SettingsModel& s,
                           bool visible,const lgfx::IFont* font) {
-    if (!visible) return;
+    if (!visible || shown_==Shown::None) return;
+    if (shown_==Shown::Menu) { menu_.paint(g,frame); return; }
     SettingsGeometry m{{viewport.width,viewport.height},s.view,s.cursor};
     const float scale=float(std::min(m.width,m.height))/468;
     const int arrowW=offsetPx(m,22),arrowH=offsetPx(m,12);
@@ -105,10 +108,6 @@ void SettingsLayer::paint(Gfx& g,const FramePlan& frame,Viewport viewport,const 
         case Title:
             g.setTextDatum(middle_center); g.setTextColor(Muted,Ink);
             g.drawString(item.text,item.box.x+item.box.w/2,item.box.y+item.box.h/2);
-            break;
-        case MenuRow:
-            g.setTextDatum(middle_left); g.setTextColor(item.selected ? Lime : White,Ink);
-            g.drawString(item.text,item.labelX,item.centerY);
             break;
         case Field: {
             const uint16_t colour=item.selected ? Lime : White;

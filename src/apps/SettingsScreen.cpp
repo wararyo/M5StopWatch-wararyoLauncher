@@ -1,4 +1,5 @@
 #include "SettingsScreen.h"
+#include <cstdlib>
 namespace launcher {
 namespace {
 int wrap(int value,int low,int high,int delta,int step=1) {
@@ -18,11 +19,10 @@ int SettingsScreen::screenOffSec() const {
     return store_ ? store_->get().screenOffSec : Settings{}.screenOffSec;
 }
 void SettingsScreen::openView(SettingsView view) {
-    // Leaving an editor lands back on the row it was opened from, so saving and
-    // cancelling both return where the eye already is.
-    if (view!=SettingsView::Menu && model_.view==SettingsView::Menu) menuCursor_=model_.cursor;
+    // The menu's row and scroll are the list controller's and are not touched
+    // here, so saving and cancelling both return where the eye already is.
     model_.view=view;
-    model_.cursor=view==SettingsView::Menu ? menuCursor_ : 0;
+    model_.cursor=0;
     model_.editing=false;
     if (!available()) return;
     if (view==SettingsView::DateTime) {
@@ -91,20 +91,53 @@ const char* SettingsScreen::confirm() {
     openView(SettingsView::Menu);
     return "保存しました";
 }
-void SettingsScreen::activate(ScreenOutcome& out) {
-    if (model_.view!=SettingsView::Menu) { out.notice=confirm(); return; }
-    if (model_.cursor==SettingsMenuRows-1) { out.leave=true; return; }
-    openView(SettingsView(int(SettingsView::DateTime)+model_.cursor));
+void SettingsScreen::openItem(RowId id,ScreenOutcome& out) {
+    SettingsView view=SettingsView::Menu;
+    if (!settingsItemView(id,view)) { out.leave=true; return; }
+    // Whatever was still moving arrives now: the editor covers the menu, and
+    // the menu comes back on the same row at the same scroll, with no deadline
+    // running behind the editor.
+    menu_.finish();
+    openView(view);
 }
-ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs) {
+// The same order as the launcher's list (ScreenManager::handle), without its
+// pull back to the clock: at the top a downward drag only scrolls back.
+ScreenOutcome SettingsScreen::handleMenu(const Events& e,TimeUs now) {
+    ScreenOutcome out{};
+    if (e.gesture==Gesture::TouchStart) { out.changed=menu_.touchStart(); return out; }
+    if ((e.gesture==Gesture::Tap || e.gesture==Gesture::DragEnd) && menu_.releaseAfterStop(now)) {
+        out.changed=true; return out;
+    }
+    if (e.gesture==Gesture::Cancel) { menu_.cancel(now); out.changed=true; return out; }
+    if (e.gesture==Gesture::DragStart) {
+        if (std::abs(e.totalX)>std::abs(e.totalY)) return out;
+        menu_.dragStart();
+    }
+    if (e.gesture==Gesture::DragStart || e.gesture==Gesture::DragMove) {
+        out.changed=menu_.dragMove(float(e.totalY)); return out;
+    }
+    if (e.gesture==Gesture::DragEnd) {
+        if (menu_.state().dragging) { menu_.dragEnd(-e.velocityY,now); out.changed=true; }
+        return out;
+    }
+    if (e.next) { out.changed=menu_.next(now); return out; }
+    ListDecision decision;
+    if (e.gesture==Gesture::Tap)
+        decision=menu_.tap(settingsMenuPlacement({width_,height_},menu_.scroll()),e.x,e.y,now);
+    else if (e.decide) decision=menu_.decide(now);
+    if (!decision.changed) return out;
+    out.changed=true;
+    if (decision.decided) openItem(decision.id,out);
+    return out;
+}
+ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs now) {
     ScreenOutcome out{};
     if (!available()) return out;
+    if (model_.view==SettingsView::Menu) return handleMenu(e,now);
     const int fields=settingsFieldCount(model_.view);
     if (e.gesture==Gesture::Tap) {
         const auto hit=hitSettings({{width_,height_},model_.view,model_.cursor},e.x,e.y);
         switch (hit.kind) {
-        case SettingsHit::MenuRow:
-            model_.cursor=hit.index; out.changed=true; activate(out); break;
         case SettingsHit::Field:
             model_.cursor=hit.index; model_.editing=false; out.changed=true; break;
         case SettingsHit::Up:
@@ -113,10 +146,10 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs) {
             step(hit.kind==SettingsHit::Up ? 1 : -1); out.changed=true; break;
         case SettingsHit::Action:
             model_.cursor=fields+hit.index; model_.editing=false;
-            out.changed=true; activate(out); break;
+            out.changed=true; out.notice=confirm(); break;
         case SettingsHit::Button:
             model_.cursor=fields+settingsActionCount(model_.view)+hit.index; model_.editing=false;
-            out.changed=true; activate(out); break;
+            out.changed=true; out.notice=confirm(); break;
         case SettingsHit::None: break;
         }
         return out;
@@ -128,8 +161,8 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs) {
     }
     if (e.decide) {
         // B enters a field, then confirms it. On a button it acts straight away.
-        if (model_.view!=SettingsView::Menu && model_.cursor<fields) model_.editing=!model_.editing;
-        else { model_.editing=false; activate(out); }
+        if (model_.cursor<fields) model_.editing=!model_.editing;
+        else { model_.editing=false; out.notice=confirm(); }
         out.changed=true;
     }
     return out;

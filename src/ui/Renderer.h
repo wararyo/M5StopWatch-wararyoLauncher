@@ -20,6 +20,7 @@ public:
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return face_ ? face_->nextUpdate(now,data) : INT64_MAX; }
     const lgfx::IFont* listFont() const { return nameFont_; }
     const ListView& listView() const { return appList_.view(); }
+    const ListView& settingsListView() const { return settings_.menuView(); }
     uint32_t layouts() const { return layouts_; }
     uint32_t paints() const { return paints_; }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
@@ -28,6 +29,7 @@ public:
     // pixel comparison turns it off and checks the settings row instead.
     void suppressStatsForTest(bool suppress) { statsSuppressed_=suppress; invalidate(); }
     ListView& listViewForTest() { return appList_.view(); }
+    SettingsLayer& settingsForTest() { return settings_; }
 #endif
 private:
     M5GFX& display_;

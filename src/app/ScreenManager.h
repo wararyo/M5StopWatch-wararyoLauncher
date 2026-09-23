@@ -54,12 +54,17 @@ public:
     EffectiveSettings effectiveSettings() const {
         return {settings_.brightness(),settings_.screenOffSec()};
     }
+    // Deadline and activity belong to whatever is on screen: an open screen
+    // answers for itself, and the launcher only while it is showing, so a
+    // hidden list's motion never keeps settings awake or drawing.
     TimeUs nextUpdate() const;
-    bool active() const { return drag_!=Drag::None || transitionAnimating_ || list_.active(); }
+    bool active() const { return active_ ? active_->active() : launcherActive(); }
 private:
     // Home to list and back. The list's own scrolling is ListController's.
     void animateTransition(float transition,TimeUs now);
     void stopTransition() { transitionAnimating_=false; transitionFrame_=INT64_MAX; }
+    bool launcherActive() const { return drag_!=Drag::None || transitionAnimating_ || list_.active(); }
+    FrameActivity activity() const;
     bool open(AppScreen& screen,ScreenId id,TimeUs now);
     SettingsScreen settings_;
     RuntimeSettings runtimeSettings_{};

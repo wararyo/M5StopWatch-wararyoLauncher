@@ -1,0 +1,198 @@
+[UsbDiag] history now=1854s n=32
+
+[UsbDiag] t=682s sof=0 vbus=1
+
+[UsbDiag] t=683s sof=1 vbus=1
+
+[UsbDiag] t=798s sof=0 vbus=1
+
+[UsbDiag] t=799s sof=1 vbus=1
+
+[UsbDiag] t=818s sof=0 vbus=1
+
+[UsbDiag] t=819s sof=1 vbus=1
+
+[UsbDiag] t=837s sof=0 vbus=1
+
+[UsbDiag] t=838s sof=1 vbus=1
+
+[UsbDiag] t=855s sof=0 vbus=1
+
+[UsbDiag] t=856s sof=1 vbus=1
+
+[UsbDiag] t=1103s sof=0 vbus=1
+
+[UsbDiag] t=1104s sof=1 vbus=1
+
+[UsbDiag] t=1122s sof=0 vbus=1
+
+[UsbDiag] t=1123s sof=1 vbus=1
+
+[UsbDiag] t=1161s sof=0 vbus=1
+
+[UsbDiag] t=1162s sof=1 vbus=1
+
+[UsbDiag] t=1180s sof=0 vbus=1
+
+[UsbDiag] t=1181s sof=1 vbus=1
+
+[UsbDiag] t=1199s sof=0 vbus=1
+
+[UsbDiag] t=1200s sof=1 vbus=1
+
+[UsbDiag] t=1218s sof=0 vbus=1
+
+[UsbDiag] t=1219s sof=1 vbus=1
+
+[UsbDiag] t=1409s sof=0 vbus=1
+
+[UsbDiag] t=1410s sof=1 vbus=1
+
+[UsbDiag] t=1429s sof=0 vbus=1
+
+[UsbDiag] t=1430s sof=1 vbus=1
+
+[UsbDiag] t=1504s sof=0 vbus=1
+
+[UsbDiag] t=1505s sof=1 vbus=1
+
+[UsbDiag] t=1773s sof=0 vbus=1
+
+[UsbDiag] t=1774s sof=1 vbus=1
+
+[UsbDiag] t=1851s sof=0 vbus=1
+
+[UsbDiag] t=1852s sof=1 vbus=1
+
+[RenderDiag] transition-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] scroll-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] single-draw n=125 avg=10173 max=13090 p95_upper=14000 us over33333=0
+
+[RenderDiag] transition-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] transition-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] transition-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+
+[RenderDiag] scroll-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] scroll-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] scroll-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+
+[RenderDiag] sampled-input-to-end n=125 avg=10815 max=15519 p95_upper=14000 us over33333=0
+
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] window_us=60095676 loops=2527 layouts=125 paints=125 stack_free=4900 internal_free=244615 internal_largest=192512 psram_free=7939200 psram_largest=7864320
+
+[RenderDiag] transition-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] scroll-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] single-draw n=126 avg=10157 max=13090 p95_upper=14000 us over33333=0
+
+[RenderDiag] transition-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] transition-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] transition-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+
+[RenderDiag] scroll-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] scroll-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] scroll-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+
+[RenderDiag] sampled-input-to-end n=126 avg=10802 max=15505 p95_upper=14000 us over33333=0
+
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+
+[RenderDiag] window_us=60014170 loops=2919 layouts=126 paints=126 stack_free=4900 internal_free=244615 internal_largest=192512 psram_free=7939200 psram_largest=7864320
+
+[UsbDiag] history now=1930s n=32
+
+[UsbDiag] t=798s sof=0 vbus=1
+
+[UsbDiag] t=799s sof=1 vbus=1
+
+[UsbDiag] t=818s sof=0 vbus=1
+
+[UsbDiag] t=819s sof=1 vbus=1
+
+[UsbDiag] t=837s sof=0 vbus=1
+
+[UsbDiag] t=838s sof=1 vbus=1
+
+[UsbDiag] t=855s sof=0 vbus=1
+
+[UsbDiag] t=856s sof=1 vbus=1
+
+[UsbDiag] t=1103s sof=0 vbus=1
+
+[UsbDiag] t=1104s sof=1 vbus=1
+
+[UsbDiag] t=1122s sof=0 vbus=1
+
+[UsbDiag] t=1123s sof=1 vbus=1
+
+[UsbDiag] t=1161s sof=0 vbus=1
+
+[UsbDiag] t=1162s sof=1 vbus=1
+
+[UsbDiag] t=1180s sof=0 vbus=1
+
+[UsbDiag] t=1181s sof=1 vbus=1
+
+[UsbDiag] t=1199s sof=0 vbus=1
+
+[UsbDiag] t=1200s sof=1 vbus=1
+
+[UsbDiag] t=1218s sof=0 vbus=1
+
+[UsbDiag] t=1219s sof=1 vbus=1
+
+[UsbDiag] t=1409s sof=0 vbus=1
+
+[UsbDiag] t=1410s sof=1 vbus=1
+
+[UsbDiag] t=1429s sof=0 vbus=1
+
+[UsbDiag] t=1430s sof=1 vbus=1
+
+[UsbDiag] t=1504s sof=0 vbus=1
+
+[UsbDiag] t=1505s sof=1 vbus=1
+
+[UsbDiag] t=1773s sof=0 vbus=1
+
+[UsbDiag] t=1774s sof=1 vbus=1
+
+[UsbDiag] t=1851s sof=0 vbus=1
+
+[UsbDiag] t=1852s sof=1 vbus=1
+
+[UsbDiag] t=1927s sof=0 vbus=1
+
+[UsbDiag] t=1928s sof=1 vbus=1
+
+
+[capture] 135s -> docs\task9\20260923-baseline-settings-active.log

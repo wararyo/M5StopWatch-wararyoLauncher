@@ -1,6 +1,6 @@
 # 作業9: UI設計の整理とリスト共通化
 
-作成日: 2026-09-23。状態: 9-3の実装・ホスト検証完了。実機確認は9-5で実施。
+作成日: 2026-09-23。状態: 9-4の実装・ホスト検証完了。実機確認は9-5で実施。
 基準確認の結果と残項目は[改修前の基準確認](baseline.md)を参照。
 
 [全体計画](../plan.md)の作業9の詳細を定義する。
@@ -35,34 +35,45 @@
 
 ## 3. 目標構成と依存関係
 
-名前は実装時に調整可能だが、以下の責務境界を守る。
+9-4で次の構成になった（[9-4の検証記録](9-4-validation.md)）。
 
 ```text
 src/
-  core/                    # TimeUsなど、入力や描画に依存しない共通型
-  app/                     # 初期化時の組み立て、Runtime、ScreenManager
+  core/                    # TimeUs（入力や描画に依存しない共通型）
+  app/                     # Application（構成）、AppRuntime、ScreenManager、AppScreen契約、
+                           # FrameModel・FrameComposer、AppRenderer、RenderDiagnostics（診断アダプター）
   features/
-    home/                  # HomeLayer、WatchFace契約・登録・寿命管理
+    home/                  # HomeLayer（文字盤の登録・選択・寿命・期限）、WatchFace契約、HomeModel
       faces/               # DigitalWatchFace
-    launcher/              # LauncherController、AppListLayer、行データ生成
-    stopwatch/             # Screen、Layer、Model、Layout
-    settings/              # Screen、Layer、Model、編集画面のLayout
+    launcher/              # LauncherController、AppListLayer・Layout・Model・Rows、AppIcons、icons/
+    stopwatch/             # Screen、Layer、Model、Layout、表示書式
+    settings/              # Screen、Layer、Model、Menu、編集画面のLayout
     external/              # Screen、Layer、Model、Layout
   ui/
-    list/                  # ListView、ListLayout、ListState、ListController
-    rendering/             # Renderer、FramePlan、Element、描画用の共通型
-    graphics/              # 共通文字描画、フォント、画像キャッシュ
+    list/                  # ListView、ListLayout、ListModel、ListController
+    rendering/             # Renderer（RenderLayer・FrameOverlay）、FramePlan・Element、Geometry・Viewport・Scale
+    graphics/              # Gfx、IconBitmap、fitText、VLWフォントとfonts/
     overlays/              # ToastLayer、StatsOverlay
-  services/                # 画面の寿命から独立した計測・時刻等
+  services/                # StopwatchService、TimeService、LauncherData等、画面の寿命から独立
   input/、hal/、storage/、power/、multifirm/
 ```
+
+| 所有者 | 責務 |
+|---|---|
+| Application | サービス（StopwatchService）・RuntimeSettings・終了処理・ScreenManager・AppRuntimeの寿命と参照の注入。終了処理をSlotServiceへ登録 |
+| AppRuntime | 入力・電源・期限・スロット結果・描画の実行時期。ScreenManagerを借りて駆動し、状態を所有しない |
+| ScreenManager | 現在画面、入退場、ホームの優先処理、起動先への振り分け、通知の寿命、FrameModelの合成、画面の要求（統計表示）の適用 |
+| LauncherController | ホーム↔一覧の遷移、ジェスチャーの所有者決定、ランチャー専用ListController。起動先を返すだけで画面を開かない |
+| HomeLayer | 文字盤の登録・選択・begin/end・キャッシュ・次回更新期限、切替時の全面再描画要求 |
+| AppRenderer | RenderPortを実装。フレームを各レイヤーの入力へ分配し、描画順・画面切替の全面再描画・統計チップ・計測の記録を決める |
+| Renderer | FramePlanの実行、全消去、順序付きpaint、転送前オーバーレイ、転送。具体的な画面・アプリID・診断を知らない |
 
 機能は共通UIを利用する。共通リスト・描画基盤は `AppRegistry`、具体的な画面、NVS、OTAに依存しない。
 描画と入力が使う配置計算は同じものを使い、配置の共有のために全体モデルを組み立て直す実装をなくす。
 フォント等の共有資産は初期化時に渡し、リストからアプリ固有の資産表を参照しない。
 
-`Renderer` はフレームの実行に集中する。機能レイヤーの所有と描画順の組み立ては `app/` の描画構成側が担当し、
-`Renderer` には順序付けた描画対象を渡す。固定容量・静的な組み立てを基本とし、毎フレームの動的確保は導入しない。
+`Renderer` はフレームの実行に集中する。機能レイヤーの所有と描画順の組み立ては `app/` の描画構成側（AppRenderer）が担当し、
+`Renderer` には順序付けた描画対象（`RenderLayer` の固定長配列）を渡す。固定容量・静的な組み立てを基本とし、毎フレームの動的確保は導入しない。
 
 ## 4. 共通リスト
 
@@ -113,7 +124,9 @@ src/
 機能別の表示モデルを各機能に置き、全体を束ねるフレームモデルは構成側だけで使う。
 各レイヤーは必要なモデルと表示領域・オフセット・クリップのみを受け取る。
 `WatchFace` に設定・外部アプリ・一覧の状態を渡さず、時刻・電池情報と描画条件に絞る。
-文字盤の登録・選択・キャッシュ寿命はホーム側へ移し、更新期限と確保失敗時の退避を維持する。
+契約は `begin(Gfx&, disableCache)`・`end()`・`plan(FramePlan&, Gfx&, const DrawRegion&, const WatchData&)`・`paint`・`nextUpdate(now, WatchData)`。
+文字盤の登録・選択・キャッシュ寿命はホーム側（HomeLayer）へ移し、更新期限と確保失敗時の退避を維持する。
+時計の描画領域と可視性はFrameComposerが遷移率と現在画面から一か所で導出し、描画とRuntimeの期限が同じ判断を使う。
 
 輝度・消灯時間は描画モデルから分離した実効設定としてRuntimeへ渡す。
 保存済み設定はSettingsStoreを正とし、輝度編集中だけプレビュー値を優先する。
@@ -162,10 +175,23 @@ StopwatchServiceはアプリ全体の寿命で所有して画面へ注入する�
       [実装計画](plan-9-3.md)。メニュー切替の消去、期限・活動状態・診断分類まで接続する。
       [検証記録](9-3-validation.md)を参照。ホスト6スイートと3構成のビルド・検査は合格。
       設定メニューの画素比較・見た目・スクロール性能/メモリは描画検証版と測定版に用意し、9-5で実機確認する。
-- [ ] **9-4: 構成と所有権の整理** — 機能別配置、LauncherController、ホーム側の文字盤管理、
+- [x] **9-4: 構成と所有権の整理** — 機能別配置、LauncherController、ホーム側の文字盤管理、
       アプリ側のサービス所有・終了処理、Rendererとレイヤー構成の分離を完了する。
+      [実装計画](plan-9-4.md)。全体モデルの継承を合成へ変え、機能非依存のRendererとアプリ側の構成を分ける。
+      [検証記録](9-4-validation.md)を参照。ホスト6スイートと3構成のビルド・検査は合格。ファイル移動は動作変更と分けて確認した。
+      実機確認は9-5で行う。
 - [ ] **9-5: 統合検証と記録** — 描画契約、性能、入力、電源、計測、外部起動の回帰を確認し、
       全体計画の責務表・ディレクトリ構成・WatchFace契約・設定操作の記述を実装へ合わせる。
+      9-1〜9-4で実機確認を送った項目を次に集約する。9-0と同じCPU/DFS設定・診断表示・USB条件で測り、過去の記録は上書きしない。
+      - [ ] 描画検証版の全チェックPASS（9-0の234件、9-2の `list-*`、9-3の `settings-menu-*`、9-4で経路が変わった文字盤切替・容量超過・復帰・各画面の退場と再入場を含む）。
+      - [ ] 一覧・設定メニューの文字画像と直接描画の画素一致、確保失敗時の直接描画と再確保しないこと。
+      - [ ] 目視: 一覧（長い名前・日本語・薄い表示・トースト・遷移中）、設定トップの新しい見た目（中央寄せのスクロール、アイコンなしの文字起点、長い値のラベル）、編集画面との往復・画面切替・外部詳細・ストップウォッチで消し残しがないこと、統計チップ。
+      - [ ] 性能: 一覧スクロール・遷移、`settings-scroll`（A整列・ドラッグ・慣性）、`settings-single`（編集画面の操作）の描画時間・実fps・フレーム間隔・入力遅延。9-0の設定単発選択10.157msとは操作の性質が変わった点を明記する。
+      - [ ] メモリ: 内部RAM/PSRAMの空き・最大連続領域、`list_cache`・`settings_list_cache` の確保量、`stack_free`（9-4で `Application` を静的領域へ移した差）。一覧↔各画面の往復・設定の再入場で減り続けないこと、文字盤切替前後の `lifecycle`。
+      - [ ] 電源・期限: 静止中の描画停止、設定スクロール中の消灯・復帰、スクロール中のA+Bホーム、「戻る」後の一覧の静止、輝度プレビューの取消／ホーム破棄と保存値の適用。
+      - [ ] 計測・外部起動: 計測中のホーム・画面切替・消灯での継続、起動中表示→起動確定の順序、起動確定時だけの計測停止、起動失敗後の復帰。
+      - [ ] 30fps超・定常33.3ms以内の達否を、構造改善の完了と分けて記録する。
+      - [ ] 全体計画（`docs/plan.md`）の責務表・ディレクトリ構成・WatchFace契約・設定操作の記述を実装へ合わせる。
 
 各段階でビルド可能な状態を保つ。ファイル移動時はCMake、埋め込み資産パス、ホストテストのソース一覧、
 診断コードとドキュメント参照も更新する。大規模な移動と挙動変更は可能な範囲で別の変更に分ける。

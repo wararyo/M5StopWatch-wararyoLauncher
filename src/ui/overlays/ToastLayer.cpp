@@ -1,13 +1,15 @@
 #include "ToastLayer.h"
-#include "ui/Scale.h"
-#include "ui/Text.h"
+#include "ui/rendering/Scale.h"
+#include "ui/graphics/Text.h"
 #include <cmath>
 #include <cstdlib>
 namespace launcher {
 namespace {
 constexpr uint16_t White=0xf7be,Panel=0x2104;
 }
-void ToastLayer::plan(FramePlan& frame,Gfx& g,Viewport m,const char* text) {
+void ToastLayer::plan(FramePlan& frame,Gfx& g) {
+    const Viewport& m=viewport_;
+    const char* text=text_;
     const uint32_t hash=text ? hashString(text) : 0;
     if ((text!=nullptr)!=shown_ || (text && hash!=shownHash_)) frame.forceFull();
     shown_=text!=nullptr; shownHash_=hash;
@@ -27,7 +29,8 @@ void ToastLayer::plan(FramePlan& frame,Gfx& g,Viewport m,const char* text) {
     handle_=frame.add(element_,box_,hash);
     g.setTextSize(1);
 }
-void ToastLayer::paint(Gfx& g,const FramePlan& frame,Viewport m) {
+void ToastLayer::paint(Gfx& g,const FramePlan& frame) {
+    const Viewport& m=viewport_;
     if (box_.empty() || !frame.shouldPaint(handle_)) return;
     const auto& b=box_;
     g.setClipRect(b.x,b.y,b.w,b.h);

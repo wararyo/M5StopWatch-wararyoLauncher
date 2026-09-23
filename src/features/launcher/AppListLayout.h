@@ -8,6 +8,13 @@ inline ListPlacement appListPlacement(Viewport v,float transition,float scroll) 
     const int offset=static_cast<int>((1-transition)*v.height);
     return {{v,offset,{0,offset,v.width,std::max(0,v.height-offset)}},scroll};
 }
+// The clock slides up as the list comes in: at `transition` 1 it has left the
+// panel. Its clip is the part still on screen, so it ends where the list's
+// incoming edge begins.
+inline DrawRegion launcherHomeRegion(Viewport v,float transition) {
+    const int offset=-static_cast<int>(transition*v.height);
+    return {v,offset,{0,0,v.width,std::max(0,v.height+offset)}};
+}
 // Tapping here on the clock opens the list.
 inline Rect appsTarget(const Viewport& m) {
     return {m.width/2-scaled(m,64),m.height*3/4,scaled(m,128),scaled(m,70)};

@@ -1,4 +1,5 @@
-#include "app/AppRuntime.h"
+#include "app/Application.h"
+#include "TestScreens.h"
 #include "app/AppRegistry.h"
 #include "features/settings/SettingsMenu.h"
 #include <array>
@@ -50,7 +51,7 @@ struct StubHal : Hal {
 struct StubRender : RenderPort {
     int draws=0;
     void invalidate() override {}
-    void draw(const ScreenModel&,const WatchData&) override { ++draws; }
+    void draw(const FrameModel&,const WatchData&) override { ++draws; }
     TimeUs nextUpdate(TimeUs,const WatchData&) const override { return INT64_MAX; }
 };
 Events tap(int x,int y) { Events e{}; e.gesture=Gesture::Tap; e.x=x; e.y=y; return e; }
@@ -61,7 +62,7 @@ void openSettings(ScreenManager& s,TimeUs& now) {
     Events home{}; home.home=true; s.handle(home,now); now+=1000;
     Events e{}; e.next=true;
     s.handle(e,now); now+=200000; s.update(now);      // clock -> list
-    while (AppRegistry[s.model().list.selection].id!=AppId::Settings) { s.handle(e,now); now+=200000; s.update(now); }
+    while (AppRegistry[s.model().launcher.list.selection].id!=AppId::Settings) { s.handle(e,now); now+=200000; s.update(now); }
     Events decide{}; decide.decide=true;
     s.handle(decide,now); now+=1000;
     CHECK(s.model().screen==ScreenId::Settings);
@@ -103,7 +104,7 @@ void storeRecord() {
 void menuAndEditors() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; TimeService time; time.begin(hal);
-    ScreenManager screens; screens.bind(&store,&time);
+    TestScreens screens; screens.bind(&store,&time);
     screens.setInfo("wararyoLauncher","0.1.0","5.5.0");
     TimeUs now=0;
     openSettings(screens,now);
@@ -114,10 +115,10 @@ void menuAndEditors() {
     screens.handle(press(true),now);
     CHECK(screens.model().settings.menu.selection==0);
     // The last row leaves back to the list, keeping its selection.
-    const int listRow=screens.model().list.selection;
+    const int listRow=screens.model().launcher.list.selection;
     for (int i=0;i<4;++i) screens.handle(press(true),now);
     screens.handle(press(false),now);
-    CHECK(screens.model().screen==ScreenId::AppList && screens.model().list.selection==listRow);
+    CHECK(screens.model().screen==ScreenId::AppList && screens.model().launcher.list.selection==listRow);
     openSettings(screens,now);
     // Row 0 opens the date editor, seeded with the current time.
     screens.handle(press(false),now);
@@ -134,7 +135,7 @@ void menuAndEditors() {
     screens.handle(press(true),now);
     CHECK(screens.model().settings.cursor==1); // Not editing: A moves on.
     // The year wraps at the end of the trusted window.
-    ScreenManager wrapper; wrapper.bind(&store,&time); TimeUs t2=0;
+    TestScreens wrapper; wrapper.bind(&store,&time); TimeUs t2=0;
     openSettings(wrapper,t2); wrapper.handle(press(false),t2);
     wrapper.handle(press(false),t2); // edit the year
     for (int i=0;i<TimeService::MaxYear-2026;++i) wrapper.handle(press(true),t2);
@@ -145,7 +146,7 @@ void menuAndEditors() {
 void saveAndCancel() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; TimeService time; time.begin(hal);
-    ScreenManager screens; screens.bind(&store,&time);
+    TestScreens screens; screens.bind(&store,&time);
     TimeUs now=0;
     openSettings(screens,now);
     // Brightness: the model previews immediately and reverts on cancel.
@@ -183,13 +184,13 @@ void saveAndCancel() {
 void dateSaving() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; TimeService time; time.begin(hal);
-    ScreenManager screens; screens.bind(&store,&time);
+    TestScreens screens; screens.bind(&store,&time);
     TimeUs now=0;
     openSettings(screens,now);
     screens.handle(press(false),now); // date editor, 2026-09-21 00:00 JST
     // Tap the day's up arrow ten times: 21 -> 31, an impossible September date.
     const auto frame=screens.model();
-    SettingsGeometry probe{{frame.width,frame.height},frame.settings.view,frame.settings.cursor};
+    SettingsGeometry probe{{frame.viewport.width,frame.viewport.height},frame.settings.view,frame.settings.cursor};
     const Rect up=settingsArrowBox(probe,2,true);
     for (int i=0;i<10;++i) screens.handle(tap(up.x+up.w/2,up.y+up.h/2),now);
     CHECK(screens.model().settings.fields[2]==31);
@@ -217,8 +218,8 @@ void runtimeApplies() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; StubRender render; TimeService time; time.begin(hal);
     DisplayDataSource data;
-    AppRuntime runtime(hal,render,data,468,468);
-    runtime.bindSettings(store,time);
+    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    application.bindSettings(store,time);
     runtime.begin(); runtime.step();
     CHECK(hal.brightness==90 && hal.brightnessCalls==1);
     // Unchanged settings do not keep re-applying.
@@ -239,7 +240,7 @@ void runtimeApplies() {
 void statisticsAction() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; TimeService time; time.begin(hal);
-    ScreenManager screens; screens.bind(&store,&time);
+    TestScreens screens; screens.bind(&store,&time);
     screens.setInfo("wararyoLauncher","0.1.0","5.5.0");
     TimeUs now=0;
     // Every other view keeps exactly the slots it had before actions existed.
@@ -275,7 +276,7 @@ void statisticsAction() {
     Events home{}; home.home=true; screens.handle(home,now);
     CHECK(screens.model().screen==ScreenId::Home && screens.model().stats);
     // A tap reaches the same action, and does not steal the button's box.
-    ScreenManager tapped; tapped.bind(&store,&time);
+    TestScreens tapped; tapped.bind(&store,&time);
     tapped.setInfo("wararyoLauncher","0.1.0","5.5.0");
     TimeUs t2=0;
     openSettings(tapped,t2);
@@ -283,7 +284,7 @@ void statisticsAction() {
     tapped.handle(press(false),t2);
     CHECK(tapped.model().settings.view==SettingsView::Info && !tapped.model().stats);
     const auto tappedFrame=tapped.model();
-    const SettingsGeometry infoGeometry{{tappedFrame.width,tappedFrame.height},
+    const SettingsGeometry infoGeometry{{tappedFrame.viewport.width,tappedFrame.viewport.height},
                                         tappedFrame.settings.view,tappedFrame.settings.cursor};
     const Rect action=settingsActionBox(infoGeometry,0);
     const Rect back=settingsButtonBox(infoGeometry,0);
@@ -293,6 +294,36 @@ void statisticsAction() {
     tapped.handle(tap(back.x+back.w/2,back.y+back.h/2),t2);
     CHECK(tapped.model().settings.view==SettingsView::Menu);
 }
+// The screen only asks for the statistics overlay: the setting is the
+// application's, applied by the manager, and it outlives the screen.
+void statisticsRequest() {
+    MemoryBackend backend; SettingsStore store; store.begin(backend);
+    StubHal hal; TimeService time; time.begin(hal);
+    SettingsScreen screen; screen.resize(468,468); screen.bind(&store,&time);
+    screen.enter(0);
+    for (int i=0;i<3;++i) screen.handle(press(true),0);   // menu row 3: 情報
+    screen.handle(press(false),0);
+    CHECK(screen.model().view==SettingsView::Info);
+    auto out=screen.handle(press(false),0);
+    CHECK(out.enableStats && out.changed && !out.leave && out.notice==nullptr);
+    // Asking again is harmless; the button only leaves and asks nothing.
+    CHECK(screen.handle(press(false),0).enableStats);
+    screen.handle(press(true),0);
+    out=screen.handle(press(false),0);
+    CHECK(!out.enableStats && screen.model().view==SettingsView::Menu);
+    // Through the manager the request lands in the application's setting,
+    // which the frame then reports, and it stays through home.
+    TestScreens screens; screens.bind(&store,&time);
+    TimeUs now=0;
+    openSettings(screens,now);
+    for (int i=0;i<3;++i) screens.handle(press(true),now);
+    screens.handle(press(false),now);
+    CHECK(!screens.runtime.stats);
+    CHECK(screens.handle(press(false),now));
+    CHECK(screens.runtime.stats && screens.model().stats);
+    Events home{}; home.home=true; screens.handle(home,now);
+    CHECK(screens.runtime.stats && screens.model().stats);
+}
 namespace {
 bool near(float a,float b) { return std::abs(a-b)<0.001f; }
 Events gesture(Gesture kind,int totalY=0,float velocityY=0) {
@@ -301,7 +332,7 @@ Events gesture(Gesture kind,int totalY=0,float velocityY=0) {
 // Where the menu draws row `index` this frame: input and drawing share it.
 RowLayout menuRow(const ScreenManager& s,int index) {
     const auto m=s.model();
-    return layoutListRow(settingsMenuPlacement(m.viewport(),m.settings.menu.scroll),index,false);
+    return layoutListRow(settingsMenuPlacement(m.viewport,m.settings.menu.scroll),index,false);
 }
 Events tapRow(const ScreenManager& s,int index) {
     const auto r=menuRow(s,index);
@@ -337,7 +368,7 @@ void menuRows() {
 void menuList() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; TimeService time; time.begin(hal);
-    ScreenManager screens; screens.bind(&store,&time);
+    TestScreens screens; screens.bind(&store,&time);
     screens.setInfo("wararyoLauncher","0.1.0","5.5.0");
     const float spacing=float(rowSpacing({468,468}));
     auto menu=[&] { return screens.model().settings.menu; };
@@ -468,18 +499,18 @@ void menuList() {
     // So does 戻る, decided while A is still scrolling to it; the launcher
     // is back on its settings row, where it was left.
     openSettings(screens,now);
-    const int launcherRow=screens.model().list.selection;
-    const float launcherScroll=screens.model().list.scroll;
+    const int launcherRow=screens.model().launcher.list.selection;
+    const float launcherScroll=screens.model().launcher.list.scroll;
     for (int i=0;i<4;++i) screens.handle(press(true),now);
     CHECK(screens.active());
     screens.handle(press(false),now);
     m=screens.model();
     CHECK(m.screen==ScreenId::AppList && !screens.active() && screens.nextUpdate()==INT64_MAX);
-    CHECK(m.list.selection==launcherRow && m.list.scroll==launcherScroll);
+    CHECK(m.launcher.list.selection==launcherRow && m.launcher.list.scroll==launcherScroll);
     CHECK(m.activity==FrameActivity::Single);
     // Only the launcher's pull down from the top of its own list goes home.
     Events a{}; a.next=true;
-    while (screens.model().list.selection!=0) { screens.handle(a,now); settle(now); }
+    while (screens.model().launcher.list.selection!=0) { screens.handle(a,now); settle(now); }
     screens.handle(gesture(Gesture::DragStart,40),now);
     screens.handle(gesture(Gesture::DragEnd,120,0),now+10000);
     CHECK(screens.model().screen==ScreenId::Home);
@@ -488,7 +519,7 @@ void menuList() {
 void menuLabels() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; TimeService time; time.begin(hal);
-    ScreenManager screens; screens.bind(&store,&time);
+    TestScreens screens; screens.bind(&store,&time);
     TimeUs now=0;
     auto label=[&](int row) {
         std::array<ListRow,SettingsMenuCount> rows{};
@@ -530,8 +561,8 @@ void runtimeMenuScroll() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; StubRender render; TimeService time; time.begin(hal);
     DisplayDataSource data;
-    AppRuntime runtime(hal,render,data,468,468);
-    runtime.bindSettings(store,time);
+    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    application.bindSettings(store,time);
     runtime.begin(); runtime.step();
     const float spacing=float(rowSpacing({468,468}));
     // A press and its release.
@@ -594,7 +625,7 @@ void runtimeMenuScroll() {
 }
 int main() {
     storeRecord(); menuAndEditors(); saveAndCancel(); dateSaving(); runtimeApplies();
-    statisticsAction(); menuRows(); menuList(); menuLabels(); runtimeMenuScroll();
+    statisticsAction(); statisticsRequest(); menuRows(); menuList(); menuLabels(); runtimeMenuScroll();
     std::cout << "PASS: settings record, menu/editors, save/cancel, date saving, "
-                 "runtime apply, statistics action, menu rows/list/labels, runtime menu scroll\n";
+                 "runtime apply, statistics action/request, menu rows/list/labels, runtime menu scroll\n";
 }

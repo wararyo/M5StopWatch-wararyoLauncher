@@ -1,7 +1,7 @@
 #pragma once
-#include "ui/Geometry.h"
-#include "ui/Scale.h"
-#include "ui/Viewport.h"
+#include "ui/rendering/Geometry.h"
+#include "ui/rendering/Scale.h"
+#include "ui/rendering/Viewport.h"
 #include <algorithm>
 #include <cmath>
 namespace launcher {

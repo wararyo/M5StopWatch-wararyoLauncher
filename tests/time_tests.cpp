@@ -1,4 +1,4 @@
-#include "app/AppRuntime.h"
+#include "app/Application.h"
 #include "services/LauncherData.h"
 #include "services/TimeService.h"
 #include <cstdlib>
@@ -34,7 +34,7 @@ struct StubHal : Hal {
 struct StubRender : RenderPort {
     int draws=0,invalidations=0;
     void invalidate() override { ++invalidations; }
-    void draw(const ScreenModel&,const WatchData&) override { ++draws; }
+    void draw(const FrameModel&,const WatchData&) override { ++draws; }
     TimeUs nextUpdate(TimeUs now,const WatchData& d) const override { return nextMinute(now,d); }
 };
 }
@@ -186,7 +186,7 @@ void displayData() {
 void runtimeIntegration() {
     StubHal hal; StubRender render; TimeService service; service.begin(hal);
     LauncherData data(hal,service);
-    AppRuntime runtime(hal,render,data,468,468);
+    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
     runtime.begin(); runtime.step();
     CHECK(render.draws==1 && hal.batteryReads==1);
     // No input for the sleep timeout: the panel goes dark before the battery

@@ -24,7 +24,7 @@ import struct
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "src/ui/fonts/GenShinGothicMedium28.vlw"
+OUTPUT = ROOT / "src/ui/graphics/fonts/GenShinGothicMedium28.vlw"
 HEADER = struct.Struct(">6I")
 GLYPH = struct.Struct(">4I2iI")
 

@@ -1,6 +1,7 @@
 #include "AppRuntime.h"
+#include "app/FrameComposer.h"
 #ifdef LAUNCHER_RENDER_METRICS
-#include "ui/RenderDiagnostics.h"
+#include "app/RenderDiagnostics.h"
 #endif
 namespace launcher {
 void AppRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal_.now(); renderer_.invalidate(); }
@@ -67,7 +68,9 @@ void AppRuntime::step() {
         power_.setTimeout(TimeUs(effective.screenOffSec) * 1000000);
         const auto watch = data_.sample(now);
         renderer_.draw(model, watch);
-        nextDisplay_ = model.transition < 1 ?
+        // The clock's own deadlines only while the composition shows it: an
+        // open screen or the raised list drives its frames by itself.
+        nextDisplay_ = clockVisible(model) ?
             std::min(renderer_.nextUpdate(now, watch), data_.nextUpdate(now)) : INT64_MAX;
         // A misbehaving display provider must not make an overdue busy loop.
         if (nextDisplay_ <= now) nextDisplay_ = now + 16000;
@@ -81,7 +84,7 @@ void AppRuntime::step() {
     // phase marks the frame dirty, so that draw happens in this same step.
     // Deliberately outside the draw branch: a screen that went off must not
     // strand the commit, because the screen itself takes no input until it ends.
-    if (screens_.commitPendingBoot(now)) dirty_ = true;
+    if (screens_.commitPendingBoot()) dirty_ = true;
 }
 void AppRuntime::wait() {
     const auto now = hal_.now();

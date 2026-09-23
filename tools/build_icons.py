@@ -10,7 +10,7 @@ circle (the far corner sits 31.1px from the centre); see docs/task3/rendering.md
 
 Needs no third party module: the PNG reader here handles the 8 bit
 non-interlaced files this repository stores. Run it when an icon changes; the
-build itself uses the committed `src/ui/icons/AppIcons.bin`.
+build itself uses the committed `src/features/launcher/icons/AppIcons.bin`.
 
 Usage: python tools/build_icons.py [--check]
 """
@@ -22,7 +22,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "icons"
-OUTPUT = ROOT / "src/ui/icons/AppIcons.bin"
+OUTPUT = ROOT / "src/features/launcher/icons/AppIcons.bin"
 MAGIC = b"LICN"
 VERSION = 1
 HEADER = struct.Struct("<4s4H")

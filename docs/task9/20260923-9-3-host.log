@@ -1,0 +1,51 @@
+﻿PASS: buttons, touch, power, screens, runtime/registry, interrupts, overload/early-wake
+PASS: navigation/geometry, shared list layout/controller, display deadlines, 3000 differential framebuffer cases with dirty bounds
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc_read=ok utc=1900-01-01 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2023-12-31 23:59:59 trusted=no
+[Time] rtc_read=ok utc=2100-01-01 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2026-02-30 00:00:00 trusted=no
+[Time] rtc_read=FAILED utc=0000-00-00 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc write failed; recovered=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc_read=ok utc=1900-01-01 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+PASS: calendar, jst boundary, startup, manual save, save failure, display data, runtime integration
+[Settings] no stored record; using defaults
+[Settings] brightness=120 screen_off=60s stored=ok
+[Settings] write failed; keeping brightness=120 screen_off=60s
+[Settings] schema 99 != 1; using defaults without rewriting
+[Settings] brightness 5 out of range
+[Settings] brightness=90 screen_off=15s stored=partial
+[Settings] record size 3 unusable; using defaults
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc write failed; recovered=yes
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Settings] write failed; keeping brightness=90 screen_off=30s
+[Settings] no stored record; using defaults
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+PASS: settings record, menu/editors, save/cancel, date saving, runtime apply, statistics action, menu rows/list/labels, runtime menu scroll
+multifirm tests passed
+stopwatch tests passed

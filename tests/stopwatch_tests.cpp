@@ -1,6 +1,7 @@
-#include "app/AppRuntime.h"
-#include "app/AppRegistry.h"
-#include "apps/StopwatchScreen.h"
+#include "host/HostApplication.h"
+#include "TestScreens.h"
+#include "host/LaunchRegistry.h"
+#include "features/stopwatch/StopwatchScreen.h"
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -26,9 +27,9 @@ struct StubHal : Hal {
 };
 struct StubRender : RenderPort {
     int draws=0;
-    ScreenModel last{};
+    FrameModel last{};
     void invalidate() override {}
-    void draw(const ScreenModel& m,const WatchData&) override { ++draws; last=m; }
+    void draw(const FrameModel& m,const WatchData&) override { ++draws; last=m; }
     TimeUs nextUpdate(TimeUs,const WatchData&) const override { return INT64_MAX; }
 };
 Events press(bool next) { Events e{}; e.next=next; e.decide=!next; return e; }
@@ -134,15 +135,15 @@ void touchHitsTheSameButtons() {
     screen.bind(&sw); screen.resize(468,468);
     TimeUs now=0;
     screen.enter(now);
-    ScreenModel m; m.width=468; m.height=468; m.screen=ScreenId::Stopwatch;
-    const auto left=stopwatchButtonBox(m,0),right=stopwatchButtonBox(m,1);
+    FrameModel m; m.viewport.width=468; m.viewport.height=468; m.screen=ScreenId::Stopwatch;
+    const auto left=stopwatchButtonBox(m.viewport,0),right=stopwatchButtonBox(m.viewport,1);
     screen.handle(tap(right.x+right.w/2,right.y+right.h/2),now);
     CHECK(sw.state()==StopwatchState::Running);
     now+=Second;
     screen.handle(tap(left.x+left.w/2,left.y+left.h/2),now);
     CHECK(sw.lapCount()==1);
     // A tap on the panel is not a button.
-    CHECK(!screen.handle(tap(m.width/2,stopwatchPanelBox(m).y+10),now).changed);
+    CHECK(!screen.handle(tap(m.viewport.width/2,stopwatchPanelBox(m.viewport).y+10),now).changed);
     CHECK(sw.lapCount()==1);
     CHECK(sw.state()==StopwatchState::Running);
 }
@@ -173,18 +174,18 @@ void framesOnlyWhileRunning() {
 }
 
 void homeKeepsMeasuringAndTheListOpensIt() {
-    ScreenManager s; TimeUs now=0;
+    TestScreens s; TimeUs now=0;
     s.handle(home(),now); now+=1000;
     s.handle(press(true),now); now+=200000; s.update(now);   // clock -> list
-    CHECK(AppRegistry[s.model().selection].id==AppId::Stopwatch);
+    CHECK(LaunchRegistry[s.model().launcher.list.selection].id==LaunchTargetId::Stopwatch);
     s.handle(press(false),now); now+=1000;
     CHECK(s.model().screen==ScreenId::Stopwatch);
     s.handle(press(false),now); now+=1000;
-    CHECK(s.stopwatch().state()==StopwatchState::Running);
+    CHECK(s.stopwatch.state()==StopwatchState::Running);
     // Home lands on the clock, and the measurement is not the screen to stop.
     CHECK(s.handle(home(),now));
     CHECK(s.model().screen==ScreenId::Home);
-    CHECK(s.stopwatch().state()==StopwatchState::Running);
+    CHECK(s.stopwatch.state()==StopwatchState::Running);
     // A static clock asks for no frames of its own.
     CHECK(s.nextUpdate()==INT64_MAX);
     now+=5*Second;
@@ -197,7 +198,7 @@ void homeKeepsMeasuringAndTheListOpensIt() {
 }
 
 void managerDrivesTheScreensOwnDeadline() {
-    ScreenManager s; TimeUs now=0;
+    TestScreens s; TimeUs now=0;
     s.handle(press(true),now); now+=200000; s.update(now);
     s.handle(press(false),now);                  // open
     s.handle(press(false),now);                  // start
@@ -219,7 +220,7 @@ void managerDrivesTheScreensOwnDeadline() {
 
 void runtimeStopsFramesWhileBlanked() {
     StubHal hal; StubRender render; DisplayDataSource data;
-    AppRuntime runtime(hal,render,data,468,468);
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
     runtime.begin();
     hal.time=1000; runtime.step();
     auto pressButton=[&](bool a) {

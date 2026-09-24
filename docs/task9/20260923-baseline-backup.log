@@ -1,0 +1,9 @@
+MultiFirm 0.1.0 / Python 3.11.7
+ログ: C:\Users\wararyo\.codex\worktrees\2d63\M5StopWatch-wararyoLauncher\.multifirm\logs\20260923-192210-backup.log
+リセット方針: 接続時は default_reset でダウンロードモードへ入り、各操作の間は no_reset でダウンロードモードのまま続ける。成功時だけ hard_reset でアプリへ戻す
+接続: COM11 ESP32-S3 (QFN56) (revision v0.2) MAC 28:84:85:43:a7:c0 flash 16MB esptool 4.12.0
+全体バックアップを読み取り中: 0x000000-0x1000000 (16,777,216 bytes)
+バックアップ: C:\Users\wararyo\.codex\worktrees\2d63\M5StopWatch-wararyoLauncher\.multifirm\backups\backup-28848543a7c0-20260923-192918.bin
+  SHA-256 a469dbf551c00c8793b7592fb2540054e31a391d46095cfc0e0115708e24e2e2、実機 MD5 と一致
+hard reset でアプリへ戻しました
+backup 完了

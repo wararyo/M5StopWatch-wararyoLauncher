@@ -12,14 +12,14 @@
 #include <sdkconfig.h>
 #include <cstdio>
 #include <cstring>
-#include "app/AppRuntime.h"
+#include "host/HostRenderer.h"
+#include "host/HostApplication.h"
 #include "hal/M5Hal.h"
 #include "multifirm/MultiFirmAdapter.h"
-#include "services/LauncherData.h"
+#include "features/home/HomeDataSource.h"
 #include "storage/NvsBackend.h"
-#include "ui/Renderer.h"
 #ifdef LAUNCHER_RENDER_METRICS
-#include "ui/RenderDiagnostics.h"
+#include "host/RenderDiagnostics.h"
 #endif
 #ifdef LAUNCHER_DRAIN_LOG
 #include "power/DrainLog.h"
@@ -97,7 +97,7 @@ extern "C" void app_main() {
     // Static: the data source below keeps a reference to it for the whole run.
     static launcher::M5Hal hal;
     // Keep framebuffer metadata / font cache objects off the 8KiB UI stack.
-    static launcher::Renderer renderer(M5.Display);
+    static launcher::HostRenderer renderer(M5.Display);
     if (!renderer.begin()) { std::printf("[Renderer] initialization failed\n"); return; }
     // Declared for both builds so the settings screen exists either way. The
     // diagnostics build never begins it, so it touches no RTC and reports the
@@ -115,7 +115,7 @@ extern "C" void app_main() {
     std::printf("[RenderDiag] synthetic JST time / battery / slots; no RTC or flash read\n");
 #else
     timeService.begin(hal);
-    static launcher::LauncherData data(hal, timeService);
+    static launcher::HomeDataSource data(hal, timeService);
     static launcher::MultiFirmAdapter slots;
     slots.begin();
 #endif
@@ -124,10 +124,13 @@ extern "C" void app_main() {
     static launcher::SettingsStore settingsStore;
     settingsStore.begin(nvs);
     hal.setBrightness(settingsStore.get().brightness);
-    launcher::AppRuntime runtime(hal, renderer, data, M5.Display.width(), M5.Display.height());
-    runtime.bindSettings(settingsStore, timeService);
-    runtime.bindSlots(slots);
-    runtime.setInfo(app->project_name, app->version, esp_get_idf_version());
+    // The application's services, screens and runtime, wired once. Static like
+    // the renderer, so it stays off the UI stack.
+    static launcher::HostApplication application(hal, renderer, data, M5.Display.width(), M5.Display.height());
+    application.bindSettings(settingsStore, timeService);
+    application.bindSlots(slots);
+    application.setInfo(app->project_name, app->version, esp_get_idf_version());
+    auto& runtime = application.runtime();
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     hal.beginInputWake();

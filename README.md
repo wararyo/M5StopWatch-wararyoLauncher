@@ -26,6 +26,7 @@ UserDemo に代わる、より軽く電池の持つホストを自作するこ�
 | `src/`、ルートの `platformio.ini` | MultiFirmホスト用の製品構成。Runtime・共通入力・消灯復帰、時計と5項目一覧、設定、MultiFirm連携 |
 | `tools/`、`tests/` | 製品用書き込み保護、ビルド検証、PC上のテスト |
 | `docs/plan.md` | 測定結果と合意事項を統合した製品版設計書・実装計画 |
+| [docs/architecture.md](docs/architecture.md) | 現行の全体構成、機能の追加方法、差分描画、期限管理と省電力の仕組み |
 | `docs/measurements.md` | 実機測定の結果と、踏んだ罠の記録 |
 
 本体は作業3の時計・一覧・差分描画まで実装し、2026-09-20にユーザーによる実機確認を完了しました。性能基準の達成判定は、操作区間を分けた再測定を作業7で行います。作業2は2026-09-20に修正版の実機確認を完了しました。[設計書・実装計画](docs/plan.md) に、初版の範囲、責務分離、
@@ -100,13 +101,13 @@ UIは M5StopWatch-UserDemo のストップウォッチに合わせ、左右2つ�
 [作業7の詳細計画](docs/task7/plan.md)と[検証記録](docs/task7/task7-validation.md)を参照してください。
 
 一覧のアイコンは `icons/*.png`（44×44のグレースケールマスク）から
-`python tools/build_icons.py` で `src/ui/icons/AppIcons.bin` を作り、円の上に重ねて描きます。
+`python tools/build_icons.py` で `src/features/launcher/icons/AppIcons.bin` を作り、円の上に重ねて描きます。
 アイコンを差し替えたときだけ実行し直します。
 
 日本語表示にはGenShinGothic 28pxの部分集合を埋め込みます。TrueTypeフォントはリポジトリに含めないため、
 フォントや文字集合を変えたときは `pip install freetype-py` のうえ
 `python tools/build_font.py --source <GenShinGothic-Medium.ttf>` で
-`src/ui/fonts/GenShinGothicMedium28.vlw` を作り直します。
+`src/ui/graphics/fonts/GenShinGothicMedium28.vlw` を作り直します。
 
 試作のビルドと書き込み手順、測定モードの使い方は
 [measurement/README.md](measurement/README.md) にあります。

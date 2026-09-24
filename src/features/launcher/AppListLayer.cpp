@@ -1,0 +1,9 @@
+#include "AppListLayer.h"
+#include "AppIcons.h"
+#include "AppListLayout.h"
+namespace launcher {
+void AppListLayer::plan(FramePlan& frame,Gfx& g) {
+    const ListRows rows=buildAppListRows(model_,rows_,appIcon);
+    view_.plan(frame,g,appListPlacement(viewport_,model_.transition,model_.list.scroll),rows,model_.list,visible_);
+}
+}

@@ -1,0 +1,48 @@
+PASS: buttons, touch, power, screens, runtime/registry, interrupts, overload/early-wake
+PASS: navigation/geometry, display deadlines, 3000 differential framebuffer cases with dirty bounds
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc_read=ok utc=1900-01-01 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2023-12-31 23:59:59 trusted=no
+[Time] rtc_read=ok utc=2100-01-01 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2026-02-30 00:00:00 trusted=no
+[Time] rtc_read=FAILED utc=0000-00-00 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc write failed; recovered=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=yes
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc read-back mismatch; recovered=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+[Time] rtc_read=ok utc=1900-01-01 00:00:00 trusted=no
+[Time] rtc_read=ok utc=2026-09-20 15:00:00 trusted=yes
+PASS: calendar, jst boundary, startup, manual save, save failure, display data, runtime integration
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\settings_tests.cpp: In function 'void statisticsAction()':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\settings_tests.cpp:277:53: error: invalid initialization of reference of type 'const launcher::SettingsGeometry&' from expression of type 'launcher::ScreenModel'
+  277 |     const Rect action=settingsActionBox(tapped.model(),0);
+      |                                         ~~~~~~~~~~~~^~
+In file included from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/apps/SettingsScreen.h:5,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/ScreenManager.h:4,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:3,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\settings_tests.cpp:1:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/SettingsLayout.h:86:55: note: in passing argument 1 of 'launcher::Rect launcher::settingsActionBox(const SettingsGeometry&, int)'
+   86 | inline Rect settingsActionBox(const SettingsGeometry& m,int index) {
+      |                               ~~~~~~~~~~~~~~~~~~~~~~~~^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\settings_tests.cpp:278:51: error: invalid initialization of reference of type 'const launcher::SettingsGeometry&' from expression of type 'launcher::ScreenModel'
+  278 |     const Rect back=settingsButtonBox(tapped.model(),0);
+      |                                       ~~~~~~~~~~~~^~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/ui/SettingsLayout.h:69:55: note: in passing argument 1 of 'launcher::Rect launcher::settingsButtonBox(const SettingsGeometry&, int)'
+   69 | inline Rect settingsButtonBox(const SettingsGeometry& m,int index) {
+      |                               ~~~~~~~~~~~~~~~~~~~~~~~~^
+Traceback (most recent call last):
+  File "C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 31, in <module>
+    main()
+  File "C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 24, in main
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
+  File "C:\Users\wararyo\.platformio\python3\Lib\subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['C:\\msys64\\ucrt64\\bin\\g++.EXE', '-std=c++17', '-Wall', '-Wextra', '-Werror', '-finput-charset=UTF-8', '-fexec-charset=UTF-8', '-I', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\tests\\settings_tests.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\input\\InputController.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\app\\ScreenManager.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\app\\AppRuntime.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\ui\\Element.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\TimeService.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\LauncherData.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\storage\\SettingsStore.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\SettingsScreen.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\ExternalAppScreen.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\StopwatchService.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\features\\stopwatch\\StopwatchFormat.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\StopwatchScreen.cpp', '-o', 'C:\\Users\\wararyo\\AppData\\Local\\Temp\\launcher-runtime-cs3zgfup\\settings_tests.exe']' returned non-zero exit status 1.

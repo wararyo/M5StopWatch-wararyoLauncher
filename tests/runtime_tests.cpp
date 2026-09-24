@@ -1,6 +1,7 @@
-#include "app/AppRuntime.h"
-#include "app/AppRegistry.h"
-#include "ui/ListLayout.h"
+#include "host/HostApplication.h"
+#include "TestScreens.h"
+#include "host/LaunchRegistry.h"
+#include "ui/list/ListLayout.h"
 #include <cstdlib>
 #include <iostream>
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
@@ -10,7 +11,7 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     InputSnapshot input{};
     UsbState usb{};
     int draws = 0, sleeps = 0, wakes = 0, inputSamples = 0, usbSamples = 0, brightness = -1;
-    ScreenModel rendered{};
+    FrameModel rendered{};
     TimeUs now() override { return time; }
     // Task 4 wires these up; the runtime tests only need them to compile.
     bool readRtc(CivilTime&) override { return false; }
@@ -23,7 +24,7 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     UsbState sampleUsb() override { ++usbSamples; return usb; }
     void setScreenOff(bool off) override { off ? ++sleeps : ++wakes; }
     void invalidate() override {}
-    void draw(const ScreenModel& m, const WatchData&) override { ++draws; rendered = m; }
+    void draw(const FrameModel& m, const WatchData&) override { ++draws; rendered = m; }
     TimeUs nextUpdate(TimeUs now, const WatchData& d) const override { return nextMinute(now,d); }
     void waitUs(TimeUs delay) override { waited = delay; time += delay - earlyWakeUs; }
     // A low-level interrupt: pending for as long as anything is pressed, or
@@ -122,11 +123,11 @@ void releaseVelocity() {
     CHECK(c.update(330000,{false,false,true,100,300},true).gesture==Gesture::None);
 }
 void screens() {
-    ScreenManager s;
+    TestScreens s;
     Events e{}; e.next = true;
     CHECK(s.handle(e,0) && s.model().screen==ScreenId::AppList);
-    CHECK(s.active()); s.update(180000); CHECK(!s.active() && s.model().transition==1);
-    s.handle(e,200000); s.update(380000); CHECK(s.model().selection==1);
+    CHECK(s.active()); s.update(180000); CHECK(!s.active() && s.model().launcher.transition==1);
+    s.handle(e,200000); s.update(380000); CHECK(s.model().launcher.list.selection==1);
     e={}; e.decide=true; s.handle(e,400000);
     CHECK(s.model().screen==ScreenId::AppList && s.model().toast);
     s.update(1800000); CHECK(!s.model().toast);
@@ -135,11 +136,11 @@ void screens() {
     e.home=e.next=e.decide=true;
     s.handle(e,2000000); CHECK(s.model().screen==ScreenId::Home && !s.active() && s.model().homeCount==1);
     e={}; e.gesture=Gesture::Tap; e.x=234; e.y=390;
-    s.handle(e,2100000); CHECK(s.model().screen==ScreenId::AppList && s.model().selection==0);
+    s.handle(e,2100000); CHECK(s.model().screen==ScreenId::AppList && s.model().launcher.list.selection==0);
 }
 void runtime() {
     FakeHal h;
-    AppRuntime r(h, h, h, 468, 468); r.begin(); r.step(); CHECK(h.draws == 1);
+    HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step(); CHECK(h.draws == 1);
     // Idle: nothing is sampled between interrupts, so each wait runs to the
     // next deadline (the 1s USB sample) instead of the 10ms input period.
     const int idleSamples = h.inputSamples;
@@ -170,10 +171,10 @@ void runtime() {
     h.time += 10000; h.input.a = true; r.step();
     h.time += 10000; h.input.a = false; r.step(); CHECK(r.model().screen == ScreenId::AppList);
     h.time += 400000; r.step(); r.wait(); CHECK(h.waited > 10000); // Released and settled.
-    CHECK(AppRuntime::waitDelay(100000, 90000) == 1000);
-    CHECK(AppRuntime::waitDelay(100000, 105000) == 5000);
-    CHECK(AppRegistry.size() == 5 && AppRegistry[2].slot == 1 && AppRegistry[4].slot == 3);
-    for (const auto& entry : AppRegistry) CHECK(entry.name && entry.name[0]);
+    CHECK(HostRuntime::waitDelay(100000, 90000) == 1000);
+    CHECK(HostRuntime::waitDelay(100000, 105000) == 5000);
+    CHECK(LaunchRegistry.size() == 5 && LaunchRegistry[2].slot == 1 && LaunchRegistry[4].slot == 3);
+    for (const auto& entry : LaunchRegistry) CHECK(entry.name && entry.name[0]);
 }
 void interrupts() {
     // Work 8-4: the touch controller raises INT before its first report is
@@ -181,7 +182,7 @@ void interrupts() {
     // of polling at the input period, and interrupts never bring a read
     // forward while one is being followed.
     FakeHal h;
-    AppRuntime r(h, h, h, 468, 468); r.begin(); r.step();
+    HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
     r.wait(); r.step();
     const int idle = h.inputSamples;
     h.interrupt = true; r.step();
@@ -198,7 +199,7 @@ void overload() {
     // the requested tick count by nearly one tick. Exercise that phase error.
     for (TimeUs early : {0, 1, 500, 999}) {
         FakeHal h; h.earlyWakeUs = early;
-        AppRuntime r(h, h, h, 468, 468); r.begin(); r.step();
+        HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
         auto cycle = [&] {
             h.time += 40000;
             r.wait(); CHECK(h.waited >= 1000);

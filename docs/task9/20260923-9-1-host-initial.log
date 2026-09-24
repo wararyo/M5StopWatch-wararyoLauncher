@@ -1,0 +1,154 @@
+In file included from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:2,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:1:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/hal/Hal.h:9:13: error: 'InputSnapshot' does not name a type
+    9 |     virtual InputSnapshot sampleInput() = 0;
+      |             ^~~~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:26: error: 'RenderPort' has not been declared
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |                          ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:48: error: 'DisplayDataSource' has not been declared
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |                                                ^~~~~~~~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:26:5: error: 'RenderPort' does not name a type
+   26 |     RenderPort& renderer_;
+      |     ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:27:5: error: 'DisplayDataSource' does not name a type
+   27 |     DisplayDataSource& data_;
+      |     ^~~~~~~~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h: In constructor 'launcher::AppRuntime::AppRuntime(launcher::Hal&, int&, int&, int, int)':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:9:22: error: class 'launcher::AppRuntime' does not have any field named 'renderer_'
+    9 |         : hal_(hal), renderer_(renderer), data_(data),
+      |                      ^~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:9:43: error: class 'launcher::AppRuntime' does not have any field named 'data_'
+    9 |         : hal_(hal), renderer_(renderer), data_(data),
+      |                                           ^~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp: At global scope:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:8:33: error: expected class-name before ',' token
+    8 | struct FakeHal : Hal, RenderPort, DisplayDataSource {
+      |                                 ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:8:53: error: expected class-name before '{' token
+    8 | struct FakeHal : Hal, RenderPort, DisplayDataSource {
+      |                                                     ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:22:19: error: 'launcher::InputSnapshot FakeHal::sampleInput()' marked 'override', but does not override
+   22 |     InputSnapshot sampleInput() override { ++inputSamples; return input; }
+      |                   ^~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:25:10: error: 'void FakeHal::invalidate()' marked 'override', but does not override
+   25 |     void invalidate() override {}
+      |          ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:26:10: error: 'void FakeHal::draw(const launcher::ScreenModel&, const launcher::WatchData&)' marked 'override', but does not override
+   26 |     void draw(const ScreenModel& m, const WatchData&) override { ++draws; rendered = m; }
+      |          ^~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:27:12: error: 'launcher::TimeUs FakeHal::nextUpdate(launcher::TimeUs, const launcher::WatchData&) const' marked 'override', but does not override
+   27 |     TimeUs nextUpdate(TimeUs now, const WatchData& d) const override { return nextMinute(now,d); }
+      |            ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp: In function 'void runtime()':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:142:35: error: no matching function for call to 'launcher::AppRuntime::AppRuntime(FakeHal&, FakeHal&, FakeHal&, int, int)'
+  142 |     AppRuntime r(h, h, h, 468, 468); r.begin(); r.step(); CHECK(h.draws == 1);
+      |                                   ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:142:35: note: there are 3 candidates
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:5: note: candidate 1: 'launcher::AppRuntime::AppRuntime(launcher::Hal&, int&, int&, int, int)'
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |     ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:38: note: no known conversion for argument 2 from 'FakeHal' to 'int&'
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |                          ~~~~~~~~~~~~^~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate 2: 'constexpr launcher::AppRuntime::AppRuntime(const launcher::AppRuntime&)'
+    6 | class AppRuntime {
+      |       ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate expects 1 argument, 5 provided
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate 3: 'constexpr launcher::AppRuntime::AppRuntime(launcher::AppRuntime&&)'
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate expects 1 argument, 5 provided
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp: In function 'void interrupts()':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:184:35: error: no matching function for call to 'launcher::AppRuntime::AppRuntime(FakeHal&, FakeHal&, FakeHal&, int, int)'
+  184 |     AppRuntime r(h, h, h, 468, 468); r.begin(); r.step();
+      |                                   ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:184:35: note: there are 3 candidates
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:5: note: candidate 1: 'launcher::AppRuntime::AppRuntime(launcher::Hal&, int&, int&, int, int)'
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |     ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:38: note: no known conversion for argument 2 from 'FakeHal' to 'int&'
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |                          ~~~~~~~~~~~~^~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate 2: 'constexpr launcher::AppRuntime::AppRuntime(const launcher::AppRuntime&)'
+    6 | class AppRuntime {
+      |       ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate expects 1 argument, 5 provided
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate 3: 'constexpr launcher::AppRuntime::AppRuntime(launcher::AppRuntime&&)'
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate expects 1 argument, 5 provided
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp: In function 'void overload()':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:201:39: error: no matching function for call to 'launcher::AppRuntime::AppRuntime(FakeHal&, FakeHal&, FakeHal&, int, int)'
+  201 |         AppRuntime r(h, h, h, 468, 468); r.begin(); r.step();
+      |                                       ^
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tests\runtime_tests.cpp:201:39: note: there are 3 candidates
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:5: note: candidate 1: 'launcher::AppRuntime::AppRuntime(launcher::Hal&, int&, int&, int, int)'
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |     ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:8:38: note: no known conversion for argument 2 from 'FakeHal' to 'int&'
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |                          ~~~~~~~~~~~~^~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate 2: 'constexpr launcher::AppRuntime::AppRuntime(const launcher::AppRuntime&)'
+    6 | class AppRuntime {
+      |       ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate expects 1 argument, 5 provided
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate 3: 'constexpr launcher::AppRuntime::AppRuntime(launcher::AppRuntime&&)'
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/app/AppRuntime.h:6:7: note: candidate expects 1 argument, 5 provided
+In file included from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h:2,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp:1:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/hal/Hal.h:9:13: error: 'InputSnapshot' does not name a type
+    9 |     virtual InputSnapshot sampleInput() = 0;
+      |             ^~~~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h:8:26: error: 'RenderPort' has not been declared
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |                          ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h:8:48: error: 'DisplayDataSource' has not been declared
+    8 |     AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, int width, int height)
+      |                                                ^~~~~~~~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h:26:5: error: 'RenderPort' does not name a type
+   26 |     RenderPort& renderer_;
+      |     ^~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h:27:5: error: 'DisplayDataSource' does not name a type
+   27 |     DisplayDataSource& data_;
+      |     ^~~~~~~~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h: In constructor 'launcher::AppRuntime::AppRuntime(launcher::Hal&, int&, int&, int, int)':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h:9:22: error: class 'launcher::AppRuntime' does not have any field named 'renderer_'
+    9 |         : hal_(hal), renderer_(renderer), data_(data),
+      |                      ^~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.h:9:43: error: class 'launcher::AppRuntime' does not have any field named 'data_'
+    9 |         : hal_(hal), renderer_(renderer), data_(data),
+      |                                           ^~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp: In member function 'void launcher::AppRuntime::begin()':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp:6:90: error: 'renderer_' was not declared in this scope
+    6 | void AppRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal_.now(); renderer_.invalidate(); }
+      |                                                                                          ^~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp: In member function 'void launcher::AppRuntime::step()':
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp:18:31: error: 'class launcher::Hal' has no member named 'sampleInput'
+   18 |         const auto raw = hal_.sampleInput();
+      |                               ^~~~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp:55:63: error: 'renderer_' was not declared in this scope
+   55 |         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
+      |                                                               ^~~~~~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp:68:28: error: 'data_' was not declared in this scope
+   68 |         const auto watch = data_.sample(now);
+      |                            ^~~~~
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\app\AppRuntime.cpp:69:9: error: 'renderer_' was not declared in this scope
+   69 |         renderer_.draw(model, watch);
+      |         ^~~~~~~~~
+In file included from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\services\TimeService.h:2,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\services\TimeService.cpp:1:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/hal/Hal.h:9:13: error: 'InputSnapshot' does not name a type
+    9 |     virtual InputSnapshot sampleInput() = 0;
+      |             ^~~~~~~~~~~~~
+In file included from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/services/TimeService.h:2,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\services\LauncherData.h:2,
+                 from C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src\services\LauncherData.cpp:1:
+C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\src/hal/Hal.h:9:13: error: 'InputSnapshot' does not name a type
+    9 |     virtual InputSnapshot sampleInput() = 0;
+      |             ^~~~~~~~~~~~~
+Traceback (most recent call last):
+  File "C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 31, in <module>
+    main()
+  File "C:\Users\wararyo\.codex\worktrees\2162\M5StopWatch-wararyoLauncher\tools\test_runtime.py", line 24, in main
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
+  File "C:\Users\wararyo\.platformio\python3\Lib\subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['C:\\msys64\\ucrt64\\bin\\g++.EXE', '-std=c++17', '-Wall', '-Wextra', '-Werror', '-finput-charset=UTF-8', '-fexec-charset=UTF-8', '-I', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\tests\\runtime_tests.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\input\\InputController.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\app\\ScreenManager.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\app\\AppRuntime.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\ui\\Element.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\TimeService.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\LauncherData.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\storage\\SettingsStore.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\SettingsScreen.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\ExternalAppScreen.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\services\\StopwatchService.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\features\\stopwatch\\StopwatchFormat.cpp', 'C:\\Users\\wararyo\\.codex\\worktrees\\2162\\M5StopWatch-wararyoLauncher\\src\\apps\\StopwatchScreen.cpp', '-o', 'C:\\Users\\wararyo\\AppData\\Local\\Temp\\launcher-runtime-90t8kz7n\\runtime_tests.exe']' returned non-zero exit status 1.

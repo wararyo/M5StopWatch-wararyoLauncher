@@ -32,7 +32,7 @@
 | `input/InputController.h` に `TimeUs` が定義されている | `core/Time.h` へ移し、時間だけが必要な箇所の入力依存を除く |
 | `ui/DisplayModel.h` に画面ID、機能別モデル、時計データ、描画I/F、電源設定が集まる | データとI/Fを責務別に分け、包括includeへの依存を解消する |
 | Layout関数が `ScreenModel` を受け取る | サイズ・機能別モデル・必要な描画条件だけを渡す |
-| 3つのAppScreenに `layoutModel()` がある | 全体モデルの再構築を廃止し、描画と同じ配置関数を直接呼ぶ |
+| 3つのScreenに `layoutModel()` がある | 全体モデルの再構築を廃止し、描画と同じ配置関数を直接呼ぶ |
 | DigitalWatchFaceが `ScreenModel` をコピーする | 時計データと表示領域・オフセット・クリップのみ受け取る |
 | Runtimeが描画モデルから輝度と消灯時間を取得する | `effectiveSettings()` 相当の別経路を作る |
 | `SettingsScreen::stats_` が全体の統計表示状態を所有する | アプリ側で所有し、設定画面から変更できるようにする |
@@ -143,7 +143,7 @@ includeの確認で、TimeUs取得だけのInputController依存、機能側の�
 ## 6. 完了条件と成果物
 
 - [x] TimeUsと計測用型が入力・表示モデルから独立している。
-- [x] 機能別モデルと表示領域が分離され、Layer・WatchFace・Layout・各AppScreenが全体モデルを受け取らない。
+- [x] 機能別モデルと表示領域が分離され、Layer・WatchFace・Layout・各Screenが全体モデルを受け取らない。
 - [x] 全体モデルの再構築による配置共有がなく、変換処理は構成側にある。
 - [x] 輝度・消灯時間が描画モデルから除かれ、保存値・プレビュー・復帰が同じ実効設定経路を通る。
 - [x] 統計表示の状態をアプリ側が所有し、非永続という既存仕様を保つ。

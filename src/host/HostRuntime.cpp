@@ -1,11 +1,11 @@
-#include "AppRuntime.h"
-#include "app/FrameComposer.h"
+#include "HostRuntime.h"
+#include "host/FrameComposer.h"
 #ifdef LAUNCHER_RENDER_METRICS
-#include "app/RenderDiagnostics.h"
+#include "host/RenderDiagnostics.h"
 #endif
 namespace launcher {
-void AppRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal_.now(); renderer_.invalidate(); }
-void AppRuntime::step() {
+void HostRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal_.now(); renderer_.invalidate(); }
+void HostRuntime::step() {
     const TimeUs now = hal_.now();
     const bool wasOff = power_.screenOff();
     // Asked every pass so a notification is consumed even when input is due
@@ -86,7 +86,7 @@ void AppRuntime::step() {
     // strand the commit, because the screen itself takes no input until it ends.
     if (screens_.commitPendingBoot()) dirty_ = true;
 }
-void AppRuntime::wait() {
+void HostRuntime::wait() {
     const auto now = hal_.now();
     // Keep overdue work due until step() actually services it. vTaskDelay can
     // wake before an absolute deadline (tick phase); rebasing here would then

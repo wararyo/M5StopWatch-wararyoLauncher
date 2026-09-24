@@ -1,5 +1,5 @@
 #pragma once
-#include "app/AppScreen.h"
+#include "host/Screen.h"
 #include "services/TimeService.h"
 #include "storage/SettingsStore.h"
 #include "features/settings/SettingsLayout.h"
@@ -7,7 +7,7 @@
 #include "features/settings/SettingsMenu.h"
 #include <array>
 namespace launcher {
-class SettingsScreen final : public AppScreen {
+class SettingsScreen final : public Screen {
 public:
     SettingsScreen() {
         menu_.resize({width_,height_});

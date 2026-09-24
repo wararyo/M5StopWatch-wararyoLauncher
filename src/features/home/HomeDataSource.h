@@ -9,9 +9,9 @@ constexpr TimeUs BatteryPeriodUs = 30000000;
 // The single place where the watch face's data stops being injected and starts
 // coming from the device. Nothing below the display boundary reads the RTC or
 // the PMIC directly, so the diagnostics build can still substitute its own.
-class LauncherData final : public DisplayDataSource {
+class HomeDataSource final : public DisplayDataSource {
 public:
-    LauncherData(Hal& hal, TimeService& time) : hal_(hal), time_(time) {}
+    HomeDataSource(Hal& hal, TimeService& time) : hal_(hal), time_(time) {}
     WatchData sample(TimeUs now) override;
     TimeUs nextUpdate(TimeUs now) const override;
 private:

@@ -1,18 +1,18 @@
-#include "AppRenderer.h"
+#include "HostRenderer.h"
 #include "ui/graphics/VlwFont.h"
 #include <esp_timer.h>
 #ifdef LAUNCHER_RENDER_METRICS
-#include "app/RenderDiagnostics.h"
+#include "host/RenderDiagnostics.h"
 #endif
 namespace launcher {
-bool AppRenderer::begin(bool disableCache) {
+bool HostRenderer::begin(bool disableCache) {
     // The list keeps working on the built-in font if the embedded subset fails.
     if(const auto* embedded=vlwFont()) nameFont_=embedded;
     appList_.begin(nameFont_); settings_.begin(nameFont_); external_.begin(nameFont_);
     stopwatch_.begin(nameFont_); toast_.begin(nameFont_);
     return display_.width()>0 && display_.height()>0 && home_.begin(display_,disableCache);
 }
-RenderLayer* AppRenderer::layer(FrameLayer id) {
+RenderLayer* HostRenderer::layer(FrameLayer id) {
     switch(id) {
     case FrameLayer::Home: return &home_;
     case FrameLayer::AppList: return &appList_;
@@ -23,7 +23,7 @@ RenderLayer* AppRenderer::layer(FrameLayer id) {
     }
     return nullptr;
 }
-void AppRenderer::draw(const FrameModel& m,const WatchData& watch) {
+void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     const TimeUs start=esp_timer_get_time();
     const auto c=composer_.compose(m);
     if(c.changed) renderer_.invalidate();

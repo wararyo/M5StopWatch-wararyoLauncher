@@ -1,6 +1,6 @@
-#include "app/Application.h"
+#include "host/HostApplication.h"
 #include "TestScreens.h"
-#include "app/FrameComposer.h"
+#include "host/FrameComposer.h"
 #include "features/launcher/AppListLayout.h"
 #include "ui/rendering/Element.h"
 #include "ui/list/ListController.h"
@@ -221,7 +221,7 @@ void launcherController() {
     CHECK(rising.transitioning() && rising.active());
     e={}; e.decide=true;
     const auto out=rising.handle(e,50000);
-    CHECK(out.changed && out.open && out.target && out.target->id==AppId::Stopwatch);
+    CHECK(out.changed && out.open && out.target && out.target->id==LaunchTargetId::Stopwatch);
     CHECK(rising.transitioning());                   // Nothing opened yet.
     rising.suspend();
     CHECK(rising.model().transition==1 && !rising.active() && rising.nextUpdate()==INT64_MAX);
@@ -457,7 +457,7 @@ struct Platform : Hal,RenderPort,DisplayDataSource {
 };
 void deadlines() {
     Platform p; p.valid=true;
-    Application application(p,p,p,468,468); auto& r=application.runtime(); r.begin(); r.step(); CHECK(p.draws==1);
+    HostApplication application(p,p,p,468,468); auto& r=application.runtime(); r.begin(); r.step(); CHECK(p.draws==1);
     p.input.a=true; // held input prevents sleep; no short press yet
     for(int i=0;i<5999;++i) { p.time+=10000; r.step(); }
     CHECK(p.draws==1 && p.samples==1);

@@ -1,9 +1,9 @@
 #pragma once
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "ui/list/ListModel.h"
 namespace launcher {
 // One row per registry entry, in registry order.
-inline constexpr int AppListCount=static_cast<int>(AppRegistry.size());
+inline constexpr int AppListCount=static_cast<int>(LaunchRegistry.size());
 struct AppListModel {
     // The shared list's state; the launcher adds only what the list must not know.
     ListState list{};

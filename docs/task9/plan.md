@@ -35,15 +35,15 @@
 
 ## 3. 目標構成と依存関係
 
-9-4で次の構成になった（[9-4の検証記録](9-4-validation.md)）。
+9-4とレビュー後の命名整理で次の構成になった（[9-4の検証記録](9-4-validation.md)、[命名整理](naming-cleanup.md)）。
 
 ```text
 src/
   core/                    # TimeUs（入力や描画に依存しない共通型）
-  app/                     # Application（構成）、AppRuntime、ScreenManager、AppScreen契約、
-                           # FrameModel・FrameComposer、AppRenderer、RenderDiagnostics（診断アダプター）
+  host/                    # HostApplication（構成）、HostRuntime、ScreenManager、Screen契約、
+                           # FrameModel・FrameComposer、HostRenderer、RenderDiagnostics（診断アダプター）
   features/
-    home/                  # HomeLayer（文字盤の登録・選択・寿命・期限）、WatchFace契約、HomeModel
+    home/                  # HomeLayer（文字盤の登録・選択・寿命・期限）、WatchFace契約、HomeModel、HomeDataSource
       faces/               # DigitalWatchFace
     launcher/              # LauncherController、AppListLayer・Layout・Model・Rows、AppIcons、icons/
     stopwatch/             # Screen、Layer、Model、Layout、表示書式
@@ -54,25 +54,25 @@ src/
     rendering/             # Renderer（RenderLayer・FrameOverlay）、FramePlan・Element、Geometry・Viewport・Scale
     graphics/              # Gfx、IconBitmap、fitText、VLWフォントとfonts/
     overlays/              # ToastLayer、StatsOverlay
-  services/                # StopwatchService、TimeService、LauncherData等、画面の寿命から独立
+  services/                # StopwatchService、TimeService等、画面の寿命から独立
   input/、hal/、storage/、power/、multifirm/
 ```
 
 | 所有者 | 責務 |
 |---|---|
-| Application | サービス（StopwatchService）・RuntimeSettings・終了処理・ScreenManager・AppRuntimeの寿命と参照の注入。終了処理をSlotServiceへ登録 |
-| AppRuntime | 入力・電源・期限・スロット結果・描画の実行時期。ScreenManagerを借りて駆動し、状態を所有しない |
+| HostApplication | サービス（StopwatchService）・RuntimeSettings・終了処理・ScreenManager・HostRuntimeの寿命と参照の注入。終了処理をSlotServiceへ登録 |
+| HostRuntime | 入力・電源・期限・スロット結果・描画の実行時期。ScreenManagerを借りて駆動し、状態を所有しない |
 | ScreenManager | 現在画面、入退場、ホームの優先処理、起動先への振り分け、通知の寿命、FrameModelの合成、画面の要求（統計表示）の適用 |
 | LauncherController | ホーム↔一覧の遷移、ジェスチャーの所有者決定、ランチャー専用ListController。起動先を返すだけで画面を開かない |
 | HomeLayer | 文字盤の登録・選択・begin/end・キャッシュ・次回更新期限、切替時の全面再描画要求 |
-| AppRenderer | RenderPortを実装。フレームを各レイヤーの入力へ分配し、描画順・画面切替の全面再描画・統計チップ・計測の記録を決める |
+| HostRenderer | RenderPortを実装。フレームを各レイヤーの入力へ分配し、描画順・画面切替の全面再描画・統計チップ・計測の記録を決める |
 | Renderer | FramePlanの実行、全消去、順序付きpaint、転送前オーバーレイ、転送。具体的な画面・アプリID・診断を知らない |
 
-機能は共通UIを利用する。共通リスト・描画基盤は `AppRegistry`、具体的な画面、NVS、OTAに依存しない。
+機能は共通UIを利用する。共通リスト・描画基盤は `LaunchRegistry`、具体的な画面、NVS、OTAに依存しない。
 描画と入力が使う配置計算は同じものを使い、配置の共有のために全体モデルを組み立て直す実装をなくす。
 フォント等の共有資産は初期化時に渡し、リストからアプリ固有の資産表を参照しない。
 
-`Renderer` はフレームの実行に集中する。機能レイヤーの所有と描画順の組み立ては `app/` の描画構成側（AppRenderer）が担当し、
+`Renderer` はフレームの実行に集中する。機能レイヤーの所有と描画順の組み立ては `host/` の描画構成側（HostRenderer）が担当し、
 `Renderer` には順序付けた描画対象（`RenderLayer` の固定長配列）を渡す。固定容量・静的な組み立てを基本とし、毎フレームの動的確保は導入しない。
 
 ## 4. 共通リスト
@@ -187,7 +187,7 @@ StopwatchServiceはアプリ全体の寿命で所有して画面へ注入する�
       - [ ] 一覧・設定メニューの文字画像と直接描画の画素一致、確保失敗時の直接描画と再確保しないこと。
       - [ ] 目視: 一覧（長い名前・日本語・薄い表示・トースト・遷移中）、設定トップの新しい見た目（中央寄せのスクロール、アイコンなしの文字起点、長い値のラベル）、編集画面との往復・画面切替・外部詳細・ストップウォッチで消し残しがないこと、統計チップ。
       - [ ] 性能: 一覧スクロール・遷移、`settings-scroll`（A整列・ドラッグ・慣性）、`settings-single`（編集画面の操作）の描画時間・実fps・フレーム間隔・入力遅延。9-0の設定単発選択10.157msとは操作の性質が変わった点を明記する。
-      - [ ] メモリ: 内部RAM/PSRAMの空き・最大連続領域、`list_cache`・`settings_list_cache` の確保量、`stack_free`（9-4で `Application` を静的領域へ移した差）。一覧↔各画面の往復・設定の再入場で減り続けないこと、文字盤切替前後の `lifecycle`。
+      - [ ] メモリ: 内部RAM/PSRAMの空き・最大連続領域、`list_cache`・`settings_list_cache` の確保量、`stack_free`（9-4で `HostApplication` を静的領域へ移した差）。一覧↔各画面の往復・設定の再入場で減り続けないこと、文字盤切替前後の `lifecycle`。
       - [ ] 電源・期限: 静止中の描画停止、設定スクロール中の消灯・復帰、スクロール中のA+Bホーム、「戻る」後の一覧の静止、輝度プレビューの取消／ホーム破棄と保存値の適用。
       - [ ] 計測・外部起動: 計測中のホーム・画面切替・消灯での継続、起動中表示→起動確定の順序、起動確定時だけの計測停止、起動失敗後の復帰。
       - [ ] 30fps超・定常33.3ms以内の達否を、構造改善の完了と分けて記録する。
@@ -216,7 +216,7 @@ StopwatchServiceはアプリ全体の寿命で所有して画面へ注入する�
 ### 完了の判定
 
 - [ ] アプリ一覧と設定トップが同じListView・ListControllerを利用し、一覧固有の最適化を共有している。
-- [ ] 共通リスト・描画基盤が具体的な画面やAppRegistryを参照していない。
+- [ ] 共通リスト・描画基盤が具体的な画面やLaunchRegistryを参照していない。
 - [ ] Rendererに一覧・トースト固有の配置・文字整形・キャッシュが残っていない。
 - [ ] 各レイヤーとWatchFaceが必要なモデルだけを受け取り、電源設定が描画モデルから分離されている。
 - [ ] ホストテスト・製品ビルド・実機描画検証が通り、既存の計測・設定・起動・電源動作を維持している。

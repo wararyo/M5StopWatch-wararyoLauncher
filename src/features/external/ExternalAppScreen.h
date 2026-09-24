@@ -1,5 +1,5 @@
 #pragma once
-#include "app/AppScreen.h"
+#include "host/Screen.h"
 #include "multifirm/SlotService.h"
 #include "features/external/ExternalLayout.h"
 namespace launcher {
@@ -7,7 +7,7 @@ namespace launcher {
 // IS the final decision, so entering one goes straight to the commit; this
 // screen only shows the launch in progress, a slot that cannot be launched, or
 // a launch that failed.
-class ExternalAppScreen final : public AppScreen {
+class ExternalAppScreen final : public Screen {
 public:
     void resize(int width,int height) override { width_=width; height_=height; }
     // The catalog is owned by ScreenManager and outlives this screen.

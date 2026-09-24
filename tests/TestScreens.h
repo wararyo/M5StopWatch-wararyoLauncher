@@ -1,8 +1,8 @@
 #pragma once
-#include "app/ScreenManager.h"
+#include "host/ScreenManager.h"
 namespace launcher {
 // What a ScreenManager borrows from the application, owned next to it the way
-// app/Application.h owns it. A base, so it is built before the manager.
+// host/HostApplication.h owns it. A base, so it is built before the manager.
 struct AppState {
     StopwatchService stopwatch;
     RuntimeSettings runtime;

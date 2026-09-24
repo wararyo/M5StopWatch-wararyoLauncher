@@ -28,7 +28,7 @@ VERSION = 1
 HEADER = struct.Struct("<4s4H")
 SIZE = 44
 
-# Order and meaning of `launcher::IconId` in src/app/AppRegistry.h. The firmware
+# Order and meaning of `launcher::IconId` in src/host/LaunchRegistry.h. The firmware
 # indexes this file by that enum, so entries are appended, never reordered.
 ICONS = ("ic_stopwatch.png", "ic_settings.png", "ic_app1.png", "ic_app2.png", "ic_app3.png")
 

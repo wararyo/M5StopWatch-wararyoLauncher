@@ -1,6 +1,6 @@
-#include "LauncherData.h"
+#include "HomeDataSource.h"
 namespace launcher {
-WatchData LauncherData::sample(TimeUs now) {
+WatchData HomeDataSource::sample(TimeUs now) {
     // Only ever called from the draw path, so a dark panel costs no I2C: the
     // runtime stops drawing before it stops sampling, and the stale deadline
     // makes the first frame after a wake read fresh.
@@ -14,5 +14,5 @@ WatchData LauncherData::sample(TimeUs now) {
     data.charging = battery_.charging;
     return data;
 }
-TimeUs LauncherData::nextUpdate(TimeUs) const { return batteryDue_; }
+TimeUs HomeDataSource::nextUpdate(TimeUs) const { return batteryDue_; }
 }

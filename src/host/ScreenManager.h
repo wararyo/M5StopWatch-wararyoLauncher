@@ -1,17 +1,17 @@
 #pragma once
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "features/external/ExternalAppScreen.h"
 #include "features/settings/SettingsScreen.h"
 #include "features/stopwatch/StopwatchScreen.h"
-#include "app/FrameModel.h"
-#include "app/EffectiveSettings.h"
+#include "host/FrameModel.h"
+#include "host/EffectiveSettings.h"
 #include "features/launcher/AppListRows.h"
 #include "features/launcher/LauncherController.h"
 namespace launcher {
 // Which screen is shown, entering and leaving screens, home ahead of anything
 // else, opening what the launcher decided, and how long a notice stays. The
 // measurement and the runtime settings belong to the application
-// (app/Application.h) and are only lent here: nothing a screen does to its own
+// (host/HostApplication.h) and are only lent here: nothing a screen does to its own
 // lifetime can end them.
 class ScreenManager {
 public:
@@ -54,8 +54,8 @@ private:
     ScreenId screen() const { return active_ ? activeId_ : launcher_.listShown() ? ScreenId::AppList : ScreenId::Home; }
     // The launcher's decision, carried out: the entry's screen is entered, or
     // the input is acknowledged with a notice when there is none to enter.
-    bool launch(const AppEntry* entry,TimeUs now);
-    bool open(AppScreen& screen,ScreenId id,TimeUs now);
+    bool launch(const LaunchEntry* entry,TimeUs now);
+    bool open(Screen& screen,ScreenId id,TimeUs now);
     void notify(const char* notice,TimeUs now) { toast_=notice; toastUntil_=now+1400000; }
     RuntimeSettings& runtime_;
     SettingsScreen settings_;
@@ -65,7 +65,7 @@ private:
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.
     LauncherController launcher_;
-    AppScreen* active_=nullptr;
+    Screen* active_=nullptr;
     ScreenId activeId_=ScreenId::Home;
     uint32_t homeCount_=0;
     const char* toast_=nullptr;

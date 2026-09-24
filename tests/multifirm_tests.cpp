@@ -1,6 +1,6 @@
-#include "app/Application.h"
+#include "host/HostApplication.h"
 #include "TestScreens.h"
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "multifirm/FakeSlotService.h"
 #include <cstdlib>
 #include <iostream>
@@ -37,11 +37,11 @@ Events tap(int x,int y) { Events e{}; e.gesture=Gesture::Tap; e.x=x; e.y=y; retu
 Events home() { Events e{}; e.home=true; return e; }
 
 // Drives the manager from the clock to the given app list row and opens it.
-void openRow(ScreenManager& s,TimeUs& now,AppId id) {
+void openRow(ScreenManager& s,TimeUs& now,LaunchTargetId id) {
     s.handle(home(),now); now+=1000;
     const Events next=press(true);
     s.handle(next,now); now+=200000; s.update(now);        // clock -> list
-    while (AppRegistry[s.model().launcher.list.selection].id!=id) { s.handle(next,now); now+=200000; s.update(now); }
+    while (LaunchRegistry[s.model().launcher.list.selection].id!=id) { s.handle(next,now); now+=200000; s.update(now); }
     s.handle(press(false),now); now+=1000;
 }
 
@@ -56,8 +56,8 @@ void listShowsNamesAndDimming() {
     s.setSlots(scanning());
     auto m=s.model();
     // Nothing is launchable while the scan runs, and no slot lends its name.
-    for (int i=0;i<int(AppRegistry.size());++i) {
-        const bool external=AppRegistry[i].kind==TargetKind::External;
+    for (int i=0;i<int(LaunchRegistry.size());++i) {
+        const bool external=LaunchRegistry[i].kind==TargetKind::External;
         CHECK(m.launcher.rowDimmed[i]==external);
         CHECK(m.launcher.names[i]==nullptr);
     }
@@ -83,8 +83,8 @@ void unsupportedLayoutDisablesEveryExternalRow() {
     slots.setUnsupported();
     s.setSlots(slots.catalog);
     const auto m=s.model();
-    for (int i=0;i<int(AppRegistry.size());++i)
-        if (AppRegistry[i].kind==TargetKind::External) {
+    for (int i=0;i<int(LaunchRegistry.size());++i)
+        if (LaunchRegistry[i].kind==TargetKind::External) {
             CHECK(m.launcher.rowDimmed[i]);
             CHECK(m.launcher.names[i]==nullptr);
         }
@@ -96,7 +96,7 @@ void launchableRowStartsWithoutConfirmation() {
     TestScreens s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
     // Deciding the row IS the final decision: no confirmation, no second press.
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     const auto m=s.model();
     CHECK(m.screen==ScreenId::External);
     CHECK(m.external.slot==1 && m.external.phase==ExternalPhase::BootCommitting);
@@ -115,19 +115,19 @@ void unusableSlotsOpenTheScreenInstead() {
     TestScreens s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
     // An unusable slot explains itself and only offers the way back.
-    openRow(s,now,AppId::External2);
+    openRow(s,now,LaunchTargetId::External2);
     auto m=s.model();
     CHECK(m.screen==ScreenId::External && m.external.status==SlotStatus::Empty);
     CHECK(m.external.phase==ExternalPhase::Browsing);
     CHECK(m.external.name==nullptr);
     CHECK(externalButtonCount(m.external)==1);
-    openRow(s,now,AppId::External3);
+    openRow(s,now,LaunchTargetId::External3);
     m=s.model();
     CHECK(m.external.status==SlotStatus::ReadError && m.external.error==0x102);
     CHECK(m.external.phase==ExternalPhase::Browsing);
     CHECK(externalButtonCount(m.external)==1);
     // A slot still being verified is not launchable either.
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     m=s.model();
     CHECK(m.external.status==SlotStatus::Scanning);
     CHECK(m.external.phase==ExternalPhase::Browsing);
@@ -137,9 +137,9 @@ void unusableSlotsOpenTheScreenInstead() {
     s.handle(press(false),now); now+=1000;
     m=s.model();
     CHECK(m.screen==ScreenId::AppList);
-    CHECK(AppRegistry[m.launcher.list.selection].id==AppId::External1);
+    CHECK(LaunchRegistry[m.launcher.list.selection].id==LaunchTargetId::External1);
     // Every row now opens something; nothing falls through to the notice.
-    openRow(s,now,AppId::Stopwatch);
+    openRow(s,now,LaunchTargetId::Stopwatch);
     CHECK(s.model().screen==ScreenId::Stopwatch);
 }
 
@@ -149,7 +149,7 @@ void commitSuppressesInputAndRecovers() {
     slots.bootMessage="ESP_ERR_IMAGE_INVALID";
     TestScreens s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
-    openRow(s,now,AppId::External1);               // one press: decide == launch
+    openRow(s,now,LaunchTargetId::External1);               // one press: decide == launch
     auto m=s.model();
     CHECK(m.external.phase==ExternalPhase::BootCommitting);
     CHECK(externalButtonCount(m.external)==0);
@@ -183,11 +183,11 @@ void failedBootKeepsMeasuring() {
     slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
     TestScreens s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
-    openRow(s,now,AppId::Stopwatch);
+    openRow(s,now,LaunchTargetId::Stopwatch);
     s.handle(press(false),now); now+=1000;                 // B starts it
     CHECK(s.stopwatch.state()==StopwatchState::Running);
     s.handle(home(),now); now+=1000;
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     now+=1000;
     CHECK(s.commitPendingBoot());                       // the fake fails
     CHECK(s.model().external.phase==ExternalPhase::BootFailed);
@@ -199,7 +199,7 @@ void failedBootKeepsMeasuring() {
     CHECK(s.stopwatch.elapsed(now)>before);
     // Home works again after a failure, and the screen shows it still running.
     CHECK(s.handle(home(),now));
-    openRow(s,now,AppId::Stopwatch);
+    openRow(s,now,LaunchTargetId::Stopwatch);
     CHECK(s.model().stopwatch.state==StopwatchState::Running);
 }
 
@@ -210,17 +210,17 @@ void successfulBootEndsTheMeasurement() {
     // The application registers its own shutdown with the slot service; the
     // screens never see the callback.
     StubHal hal; StubRender render; DisplayDataSource data;
-    Application application(hal,render,data,468,468);
+    HostApplication application(hal,render,data,468,468);
     application.bindSlots(slots);
     auto& s=application.screens();
     TimeUs now=0;
     s.setSlots(slots.catalog);
-    openRow(s,now,AppId::Stopwatch);
+    openRow(s,now,LaunchTargetId::Stopwatch);
     const TimeUs started=now;
     s.handle(press(false),now); now+=1000;
     CHECK(application.stopwatch().state()==StopwatchState::Running);
     s.handle(home(),now); now+=1000;
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     // The commit comes well after the UI last saw the time: the measurement
     // ends at the commit's own monotonic time, not at that stale one.
     hal.time=now+250000;
@@ -243,17 +243,17 @@ void shutdownIsTheApplicationsAlone() {
     FakeSlotService slots;
     slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
     StubHal hal; StubRender render; DisplayDataSource data;
-    Application application(hal,render,data,468,468);
+    HostApplication application(hal,render,data,468,468);
     application.bindSlots(slots);
     auto& s=application.screens();
     TimeUs now=0;
     s.setSlots(slots.catalog);
-    openRow(s,now,AppId::Stopwatch);
+    openRow(s,now,LaunchTargetId::Stopwatch);
     s.handle(press(false),now); now+=1000;
-    openRow(s,now,AppId::External2);                   // not launchable: detail only
+    openRow(s,now,LaunchTargetId::External2);                   // not launchable: detail only
     s.handle(press(false),now); now+=1000;             // back to the list
     CHECK(s.model().screen==ScreenId::AppList);
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     hal.time=now;
     CHECK(s.commitPendingBoot());                      // the fake fails
     CHECK(application.stopwatch().state()==StopwatchState::Running);
@@ -264,7 +264,7 @@ void homeDuringScanKeepsResultsHarmless() {
     slots.catalog=scanning();
     TestScreens s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     CHECK(s.model().screen==ScreenId::External);
     s.handle(home(),now); now+=1000;
     CHECK(s.model().screen==ScreenId::Home);
@@ -285,7 +285,7 @@ void scanFinishingDuringDetailDoesNotLaunch() {
     slots.catalog=scanning();
     TestScreens s; TimeUs now=0;
     s.bindSlots(&slots); s.setSlots(slots.catalog);
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     CHECK(s.model().external.status==SlotStatus::Scanning);
     CHECK(s.model().external.phase==ExternalPhase::Browsing);
     // The slot turns launchable underneath the open screen. Only a decision in
@@ -305,14 +305,14 @@ void scanFinishingDuringDetailDoesNotLaunch() {
     CHECK(s.model().screen==ScreenId::AppList);
     CHECK(slots.bootRequests==0);
     // Leaving resets the phase, so the next decision starts from scratch.
-    openRow(s,now,AppId::External1);
+    openRow(s,now,LaunchTargetId::External1);
     CHECK(s.model().external.phase==ExternalPhase::BootCommitting);
 }
 
 void runtimeScansBehindTheFirstFrameAndPollsResults() {
     StubHal hal; StubRender render; DisplayDataSource data; FakeSlotService slots;
     slots.catalog=scanning(); slots.pending=false;
-    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
     application.bindSlots(slots);
     runtime.begin();
     CHECK(slots.scanRequests==0);
@@ -332,7 +332,7 @@ void runtimeScansBehindTheFirstFrameAndPollsResults() {
 void runtimeIssuesTheBootAfterPaintingTheCommitFrame() {
     StubHal hal; StubRender render; DisplayDataSource data; FakeSlotService slots;
     slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
-    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
     application.bindSlots(slots);
     runtime.begin();
     hal.time=1000; runtime.step();
@@ -347,7 +347,7 @@ void runtimeIssuesTheBootAfterPaintingTheCommitFrame() {
         hal.time+=200000; runtime.step();
     };
     pressA();                                   // clock -> list
-    while (AppRegistry[runtime.model().launcher.list.selection].id!=AppId::External1) pressA();
+    while (LaunchRegistry[runtime.model().launcher.list.selection].id!=LaunchTargetId::External1) pressA();
     const int drawsBefore=render.draws;
     pressB();                                   // decide == launch
     // The committing frame reached the renderer, and only then the API ran.

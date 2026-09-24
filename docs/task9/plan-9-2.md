@@ -18,10 +18,10 @@
 | `ui/list/ListLayout.*` | Viewport・スクロール・オフセット・クリップから行矩形を計算。描画とヒットテストで共有 |
 | `ui/list/ListController.*` | 選択・ドラッグ・慣性・停止・期限を所有。決定した行IDを結果として返す |
 | `ui/list/ListView.*` | 計画済み行、Element履歴、文字整形結果、表示行の画像キャッシュを所有 |
-| `features/launcher/AppListLayer.*` | AppRegistry・SlotCatalogから表示行を組み立て、ListViewへ渡す薄い機能レイヤー |
+| `features/launcher/AppListLayer.*` | LaunchRegistry・SlotCatalogから表示行を組み立て、ListViewへ渡す薄い機能レイヤー |
 | `ui/overlays/ToastLayer.*` | トースト矩形、文字整形、Element履歴、plan/paint |
 
-共通リストはAppRegistry、ScreenId、SlotStatus、SettingsViewを参照しない。
+共通リストはLaunchRegistry、ScreenId、SlotStatus、SettingsViewを参照しない。
 行は安定ID、ラベル、任意のアイコン参照、見た目（色・薄い表示）、決定可否を受け取る。
 アイコンの汎用ビュー型は `ui/graphics/` に置き、IconIdから埋め込み画像への解決はランチャー側で行う。
 Gfxの型定義も共通描画ヘッダーへ移し、リストやトーストがWatchFaceへ依存しないようにする。
@@ -79,7 +79,7 @@ ToastLayerへは矩形・文字・Element・ハンドルをまとめて移す。
 ## 5. 実装順序と確認
 
 - [x] **9-2a** 型・配置・アイコン参照を独立させ、0/1/5以外の件数の配置とヒットテストを確認。
-- [x] **9-2b** ListViewとAppListLayerを抽出。Rendererの行配列・具体的な一覧描画・AppRegistry参照を除く。
+- [x] **9-2b** ListViewとAppListLayerを抽出。Rendererの行配列・具体的な一覧描画・LaunchRegistry参照を除く。
 - [x] **9-2c** ListControllerへ一覧操作を移す。既存navigation/flickテストを残し、空件数・慣性停止・連打・退場を追加。
 - [x] **9-2d** ToastLayerを抽出し、重なりと表示/消去の描画診断を維持。
 - [x] **9-2e** 文字整形保持と文字画像キャッシュを別々に追加。内容変更、同名別ID、行再利用、失敗退避の診断を追加。

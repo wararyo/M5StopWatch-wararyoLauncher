@@ -39,7 +39,7 @@ SettingsViewの切替はScreenIdが変わらないため、Rendererの画面切�
 
 ## 3. 期限・活動状態・消灯
 
-AppScreenへ `active()` 相当の問い合わせを追加する（既定false）。
+Screenへ `active()` 相当の問い合わせを追加する（既定false）。
 SettingsScreenはメニューのドラッグ/慣性中だけtrueを返す。
 ScreenManagerは、内蔵画面が表示中ならその活動状態、ホーム/一覧ならランチャー側の状態を返す。
 隠れたランチャーの慣性が設定の活動状態や描画期限へ混ざらないようにする。

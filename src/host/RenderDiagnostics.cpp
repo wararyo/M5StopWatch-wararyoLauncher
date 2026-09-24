@@ -1,6 +1,6 @@
 #include "RenderDiagnostics.h"
 #ifdef LAUNCHER_RENDER_METRICS
-#include "app/AppRenderer.h"
+#include "host/HostRenderer.h"
 #include "storage/Settings.h"
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
@@ -12,7 +12,7 @@
 #include "features/launcher/AppIcons.h"
 #include "ui/graphics/Text.h"
 #include "ui/graphics/VlwFont.h"
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include <cstring>
 #endif
 namespace launcher {
@@ -118,7 +118,7 @@ void recordRender(FrameActivity activity,TimeUs start,TimeUs end,bool painted) {
     if(inputAt>=0) { inputLatency.add(end-inputAt); inputAt=-1; }
     if(wakeAt>=0) { wakeLatency.add(end-wakeAt); wakeAt=-1; }
 }
-void reportRenderDiagnostics(const AppRenderer& renderer,TimeUs now) {
+void reportRenderDiagnostics(const HostRenderer& renderer,TimeUs now) {
     if(!recording) return;
     if(!windowStart) { windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0; return; }
     if(now-windowStart<60000000) return;
@@ -162,7 +162,7 @@ void reportRenderDiagnostics(const AppRenderer& renderer,TimeUs now) {
     windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0;
 }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
-void runRepaintCheck(AppRenderer& renderer,M5GFX& display,const SlotCatalog& catalog) {
+void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& catalog) {
     recording=false;
     // The statistics chip carries a clock, so the two draws a comparison makes
     // would differ by whatever the window did between them. It is outside the
@@ -193,7 +193,7 @@ void runRepaintCheck(AppRenderer& renderer,M5GFX& display,const SlotCatalog& cat
                 ++checks;
                 if(std::strcmp(text,fitted)!=0) { ++failures; std::printf("[Verify] FAIL missing fixed UI glyph: %s\n",text); }
             };
-            for(const auto& entry:AppRegistry) covered(entry.name);
+            for(const auto& entry:LaunchRegistry) covered(entry.name);
             // Every fixed string the launcher can put on screen, so a font
             // subset that missed one fails here rather than on the device.
             for(const char* text:{"準備中","日時","輝度","消灯時間","情報","戻る","保存","キャンセル",
@@ -232,7 +232,7 @@ void runRepaintCheck(AppRenderer& renderer,M5GFX& display,const SlotCatalog& cat
                 const Viewport probe{w,h};
                 const float iconScale=float(std::min(w,h))/468;
                 const int radius=iconRadius(probe)-selectionGrowth(probe);
-                for(const auto& entry:AppRegistry) {
+                for(const auto& entry:LaunchRegistry) {
                     const auto* icon=appIcon(entry.icon); ++checks;
                     if(!icon) { ++failures; std::printf("[Verify] FAIL missing icon: %s\n",entry.name); continue; }
                     const float hx=icon->width*iconScale*0.5f,hy=icon->height*iconScale*0.5f;

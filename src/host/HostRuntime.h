@@ -1,21 +1,21 @@
 #pragma once
 #include "hal/Hal.h"
-#include "app/ScreenManager.h"
-#include "app/RenderPort.h"
+#include "host/ScreenManager.h"
+#include "host/RenderPort.h"
 #include "features/home/DisplayDataSource.h"
 #include <algorithm>
 namespace launcher {
 // The single UI task's loop: input, power, deadlines, slot results and when to
 // draw. It drives the screens it is lent and owns none of the application's
-// state (app/Application.h owns it).
-class AppRuntime {
+// state (host/HostApplication.h owns it).
+class HostRuntime {
 public:
-    AppRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, ScreenManager& screens)
+    HostRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, ScreenManager& screens)
         : hal_(hal), renderer_(renderer), data_(data),
           input_(std::max(1, std::min(screens.viewport().width, screens.viewport().height) / 50)),
           screens_(screens) {}
-    AppRuntime(const AppRuntime&) = delete;
-    AppRuntime& operator=(const AppRuntime&) = delete;
+    HostRuntime(const HostRuntime&) = delete;
+    HostRuntime& operator=(const HostRuntime&) = delete;
     void bindSlots(SlotService& slots) { slots_=&slots; screens_.bindSlots(&slots); }
     void begin();
     void step();

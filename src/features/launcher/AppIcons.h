@@ -1,5 +1,5 @@
 #pragma once
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "ui/graphics/IconBitmap.h"
 namespace launcher {
 // The launcher's embedded icon set, built by tools/build_icons.py from the

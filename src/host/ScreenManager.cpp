@@ -23,7 +23,7 @@ FrameActivity ScreenManager::activity() const {
         return FrameActivity::Stopwatch;
     return FrameActivity::Single;
 }
-bool ScreenManager::open(AppScreen& screen,ScreenId id,TimeUs now) {
+bool ScreenManager::open(Screen& screen,ScreenId id,TimeUs now) {
     if (!screen.available()) return false;
     // The list keeps its scroll and selection: the screen does not use them, so
     // returning lands back on the same row.
@@ -31,10 +31,10 @@ bool ScreenManager::open(AppScreen& screen,ScreenId id,TimeUs now) {
     screen.enter(now); active_=&screen; activeId_=id;
     return true;
 }
-bool ScreenManager::launch(const AppEntry* entry,TimeUs now) {
+bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
     if (entry) {
-        if (entry->id==AppId::Stopwatch && open(stopwatchScreen_,ScreenId::Stopwatch,now)) return true;
-        if (entry->id==AppId::Settings && open(settings_,ScreenId::Settings,now)) return true;
+        if (entry->id==LaunchTargetId::Stopwatch && open(stopwatchScreen_,ScreenId::Stopwatch,now)) return true;
+        if (entry->id==LaunchTargetId::Settings && open(settings_,ScreenId::Settings,now)) return true;
         // Every external row opens, whatever the slot holds: the detail
         // screen is where an empty or broken slot explains itself.
         if (entry->kind==TargetKind::External) {

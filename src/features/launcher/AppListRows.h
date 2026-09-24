@@ -3,11 +3,11 @@
 #include "multifirm/SlotCatalog.h"
 #include <array>
 namespace launcher {
-// Row ids are AppId values, so a row keeps its meaning whatever position the
+// Row ids are LaunchTargetId values, so a row keeps its meaning whatever position the
 // registry gives it.
-inline RowId appRowId(AppId id) { return static_cast<RowId>(id); }
-inline const AppEntry* appEntry(RowId id) {
-    for (const auto& entry:AppRegistry) if (appRowId(entry.id)==id) return &entry;
+inline RowId appRowId(LaunchTargetId id) { return static_cast<RowId>(id); }
+inline const LaunchEntry* launchEntry(RowId id) {
+    for (const auto& entry:LaunchRegistry) if (appRowId(entry.id)==id) return &entry;
     return nullptr;
 }
 // A launchable slot lends the row its own name; everything else keeps the
@@ -16,7 +16,7 @@ inline const AppEntry* appEntry(RowId id) {
 // which therefore has to outlive the frame.
 inline void applySlots(const SlotCatalog& slots,AppListModel& m) {
     for (int i=0;i<AppListCount;++i) {
-        const auto& entry=AppRegistry[i];
+        const auto& entry=LaunchRegistry[i];
         if (entry.kind!=TargetKind::External) continue;
         const auto& slot=slots.slots[entry.slot-1];
         const bool ready=slots.layoutSupported && slot.status==SlotStatus::Ready;
@@ -24,10 +24,10 @@ inline void applySlots(const SlotCatalog& slots,AppListModel& m) {
         m.rowDimmed[i]=!ready;
     }
 }
-inline uint16_t appIconColor(const AppEntry& entry) {
+inline uint16_t appIconColor(const LaunchEntry& entry) {
     switch (entry.id) {
-    case AppId::Stopwatch: return 0x349f;
-    case AppId::Settings: return 0x632c;
+    case LaunchTargetId::Stopwatch: return 0x349f;
+    case LaunchTargetId::Settings: return 0x632c;
     default: return 0x2e17;
     }
 }
@@ -37,7 +37,7 @@ using IconLookup=const IconBitmap* (*)(IconId);
 inline ListRows buildAppListRows(const AppListModel& m,std::array<ListRow,AppListCount>& rows,
                                  IconLookup icons=nullptr) {
     for (int i=0;i<AppListCount;++i) {
-        const auto& entry=AppRegistry[i];
+        const auto& entry=LaunchRegistry[i];
         auto& row=rows[i];
         row.id=appRowId(entry.id);
         row.label=m.names[i] ? m.names[i] : entry.name;

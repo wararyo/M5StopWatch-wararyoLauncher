@@ -105,7 +105,7 @@ LauncherOutcome LauncherController::handle(const Events& e,TimeUs now) {
     if (!decision.decided) return out;
     // Every row names an entry to open, whatever its slot holds: the external
     // detail screen is where an empty or broken slot explains itself.
-    out.open=true; out.target=appEntry(decision.id);
+    out.open=true; out.target=launchEntry(decision.id);
     return out;
 }
 }

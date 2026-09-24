@@ -1,5 +1,5 @@
-#include "app/Application.h"
-#include "services/LauncherData.h"
+#include "host/HostApplication.h"
+#include "features/home/HomeDataSource.h"
 #include "services/TimeService.h"
 #include <cstdlib>
 #include <iostream>
@@ -158,7 +158,7 @@ void saveFailure() {
 }
 void displayData() {
     StubHal hal; TimeService service; service.begin(hal);
-    LauncherData data(hal,service);
+    HomeDataSource data(hal,service);
     const auto first=data.sample(1000);
     CHECK(hal.batteryReads==1 && first.batteryPercent==-1 && !first.charging);
     CHECK(data.nextUpdate(1000)==1000+BatteryPeriodUs);
@@ -179,14 +179,14 @@ void displayData() {
     // An untrusted RTC leaves the time unknown but still reports the battery.
     StubHal dead; dead.rtc={1900,1,1,0,0,0}; dead.battery={55,false};
     TimeService none; none.begin(dead);
-    LauncherData unset(dead,none);
+    HomeDataSource unset(dead,none);
     const auto blank=unset.sample(0);
     CHECK(!blank.timeValid && blank.batteryPercent==55 && blank.subsecondUs==0);
 }
 void runtimeIntegration() {
     StubHal hal; StubRender render; TimeService service; service.begin(hal);
-    LauncherData data(hal,service);
-    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    HomeDataSource data(hal,service);
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
     runtime.begin(); runtime.step();
     CHECK(render.draws==1 && hal.batteryReads==1);
     // No input for the sleep timeout: the panel goes dark before the battery

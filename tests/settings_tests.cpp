@@ -1,6 +1,6 @@
-#include "app/Application.h"
+#include "host/HostApplication.h"
 #include "TestScreens.h"
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "features/settings/SettingsMenu.h"
 #include <array>
 #include <cmath>
@@ -62,7 +62,7 @@ void openSettings(ScreenManager& s,TimeUs& now) {
     Events home{}; home.home=true; s.handle(home,now); now+=1000;
     Events e{}; e.next=true;
     s.handle(e,now); now+=200000; s.update(now);      // clock -> list
-    while (AppRegistry[s.model().launcher.list.selection].id!=AppId::Settings) { s.handle(e,now); now+=200000; s.update(now); }
+    while (LaunchRegistry[s.model().launcher.list.selection].id!=LaunchTargetId::Settings) { s.handle(e,now); now+=200000; s.update(now); }
     Events decide{}; decide.decide=true;
     s.handle(decide,now); now+=1000;
     CHECK(s.model().screen==ScreenId::Settings);
@@ -218,7 +218,7 @@ void runtimeApplies() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; StubRender render; TimeService time; time.begin(hal);
     DisplayDataSource data;
-    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
     application.bindSettings(store,time);
     runtime.begin(); runtime.step();
     CHECK(hal.brightness==90 && hal.brightnessCalls==1);
@@ -561,7 +561,7 @@ void runtimeMenuScroll() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
     StubHal hal; StubRender render; TimeService time; time.begin(hal);
     DisplayDataSource data;
-    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
     application.bindSettings(store,time);
     runtime.begin(); runtime.step();
     const float spacing=float(rowSpacing({468,468}));

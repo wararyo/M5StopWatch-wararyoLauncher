@@ -1,5 +1,5 @@
 #pragma once
-#include "app/AppScreen.h"
+#include "host/Screen.h"
 #include "services/StopwatchService.h"
 #include "features/stopwatch/StopwatchLayout.h"
 namespace launcher {
@@ -12,7 +12,7 @@ namespace launcher {
 // The screen owns no measurement state. It only samples the service, so
 // leaving, going home or blanking the panel keeps the measurement running
 // (plan.md 4, 5.3).
-class StopwatchScreen final : public AppScreen {
+class StopwatchScreen final : public Screen {
 public:
     void resize(int width,int height) override { width_=width; height_=height; }
     void bind(StopwatchService* stopwatch) { stopwatch_=stopwatch; }

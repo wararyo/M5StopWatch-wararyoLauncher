@@ -10,9 +10,9 @@ struct ScreenOutcome {
 };
 // The contract from plan.md 4.1. ScreenManager composes feature display models;
 // this input and lifetime interface does not depend on them.
-class AppScreen {
+class Screen {
 public:
-    virtual ~AppScreen()=default;
+    virtual ~Screen()=default;
     virtual void resize(int width,int height)=0;
     // Whether the entry may be opened at all. An unbound screen behaves like an
     // unimplemented one rather than opening empty.
@@ -29,7 +29,7 @@ public:
     // shows and re-arms the deadline; true means the display changed. Without
     // it the deadline would only wake the loop, never redraw, because the
     // runtime's own display deadline is unset while an app screen covers the
-    // clock (AppRuntime::step, `model.transition<1`).
+    // clock (HostRuntime::step, `model.transition<1`).
     virtual bool tick(TimeUs now) { (void)now; return false; }
     // True while the screen's own content is in motion under the user's hand
     // or settling after it (a list drag or its inertia). The runtime keeps the

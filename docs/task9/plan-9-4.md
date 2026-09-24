@@ -12,7 +12,7 @@
 | ScreenManager | 現在画面、入退場、ホームの優先処理、起動先への振り分け、通知の寿命 |
 | LauncherController | ホーム↔一覧の遷移、ジェスチャーの振り分け、ランチャー専用ListController |
 | HomeLayer/文字盤管理 | 文字盤の登録・選択・begin/end・キャッシュ・次回更新期限 |
-| アプリの描画構成（例: AppRenderer） | RenderPortを実装。フレームを各機能の入力へ分配し、描画順・全面再描画条件を決定 |
+| アプリの描画構成（例: HostRenderer） | RenderPortを実装。フレームを各機能の入力へ分配し、描画順・全面再描画条件を決定 |
 | 共通Renderer | FramePlanの実行、全消去、順序付きpaint、転送。具体的な画面やアプリのIDを知らない |
 
 アプリ構成は既存のmain.cppから必要な部分だけ切り出す。サービスごとの抽象層や依存注入フレームワークは作らない。
@@ -42,7 +42,7 @@ FramePlan容量超過では登録できなかった対象もpaintされること
 ## 3. ホーム・一覧と文字盤
 
 ScreenManagerからホーム/一覧のdrag、transition、補間時刻、端ジェスチャーの判断をLauncherControllerへ移す。
-9-2のListControllerに機能固有のホーム判断を戻さない。画面を開く要求はAppId/起動先として返し、
+9-2のListControllerに機能固有のホーム判断を戻さない。画面を開く要求はLaunchTargetId/起動先として返し、
 画面のenter/exitはScreenManagerが実行する。
 退場時に表示用アニメーション期限を止め、選択・スクロールは戻り用に保持する。ホームでは初期化する。
 
@@ -72,7 +72,7 @@ SettingsStore/TimeService呼び出しを追加の汎用コマンド基盤へ置�
 ## 5. ファイル配置と順序
 
 - [x] **9-4a** LauncherControllerを抽出し、ScreenManagerのナビゲーションを整理。
-- [x] **9-4b** HomeLayer/文字盤管理とAppRendererを用意し、共通Rendererへ機能非依存の対象だけを渡す。
+- [x] **9-4b** HomeLayer/文字盤管理とHostRendererを用意し、共通Rendererへ機能非依存の対象だけを渡す。
 - [x] **9-4c** 全体モデルを合成へ変更し、診断・Runtimeの可視性/活動状態/計測入力を同じ構成経路へ揃える。
 - [x] **9-4d** StopwatchServiceとRuntimeSettingsの所有・操作要求・終了処理をアプリ側へ移す。
 - [x] **9-4e** 残るScreen/Layer/Layoutを各features配下へ移し、共通部品をuiの下位フォルダへ整理。
@@ -89,7 +89,7 @@ PlatformIOとCMakeの埋め込み指定、および参照するリンカーシ�
 構成処理のテストで文字盤の可視範囲と期限、描画順、構成切替の全面再描画要求を確認する。
 M5GFXが必要な文字盤の寿命・描画は診断ケースを維持し、実機確認を9-5へ送る。
 
-依存確認では `ui/list` と `ui/rendering` からAppRegistry・FrameModel・ScreenId・features・WatchFaceへの
+依存確認では `ui/list` と `ui/rendering` からLaunchRegistry・FrameModel・ScreenId・features・WatchFaceへの
 includeがないこと、ScreenManagerがStopwatchService/具体的描画を所有しないことを確認する。
 共通型取得だけのWatchFace/InputController依存も確認する。
 製品・測定・描画検証の3構成をビルド・verify_buildし、ホストテスト結果とともに `9-4-validation.md` に記録する。

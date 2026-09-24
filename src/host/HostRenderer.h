@@ -1,6 +1,6 @@
 #pragma once
-#include "app/FrameComposer.h"
-#include "app/RenderPort.h"
+#include "host/FrameComposer.h"
+#include "host/RenderPort.h"
 #include "features/external/ExternalLayer.h"
 #include "features/home/HomeLayer.h"
 #include "features/launcher/AppListLayer.h"
@@ -17,9 +17,9 @@ namespace launcher {
 //
 // Static in main: the layers hold framebuffer metadata and caches that must
 // stay off the 8KiB UI stack.
-class AppRenderer final : public RenderPort {
+class HostRenderer final : public RenderPort {
 public:
-    explicit AppRenderer(M5GFX& display):display_(display),renderer_(display) {}
+    explicit HostRenderer(M5GFX& display):display_(display),renderer_(display) {}
     bool begin(bool disableCache=false);
     bool registerFace(WatchFace& face) { return home_.registerFace(face); }
     bool selectFace(const char* id,bool disableCache=false) { return home_.selectFace(display_,id,disableCache); }

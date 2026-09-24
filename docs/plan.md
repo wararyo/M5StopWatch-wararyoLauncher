@@ -100,9 +100,9 @@ CPU 240MHz固定、light sleepなし、満充電、充電中でないUSB給電�
 
 | モジュール | 責務 | 境界 |
 |---|---|---|
-| AppRuntime | 初期化、イベント配送、期限管理、サービス接続 | 業務状態と描画実装を持たない |
-| LauncherApp / ScreenManager | 現在画面、選択、スクロール、遷移、ホーム処理 | HAL・NVS・OTAを直接呼ばない |
-| AppRegistry | 安定ID、表示名、アイコン、内蔵/外部の起動先 | 外部スロットを配列位置から推測しない |
+| HostRuntime | 初期化、イベント配送、期限管理、サービス接続 | 業務状態と描画実装を持たない |
+| ScreenManager / LauncherController | 画面の入退場とホーム処理 / ホーム・一覧の操作と遷移 | HAL・NVS・OTAを直接呼ばない |
+| LaunchRegistry | 安定ID、表示名、アイコン、内蔵/外部の起動先 | 外部スロットを配列位置から推測しない |
 | 内蔵アプリ画面 | 操作要求と表示モデル | 計測状態を画面に持たない |
 | InputController | タッチ・A/B・同時長押しを意味イベントに変換 | 画面遷移や描画はしない |
 | Renderer / FramePlan | レイヤー全体の計画、消去、描画、転送 | アプリ状態・時刻・電源を変更しない |
@@ -116,7 +116,7 @@ CPU 240MHz固定、light sleepなし、満充電、充電中でないUSB給電�
 
 UI状態とM5GFXは単一UIタスクが所有する。重いスロット検証は専用ワーカーで直列実行し、結果をイベントでUIへ返す。ワーカーは画面やUI状態へ直接触れない。他サービスは原則UIタスクから呼び、不要な常駐タスクを増やさない。共有I2C操作も直列化する。
 
-製品版はルートの `src/` 以下を `app/`, `input/`, `ui/`, `apps/`, `services/`, `power/`, `storage/`, `multifirm/`, `hal/` に分ける。`measurement/` は基準測定用として保持する。
+製品版はルートの `src/` 以下を `host/`, `input/`, `ui/`, `features/`, `services/`, `power/`, `storage/`, `multifirm/`, `hal/` に分ける。`measurement/` は基準測定用として保持する。
 
 ### 4.1 WatchFace契約
 
@@ -370,7 +370,7 @@ MultiFirm共有API、外部中の通知、経過時間復元、USB時刻設定�
 構成・再現手順は[作業2の基盤と実機手順](task2/runtime.md)、
 初回不具合・修正・再確認の結果は[作業2の検証記録](task2/task2-validation.md)を参照。
 
-- [x] AppRuntime、ScreenManager、AppRegistry、HAL境界を作り、UI状態を単一タスクが所有する構造にする。
+- [x] HostRuntime、ScreenManager、LaunchRegistry、HAL境界を作り、UI状態を単一タスクが所有する構造にする。
 - [x] A/B短押し、A+B連続600ms、タッチの意味イベントを実装する。ホームを画面固有処理より優先する。
 - [x] 単調時刻による期限管理と、期限超過時に基準を取り直してブロックする待機処理を実装する。
 - [x] PowerManagerに表示状態とUSB状態を分けて持たせ、30秒消灯・復帰・復帰タッチの消費を実装する。CPUは240MHz固定のままとする。

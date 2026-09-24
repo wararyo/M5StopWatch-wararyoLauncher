@@ -1,6 +1,6 @@
-#include "app/Application.h"
+#include "host/HostApplication.h"
 #include "TestScreens.h"
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "features/stopwatch/StopwatchScreen.h"
 #include <cstdlib>
 #include <iostream>
@@ -177,7 +177,7 @@ void homeKeepsMeasuringAndTheListOpensIt() {
     TestScreens s; TimeUs now=0;
     s.handle(home(),now); now+=1000;
     s.handle(press(true),now); now+=200000; s.update(now);   // clock -> list
-    CHECK(AppRegistry[s.model().launcher.list.selection].id==AppId::Stopwatch);
+    CHECK(LaunchRegistry[s.model().launcher.list.selection].id==LaunchTargetId::Stopwatch);
     s.handle(press(false),now); now+=1000;
     CHECK(s.model().screen==ScreenId::Stopwatch);
     s.handle(press(false),now); now+=1000;
@@ -220,7 +220,7 @@ void managerDrivesTheScreensOwnDeadline() {
 
 void runtimeStopsFramesWhileBlanked() {
     StubHal hal; StubRender render; DisplayDataSource data;
-    Application application(hal,render,data,468,468); auto& runtime=application.runtime();
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
     runtime.begin();
     hal.time=1000; runtime.step();
     auto pressButton=[&](bool a) {

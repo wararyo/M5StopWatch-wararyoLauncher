@@ -1,5 +1,5 @@
 #pragma once
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "features/launcher/AppListModel.h"
 #include "input/InputController.h"
 #include "ui/list/ListController.h"
@@ -12,7 +12,7 @@ namespace launcher {
 // answers an entry that cannot open.
 struct LauncherOutcome {
     bool changed=false,open=false;
-    const AppEntry* target=nullptr;
+    const LaunchEntry* target=nullptr;
 };
 // The clock and the app list: the slide between them, who owns a drag, and
 // the launcher's own list controller. Scrolling and deciding rows are the

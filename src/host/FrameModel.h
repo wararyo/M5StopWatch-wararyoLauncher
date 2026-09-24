@@ -1,5 +1,5 @@
 #pragma once
-#include "app/ScreenId.h"
+#include "host/ScreenId.h"
 #include "features/launcher/AppListModel.h"
 #include "features/settings/SettingsModel.h"
 #include "features/external/ExternalModel.h"
@@ -19,7 +19,7 @@ enum class FrameActivity : uint8_t {
 };
 // One frame, composed by the app from each feature's own model. It holds only
 // state: where each part is drawn follows from it in one place
-// (app/FrameComposer.h), so a caller cannot leave a region out of date.
+// (host/FrameComposer.h), so a caller cannot leave a region out of date.
 struct FrameModel {
     ScreenId screen=ScreenId::Home;
     Viewport viewport{};

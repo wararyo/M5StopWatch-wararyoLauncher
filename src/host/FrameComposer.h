@@ -1,5 +1,5 @@
 #pragma once
-#include "app/FrameModel.h"
+#include "host/FrameModel.h"
 #include "features/launcher/AppListLayout.h"
 #include <cstdint>
 namespace launcher {

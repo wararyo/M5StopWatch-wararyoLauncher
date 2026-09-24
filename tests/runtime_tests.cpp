@@ -1,6 +1,6 @@
-#include "app/Application.h"
+#include "host/HostApplication.h"
 #include "TestScreens.h"
-#include "app/AppRegistry.h"
+#include "host/LaunchRegistry.h"
 #include "ui/list/ListLayout.h"
 #include <cstdlib>
 #include <iostream>
@@ -140,7 +140,7 @@ void screens() {
 }
 void runtime() {
     FakeHal h;
-    Application application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step(); CHECK(h.draws == 1);
+    HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step(); CHECK(h.draws == 1);
     // Idle: nothing is sampled between interrupts, so each wait runs to the
     // next deadline (the 1s USB sample) instead of the 10ms input period.
     const int idleSamples = h.inputSamples;
@@ -171,10 +171,10 @@ void runtime() {
     h.time += 10000; h.input.a = true; r.step();
     h.time += 10000; h.input.a = false; r.step(); CHECK(r.model().screen == ScreenId::AppList);
     h.time += 400000; r.step(); r.wait(); CHECK(h.waited > 10000); // Released and settled.
-    CHECK(AppRuntime::waitDelay(100000, 90000) == 1000);
-    CHECK(AppRuntime::waitDelay(100000, 105000) == 5000);
-    CHECK(AppRegistry.size() == 5 && AppRegistry[2].slot == 1 && AppRegistry[4].slot == 3);
-    for (const auto& entry : AppRegistry) CHECK(entry.name && entry.name[0]);
+    CHECK(HostRuntime::waitDelay(100000, 90000) == 1000);
+    CHECK(HostRuntime::waitDelay(100000, 105000) == 5000);
+    CHECK(LaunchRegistry.size() == 5 && LaunchRegistry[2].slot == 1 && LaunchRegistry[4].slot == 3);
+    for (const auto& entry : LaunchRegistry) CHECK(entry.name && entry.name[0]);
 }
 void interrupts() {
     // Work 8-4: the touch controller raises INT before its first report is
@@ -182,7 +182,7 @@ void interrupts() {
     // of polling at the input period, and interrupts never bring a read
     // forward while one is being followed.
     FakeHal h;
-    Application application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
+    HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
     r.wait(); r.step();
     const int idle = h.inputSamples;
     h.interrupt = true; r.step();
@@ -199,7 +199,7 @@ void overload() {
     // the requested tick count by nearly one tick. Exercise that phase error.
     for (TimeUs early : {0, 1, 500, 999}) {
         FakeHal h; h.earlyWakeUs = early;
-        Application application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
+        HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
         auto cycle = [&] {
             h.time += 40000;
             r.wait(); CHECK(h.waited >= 1000);

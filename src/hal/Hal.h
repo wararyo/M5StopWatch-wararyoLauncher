@@ -14,6 +14,11 @@ public:
     // True once after a press or touch interrupt (or a slot result) ended a
     // wait, so the input is read now instead of at a far deadline (work 8-4).
     virtual bool inputPending() = 0;
+    // Automatic light sleep is only safe with the panel asleep (the display
+    // driver's DMA transfers hold no PM lock) and without USB power (sleep
+    // stops the USB console). Only the runtime test observes it, so the other
+    // fakes inherit the no-op (work 8-5).
+    virtual void setLightSleepAllowed(bool) {}
     // The RTC is read and written as UTC (plan.md 7.3). The system clock is
     // what the launcher actually reads each frame, so it sits behind the HAL
     // too: settimeofday is not available on the PC toolchain, and routing it

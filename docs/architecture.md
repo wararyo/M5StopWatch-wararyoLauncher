@@ -221,9 +221,12 @@ Layerはフレームをまたいで `Element` を保持する。そこには前�
 
 ## 7. 省電力と期限管理
 
-現在の製品設定はCPU最大240MHz・最小80MHzのDFS、light sleep無効、tickless idle無効。
+現在の製品設定はCPU最大240MHz・最小80MHzのDFS、tickless idle有効、自動light sleep有効。
 `beginPowerManagement()` と [sdkconfig.defaults](../sdkconfig.defaults) が設定元である。
-消灯は液晶のsleepと輝度0であり、MCUのdeep sleepやlight sleepを意味しない。
+消灯は液晶のsleepと輝度0であり、MCUのdeep sleepを意味しない。
+light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、消灯中かつVBUSの読み取りがUSB給電なしを示すときだけ
+`HostRuntime` が `Hal::setLightSleepAllowed()` で許す。パネルのsleep後に許可し、パネルを起こす前に取り消す。
+起床は入力の割り込み（A・B・タッチINT）と期限による。
 
 ### 起きる必要があるときだけ処理する
 

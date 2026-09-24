@@ -2,6 +2,8 @@
 #ifdef LAUNCHER_DRAIN_LOG
 #include <M5Unified.h>
 #include <nvs.h>
+#include <esp_pm.h>
+#include <freertos/FreeRTOS.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstdio>
@@ -34,6 +36,30 @@ struct Persisted {
     uint8_t state[PersistCapacity];
 };
 Persisted persisted{};
+
+// Time actually spent in automatic light sleep during the run (work 8-5), so
+// "enabled" is never mistaken for "slept". Written from the idle task.
+portMUX_TYPE sleepMux = portMUX_INITIALIZER_UNLOCKED;
+uint32_t sleepCount = 0;
+int64_t sleptUs = 0;
+esp_err_t onSleepExit(int64_t sleepTimeUs, void*) {
+    portENTER_CRITICAL_SAFE(&sleepMux);
+    ++sleepCount; sleptUs += sleepTimeUs;
+    portEXIT_CRITICAL_SAFE(&sleepMux);
+    return ESP_OK;
+}
+void resetSleep() {
+    portENTER_CRITICAL(&sleepMux);
+    sleepCount = 0; sleptUs = 0;
+    portEXIT_CRITICAL(&sleepMux);
+}
+void printSleep() {
+    portENTER_CRITICAL(&sleepMux);
+    const uint32_t n = sleepCount;
+    const int64_t us = sleptUs;
+    portEXIT_CRITICAL(&sleepMux);
+    std::printf("DRAIN sleep count=%lu slept_s=%lld\n", (unsigned long)n, (long long)(us / 1000000));
+}
 
 void save() {
     nvs_handle_t nvs;
@@ -76,6 +102,7 @@ void start(TimeUs now, const PowerManager& power) {
     head = count = 0;
     startedAt = now;
     active = true;
+    resetSleep();
     persisted = {PersistVersion, uint16_t(PersistIntervalUs / 1000000), 0, {}, {}};
     record(now, power, true, true);
     nextAt = now + RecordIntervalUs;
@@ -90,6 +117,7 @@ void dump() {
             const auto& e = entries[(first + i) % Capacity];
             std::printf("DRAIN t=%lu vbat=%d st=%u\n", (unsigned long)e.seconds, e.vbat, e.state);
         }
+        printSleep(); // RAM only, like the 1-minute record: lost on a restart.
         std::printf("DRAIN end n=%d nvs_n=%u\n", count, persisted.count);
     } else {
         // Nothing in RAM: the chip restarted, e.g. after the battery ran flat.
@@ -107,7 +135,11 @@ void dump() {
 }
 void beginDrainLog() {
     fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
-    std::printf("[Drain] enabled: records battery voltage while USB power is absent; send O to dump\n");
+    esp_pm_sleep_cbs_register_config_t callbacks{};
+    callbacks.exit_cb = onSleepExit;
+    const auto err = esp_pm_light_sleep_register_cbs(&callbacks);
+    std::printf("[Drain] enabled: records battery voltage while USB power is absent; send O to dump; "
+                "sleep counter=%s\n", esp_err_to_name(err));
 }
 void drainLog(TimeUs now, const PowerManager& power) {
     char c;

@@ -47,6 +47,12 @@ void HostRuntime::step() {
         power_.usb = usb;
         nextUsb_ = now + 1000000;
     }
+    // Light sleep only with the panel asleep and a VBUS reading that says no
+    // USB power (work 8-5); an unanswered read keeps it forbidden. It is
+    // forbidden before the panel wakes and allowed only after it has slept,
+    // so no panel transfer ever runs while sleep is possible.
+    const bool sleepOk = power_.screenOff() && power_.usb.vbusValid && !power_.usb.powered();
+    if (!sleepOk && lightSleep_) { hal_.setLightSleepAllowed(false); lightSleep_ = false; }
     if (wasOff != power_.screenOff()) {
 #ifdef LAUNCHER_RENDER_METRICS
         if (wasOff) recordWake(now);
@@ -56,6 +62,7 @@ void HostRuntime::step() {
         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
         appliedBrightness_ = -1;
     }
+    if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
     if (!power_.screenOff()) {
         dirty_ = screens_.update(now) || dirty_;
     }

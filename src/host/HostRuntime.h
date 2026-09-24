@@ -37,6 +37,7 @@ private:
     // How long input is still read at its period after an interrupt.
     static constexpr TimeUs FollowUs = 100000;
     TimeUs followUntil_ = 0;
+    bool lightSleep_ = false; // The HAL starts with light sleep forbidden.
     TimeUs nextDisplay_ = INT64_MAX;
     int appliedBrightness_ = -1; // Forced re-apply after every wake.
     bool dirty_ = true;

@@ -337,3 +337,27 @@ DFS＋入力の割り込み待機（`m5stopwatch-drain`、SHA-256 `5358ea98…`�
 4.1→3.7Vは **5.33時間**で、1回目（240MHz固定）の4.48時間から **19%延びた**。4.1→3.9V・3.9→3.7V・3.7→3.6Vも同じく17〜20%延びた。
 USB側で見えたDFSの約5mA減（35.5→30.5mA、約14%）と同程度の伸びで、8-4の割り込み待機は電池側でも大きな差を生んでいないと見ている。
 生データは `20260924-drain-2.csv`。
+
+## 8-5. tickless idle・自動light sleep
+
+### 決めたこと（2026-09-24、ユーザーと合意）
+
+- **light sleepを許すのは「画面OFFかつUSB給電なし」のときだけ**。それ以外は `ESP_PM_NO_LIGHT_SLEEP` のロック（`launcher`）を持つ。
+  - VBUSがある間の禁止は合意済みの方針どおり。VBUSの読み取りに失敗したときも許さない。
+  - 画面ON中も禁止する。M5GFXはパネル転送に `Bus_SPI` のGDMAを直接使い、PMのロックを持たない。
+    転送の途中で眠ると画面が壊れうる。画面ON静止中のlight sleepは、転送完了を保証する手段が要るので8-6以降の課題とする。
+  - タッチ等のI2Cは `taskYIELD` で完了を待つ（CPUを手放してアイドルに入らない）ので、読み取りの途中で眠ることはない。
+- 許可の順序: パネルをsleepさせた**後**に許可し、パネルを起こす**前**に取り消す（`HostRuntime::step`）。
+  起動時はロックを持った状態から始め、ロックを作れなければlight sleepを有効にしない。
+- `CONFIG_FREERTOS_USE_TICKLESS_IDLE=y`、`esp_pm_configure` の `light_sleep_enable=true`。
+- 起床: 8-4の入力の割り込み（GPIO1/2/13）に `gpio_wakeup_enable(LOW)` と `esp_sleep_enable_gpio_wakeup()` を加えた。
+  期限（USB状態1秒・消灯）はtickless idleが扱う。
+- 眠った証拠: `CONFIG_PM_LIGHT_SLEEP_CALLBACKS=y` とし、`m5stopwatch-drain` だけが終了時コールバックで回数と時間を数える。
+  吸い出しで `DRAIN sleep count=… slept_s=…` を出し、`tools/battery_drain.py` が記録時間に対する割合を表示する。
+  通常ビルドはコールバックを登録しない。
+- USB給電の検知は1秒周期のまま。消灯中にUSBを挿してから最大1秒はlight sleepが続きうる。MuteHidも同じ周期で運用している。
+
+### PCでの確認
+
+`tests/runtime_tests.cpp` の `lightSleep()`: 画面ON・VBUS未読・USB給電・読み取り失敗では許さない、電池かつ消灯で許す、
+タッチ復帰の前に取り消す、再消灯の後に許す、消灯中のUSB接続で取り消す、パネル操作と描画の最中に許可が出ていない。

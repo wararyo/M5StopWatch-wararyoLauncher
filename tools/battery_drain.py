@@ -48,7 +48,7 @@ def read_dump(port):
     device.dtr = False
     device.rts = False
     device.open()
-    header, records = None, []
+    header, records, sleep = None, [], None
     with device:
         device.reset_input_buffer()
         device.write(b"O")
@@ -66,7 +66,10 @@ def read_dump(port):
                     header = values
                 elif {"t", "vbat", "st"} <= values.keys():
                     records.append(values)
+                elif "slept_s" in values:
+                    sleep = values
                 elif "n" in values:
+                    values["sleep"] = sleep
                     return header, records, values
     raise SystemExit("No complete DRAIN dump within 20s (is this the m5stopwatch-drain build?)")
 
@@ -86,6 +89,11 @@ def main():
           f"active={header.get('active')} n={len(records)} -> {path}")
     if end.get("nvs_n") is not None:
         print(f"[drain] nvs copy holds {end['nvs_n']} entries")
+    # Automatic light sleep during the run (work 8-5); RAM only, like the record.
+    if end.get("sleep") and records:
+        sleep, span = end["sleep"], max(records[-1]["t"], 1)
+        print(f"[drain] light sleep: {sleep['count']} times, {sleep['slept_s']}s "
+              f"({100 * sleep['slept_s'] / span:.1f}% of the recorded {span}s)")
     if not records:
         return
     # A failed PMIC read comes back as <= 0; it is not a voltage.

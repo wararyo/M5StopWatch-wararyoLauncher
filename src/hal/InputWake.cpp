@@ -1,6 +1,7 @@
 #include "InputWake.h"
 #include <driver/gpio.h>
 #include <esp_err.h>
+#include <esp_sleep.h>
 #include <cstdint>
 #include <cstdio>
 namespace launcher {
@@ -26,11 +27,16 @@ bool beginInputWake(TaskHandle_t task) {
     }
     waiter = task;
     for (const auto pin : Pins) {
-        // Low level rather than an edge: light-sleep GPIO wake-up (work 8-5)
-        // only supports levels and shares the pin's interrupt type.
+        // Low level rather than an edge: light-sleep GPIO wake-up only
+        // supports levels and shares the pin's interrupt type.
         gpio_set_intr_type(pin, GPIO_INTR_LOW_LEVEL);
         gpio_isr_handler_add(pin, onLow, reinterpret_cast<void*>(static_cast<intptr_t>(pin)));
+        gpio_wakeup_enable(pin, GPIO_INTR_LOW_LEVEL);
     }
+    // The same pins end automatic light sleep (work 8-5); the interrupt then
+    // notifies the UI task as it does from an ordinary wait.
+    const auto wake = esp_sleep_enable_gpio_wakeup();
+    if (wake != ESP_OK) std::printf("[Input] light-sleep wake-up unavailable: %s\n", esp_err_to_name(wake));
     rearmInputWake();
     return true;
 }

@@ -22,9 +22,18 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     void setBrightness(int level) override { brightness = level; }
     InputSnapshot sampleInput() override { ++inputSamples; return input; }
     UsbState sampleUsb() override { ++usbSamples; return usb; }
-    void setScreenOff(bool off) override { off ? ++sleeps : ++wakes; }
+    // Panel commands and draws must never run while light sleep is allowed.
+    bool lightSleep = false, panelWhileSleepAllowed = false;
+    void setLightSleepAllowed(bool allowed) override { lightSleep = allowed; }
+    void setScreenOff(bool off) override {
+        off ? ++sleeps : ++wakes;
+        panelWhileSleepAllowed = panelWhileSleepAllowed || lightSleep;
+    }
     void invalidate() override {}
-    void draw(const FrameModel& m, const WatchData&) override { ++draws; rendered = m; }
+    void draw(const FrameModel& m, const WatchData&) override {
+        ++draws; rendered = m;
+        panelWhileSleepAllowed = panelWhileSleepAllowed || lightSleep;
+    }
     TimeUs nextUpdate(TimeUs now, const WatchData& d) const override { return nextMinute(now,d); }
     void waitUs(TimeUs delay) override { waited = delay; time += delay - earlyWakeUs; }
     // A low-level interrupt: pending for as long as anything is pressed, or
@@ -176,6 +185,33 @@ void runtime() {
     CHECK(LaunchRegistry.size() == 5 && LaunchRegistry[2].slot == 1 && LaunchRegistry[4].slot == 3);
     for (const auto& entry : LaunchRegistry) CHECK(entry.name && entry.name[0]);
 }
+void lightSleep() {
+    // Work 8-5: light sleep only with the panel asleep and a VBUS reading that
+    // says no USB power, and never while a panel command or draw runs.
+    FakeHal h;
+    HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
+    CHECK(!h.lightSleep); // Screen on.
+    h.time += 31000000; r.step();
+    CHECK(r.power().screenOff() && !h.lightSleep); // VBUS not read successfully yet.
+    h.usb = {true, 5000, true};
+    h.time += 1000000; r.step(); CHECK(!h.lightSleep); // USB power.
+    h.usb = {true, 0, false};
+    h.time += 1000000; r.step(); CHECK(h.lightSleep); // Battery, panel asleep.
+    h.usb = {false, 0, false};
+    h.time += 1000000; r.step(); CHECK(!h.lightSleep); // An unanswered read forbids it.
+    h.usb = {true, 0, false};
+    h.time += 1000000; r.step(); CHECK(h.lightSleep);
+    // A touch wakes the panel: sleep is forbidden before the panel command.
+    h.time += 10000; h.input = {false, false, true, 100, 100}; r.step();
+    CHECK(!r.power().screenOff() && !h.lightSleep && h.wakes == 1);
+    h.time += 10000; h.input = {}; r.step();
+    // Falling asleep again allows it only after the panel went off.
+    h.time += 31000000; r.step(); CHECK(r.power().screenOff() && h.lightSleep);
+    // USB plugged in while asleep: forbidden at the next VBUS sample.
+    h.usb = {true, 5000, true};
+    h.time += 1000000; r.step(); CHECK(!h.lightSleep);
+    CHECK(!h.panelWhileSleepAllowed);
+}
 void interrupts() {
     // Work 8-4: the touch controller raises INT before its first report is
     // readable, so an interrupt that reads nothing still starts a short stretch
@@ -231,7 +267,7 @@ void overload() {
     }
 }
 int main() {
-    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts();
+    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep();
     overload();
-    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, overload/early-wake\n";
+    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, overload/early-wake\n";
 }

@@ -17,9 +17,12 @@ CONFIG_ESP32S3_INSTRUCTION_CACHE_16KB=y
 CONFIG_ESP32S3_DATA_CACHE_64KB=y
 CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
 # Power management is app-side only (MuteHid runs it under the same MultiFirm
-# bootloader). Work 8-3 uses DFS alone; light sleep and tickless idle come in 8-5.
+# bootloader). DFS since work 8-3; tickless idle and automatic light sleep since
+# 8-5, allowed only with the panel asleep and no USB power. The callbacks let
+# the drain build count time spent asleep; nothing else registers them.
 CONFIG_PM_ENABLE=y
-CONFIG_FREERTOS_USE_TICKLESS_IDLE=n
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+CONFIG_PM_LIGHT_SLEEP_CALLBACKS=y
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=n
 CONFIG_SECURE_BOOT=n
 CONFIG_SECURE_FLASH_ENC_ENABLED=n

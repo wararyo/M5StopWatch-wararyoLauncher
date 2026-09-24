@@ -76,13 +76,29 @@ BatteryState M5Hal::sampleBattery() {
 void M5Hal::setBrightness(int level) {
     M5.Display.setBrightness(uint8_t(level < 0 ? 0 : level > 255 ? 255 : level));
 }
+namespace {
+esp_pm_lock_handle_t sleepLock = nullptr;
+bool sleepAllowed = false;
+}
 void beginPowerManagement(int maxMhz, int minMhz) {
-    // No lock of our own: IDF holds CPU_FREQ_MAX on each core whenever it runs
-    // anything but the idle task, so every frame is drawn at the maximum and
-    // only the waits between them drop to the minimum.
-    const esp_pm_config_t config{maxMhz, minMhz, false};
-    const auto err = esp_pm_configure(&config);
-    std::printf("[Power] dfs max=%dMHz min=%dMHz result=%s\n", maxMhz, minMhz, esp_err_to_name(err));
+    // No frequency lock of our own: IDF holds CPU_FREQ_MAX on each core
+    // whenever it runs anything but the idle task, so every frame is drawn at
+    // the maximum and only the waits between them drop to the minimum.
+    // Light sleep starts forbidden and stays so until the runtime allows it
+    // (work 8-5), so the lock is taken before sleep is enabled at all.
+    auto err = esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "launcher", &sleepLock);
+    if (err == ESP_OK) err = esp_pm_lock_acquire(sleepLock);
+    // Without the lock, sleeping could stop a panel transfer or the USB
+    // console; keep the work 8-3 behaviour instead.
+    const esp_pm_config_t config{maxMhz, minMhz, err == ESP_OK};
+    const auto pm = esp_pm_configure(&config);
+    std::printf("[Power] dfs max=%dMHz min=%dMHz light_sleep=%d lock=%s result=%s\n", maxMhz, minMhz,
+                int(config.light_sleep_enable), esp_err_to_name(err), esp_err_to_name(pm));
+}
+void M5Hal::setLightSleepAllowed(bool allowed) {
+    if (!sleepLock || allowed == sleepAllowed) return;
+    if ((allowed ? esp_pm_lock_release(sleepLock) : esp_pm_lock_acquire(sleepLock)) == ESP_OK)
+        sleepAllowed = allowed;
 }
 void M5Hal::beginInputWake() {
     inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle());

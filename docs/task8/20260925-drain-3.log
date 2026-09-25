@@ -1,0 +1,9 @@
+[drain] source=ram interval=60s active=0 n=1408 -> docs\task8\20260925-drain-3.csv
+[drain] nvs copy holds 94 entries
+[drain] light sleep: 83722 times, 83686s (99.1% of the recorded 84420s)
+[drain] 4204mV -> 3696mV over 23.45h (last sample at t=84420s)
+[drain] 4.1V -> 3.9V: 9.33h
+[drain] 3.9V -> 3.7V: 9.95h
+[drain] 4.1V -> 3.7V: 19.28h
+[drain] 3.7V -> 3.6V: not reached
+[drain] states seen: -, lit

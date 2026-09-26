@@ -1,0 +1,484 @@
+I (95) boot:  6 ota_2            OTA app          00 12 00610000[Power] screen=off
+[UsbDiag] history now=30s n=3
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=27s sof=0 vbus=1
+[UsbDiag] t=28s sof=1 vbus=1
+[Power] screen=on
+[RenderDiag] transition-draw n=112 avg=13750 max=26365 p95_upper=24000 us over33333=0
+[RenderDiag] scroll-draw n=167 avg=22980 max=32364 p95_upper=30000 us over33333=0
+[RenderDiag] settings-scroll-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-single-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] single-draw n=12 avg=21674 max=27196 p95_upper=28000 us over33333=0
+[RenderDiag] transition-interval n=106 avg=38990 max=628600 p95_upper=172000 us over33333=6
+[RenderDiag] transition-interval-cont n=101 avg=19946 max=171718 p95_upper=27000 us over33333=1
+[RenderDiag] transition-interval fps=25.65 cont_fps=50.13 pauses=5 longest_pause=628600 us
+[RenderDiag] scroll-interval n=161 avg=80826 max=6185611 p95_upper=45000 us over33333=18
+[RenderDiag] scroll-interval-cont n=158 avg=27850 max=175976 p95_upper=42000 us over33333=15
+[RenderDiag] scroll-interval fps=12.37 cont_fps=35.91 pauses=3 longest_pause=6185611 us
+[RenderDiag] settings-scroll-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-scroll-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-scroll-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=145 avg=23296 max=33501 p95_upper=32000 us over33333=1
+[RenderDiag] wake-request-to-end n=1 avg=26905 max=26905 p95_upper=27000 us over33333=0
+[RenderDiag] window_us=60077239 loops=735 layouts=350 paints=290 stack_free=5612 internal_free=200223 internal_largest=151552 psram_free=7834604 psram_largest=7733248
+[RenderDiag] list_cache bytes=103316 allocations=5 failures=0 fits=5 renders=57
+[RenderDiag] settings_list_cache bytes=0 allocations=0 failures=0 fits=0 renders=0
+[UsbDiag] history now=101s n=5
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=27s sof=0 vbus=1
+[UsbDiag] t=28s sof=1 vbus=1
+[UsbDiag] t=98s sof=0 vbus=1
+[UsbDiag] t=99s sof=1 vbus=1
+[RenderDiag] transition-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-draw n=48 avg=23549 max=31961 p95_upper=31000 us over33333=0
+[RenderDiag] settings-scroll-draw n=255 avg=16680 max=22393 p95_upper=22000 us over33333=0
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-single-draw n=14 avg=20379 max=28222 p95_upper=29000 us over33333=0
+[RenderDiag] single-draw n=3 avg=24696 max=29206 p95_upper=30000 us over33333=0
+[RenderDiag] transition-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] transition-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] transition-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] scroll-interval n=46 avg=27782 max=88094 p95_upper=35000 us over33333=4
+[RenderDiag] scroll-interval-cont n=46 avg=27782 max=88094 p95_upper=35000 us over33333=4
+[RenderDiag] scroll-interval fps=35.99 cont_fps=35.99 pauses=0 longest_pause=0 us
+[RenderDiag] settings-scroll-interval n=247 avg=21430 max=275165 p95_upper=25000 us over33333=6
+[RenderDiag] settings-scroll-interval-cont n=246 avg=20398 max=189707 p95_upper=25000 us over33333=5
+[RenderDiag] settings-scroll-interval fps=46.66 cont_fps=49.02 pauses=1 longest_pause=275165 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=219 avg=19741 max=33101 p95_upper=28000 us over33333=0
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60116121 loops=785 layouts=346 paints=320 stack_free=5404 internal_free=200223 internal_largest=151552 psram_free=7788376 psram_largest=7733248
+[RenderDiag] list_cache bytes=103316 allocations=5 failures=0 fits=5 renders=67
+[RenderDiag] settings_list_cache bytes=45632 allocations=5 failures=0 fits=5 renders=57
+[Power] screen=off
+[Power] screen=on
+[UsbDiag] history now=175s n=7
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=27s sof=0 vbus=1
+[UsbDiag] t=28s sof=1 vbus=1
+[UsbDiag] t=98s sof=0 vbus=1
+[UsbDiag] t=99s sof=1 vbus=1
+[UsbDiag] t=172s sof=0 vbus=1
+[UsbDiag] t=173s sof=1 vbus=1
+[RenderDiag] transition-draw n=27 avg=11928 max=23451 p95_upper=21000 us over33333=0
+[RenderDiag] scroll-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-scroll-draw n=405 avg=17730 max=22734 p95_upper=22000 us over33333=0
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-single-draw n=6 avg=17425 max=23722 p95_upper=24000 us over33333=0
+[RenderDiag] single-draw n=1 avg=25158 max=25158 p95_upper=26000 us over33333=0
+[RenderDiag] transition-interval n=26 avg=21292 max=116781 p95_upper=38000 us over33333=2
+[RenderDiag] transition-interval-cont n=26 avg=21292 max=116781 p95_upper=38000 us over33333=2
+[RenderDiag] transition-interval fps=46.96 cont_fps=46.96 pauses=0 longest_pause=0 us
+[RenderDiag] scroll-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] settings-scroll-interval n=400 avg=41460 max=6868705 p95_upper=35000 us over33333=21
+[RenderDiag] settings-scroll-interval-cont n=396 avg=22242 max=198495 p95_upper=26000 us over33333=17
+[RenderDiag] settings-scroll-interval fps=24.12 cont_fps=44.96 pauses=4 longest_pause=6868705 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=362 avg=18730 max=26247 p95_upper=23000 us over33333=0
+[RenderDiag] wake-request-to-end n=1 avg=26041 max=26041 p95_upper=27000 us over33333=0
+[RenderDiag] window_us=60117257 loops=2266 layouts=468 paints=439 stack_free=5404 internal_free=200223 internal_largest=151552 psram_free=7788376 psram_largest=7733248
+[RenderDiag] list_cache bytes=103316 allocations=5 failures=0 fits=5 renders=69
+[RenderDiag] settings_list_cache bytes=45632 allocations=5 failures=0 fits=5 renders=131
+[UsbDiag] history now=198s n=9
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=27s sof=0 vbus=1
+[UsbDiag] t=28s sof=1 vbus=1
+[UsbDiag] t=98s sof=0 vbus=1
+[UsbDiag] t=99s sof=1 vbus=1
+[UsbDiag] t=172s sof=0 vbus=1
+[UsbDiag] t=173s sof=1 vbus=1
+[UsbDiag] t=195s sof=0 vbus=1
+[UsbDiag] t=196s sof=1 vbus=1
+[RenderDiag] transition-draw n=38 avg=16728 max=24313 p95_upper=24000 us over33333=0
+[RenderDiag] scroll-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-scroll-draw n=68 avg=15672 max=22116 p95_upper=18000 us over33333=0
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-single-draw n=33 avg=8899 max=25575 p95_upper=26000 us over33333=0
+[RenderDiag] single-draw n=4 avg=22268 max=29954 p95_upper=30000 us over33333=0
+[RenderDiag] transition-interval n=35 avg=30212 max=394506 p95_upper=36000 us over33333=2
+[RenderDiag] transition-interval-cont n=34 avg=19498 max=35460 p95_upper=28000 us over33333=1
+[RenderDiag] transition-interval fps=33.10 cont_fps=51.29 pauses=1 longest_pause=394506 us
+[RenderDiag] scroll-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] settings-scroll-interval n=65 avg=18425 max=43554 p95_upper=24000 us over33333=3
+[RenderDiag] settings-scroll-interval-cont n=65 avg=18425 max=43554 p95_upper=24000 us over33333=3
+[RenderDiag] settings-scroll-interval fps=54.27 cont_fps=54.27 pauses=0 longest_pause=0 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=91 avg=14412 max=30647 p95_upper=26000 us over33333=0
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60044628 loops=1167 layouts=158 paints=143 stack_free=5404 internal_free=200223 internal_largest=151552 psram_free=7788376 psram_largest=7733248
+[RenderDiag] list_cache bytes=103316 allocations=5 failures=0 fits=5 renders=73
+[RenderDiag] settings_list_cache bytes=45632 allocations=5 failures=0 fits=5 renders=149
+[Power] screen=off
+[RenderDiag] transition-draw n=27 avg=15932 max=25127 p95_upper=24000 us over33333=0
+[RenderDiag] scroll-draw n=27 avg=20200 max=23201 p95_upper=24000 us over33333=0
+[RenderDiag] settings-scroll-draw n=36 avg=16198 max=23175 p95_upper=23000 us over33333=0
+[RenderDiag] stopwatch-draw n=1426 avg=1896 max=35153 p95_upper=2000 us over33333=2
+[RenderDiag] settings-single-draw n=4 avg=16122 max=23756 p95_upper=24000 us over33333=0
+[RenderDiag] single-draw n=6 avg=27688 max=35472 p95_upper=36000 us over33333=1
+[RenderDiag] transition-interval n=25 avg=19115 max=27466 p95_upper=27000 us over33333=0
+[RenderDiag] transition-interval-cont n=25 avg=19115 max=27466 p95_upper=27000 us over33333=0
+[RenderDiag] transition-interval fps=52.31 cont_fps=52.31 pauses=0 longest_pause=0 us
+[RenderDiag] scroll-interval n=25 avg=23356 max=37891 p95_upper=37000 us over33333=2
+[RenderDiag] scroll-interval-cont n=25 avg=23356 max=37891 p95_upper=37000 us over33333=2
+[RenderDiag] scroll-interval fps=42.82 cont_fps=42.82 pauses=0 longest_pause=0 us
+[RenderDiag] settings-scroll-interval n=33 avg=20475 max=35964 p95_upper=34000 us over33333=2
+[RenderDiag] settings-scroll-interval-cont n=33 avg=20475 max=35964 p95_upper=34000 us over33333=2
+[RenderDiag] settings-scroll-interval fps=48.84 cont_fps=48.84 pauses=0 longest_pause=0 us
+[RenderDiag] stopwatch-interval n=1423 avg=24951 max=27956 p95_upper=26000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=1423 avg=24951 max=27956 p95_upper=26000 us over33333=0
+[RenderDiag] stopwatch-interval fps=40.08 cont_fps=40.08 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=49 avg=20099 max=36191 p95_upper=36000 us over33333=3
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60030995 loops=2081 layouts=1545 paints=1526 stack_free=5404 internal_free=200223 internal_largest=151552 psram_free=7788376 psram_largest=7733248
+[RenderDiag] list_cache bytes=103316 allocations=5 failures=0 fits=5 renders=81
+[RenderDiag] settings_list_cache bytes=45632 allocations=5 failures=0 fits=5 renders=165
+[Power] screen=on
+[UsbDiag] history now=342s n=11
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=27s sof=0 vbus=1
+[UsbDiag] t=28s sof=1 vbus=1
+[UsbDiag] t=98s sof=0 vbus=1
+[UsbDiag] t=99s sof=1 vbus=1
+[UsbDiag] t=172s sof=0 vbus=1
+[UsbDiag] t=173s sof=1 vbus=1
+[UsbDiag] t=195s sof=0 vbus=1
+[UsbDiag] t=196s sof=1 vbus=1
+[UsbDiag] t=339s sof=0 vbus=1
+[UsbDiag] t=340s sof=1 vbus=1
+[Stats] overlay cache=ready bytes=6992 internal
+[RenderDiag] transition-draw n=146 avg=11970 max=25061 p95_upper=21000 us over33333=0
+[RenderDiag] scroll-draw n=44 avg=22842 max=32671 p95_upper=30000 us over33333=0
+[RenderDiag] settings-scroll-draw n=137 avg=17793 max=22677 p95_upper=22000 us over33333=0
+[RenderDiag] stopwatch-draw n=330 avg=1944 max=35483 p95_upper=2000 us over33333=1
+[RenderDiag] settings-single-draw n=6 avg=20047 max=30152 p95_upper=31000 us over33333=0
+[RenderDiag] single-draw n=6 avg=19321 max=29169 p95_upper=30000 us over33333=0
+[RenderDiag] transition-interval n=144 avg=32470 max=473835 p95_upper=96000 us over33333=9
+[RenderDiag] transition-interval-cont n=137 avg=17585 max=95587 p95_upper=25000 us over33333=2
+[RenderDiag] transition-interval fps=30.80 cont_fps=56.86 pauses=7 longest_pause=473835 us
+[RenderDiag] scroll-interval n=41 avg=26501 max=54962 p95_upper=47000 us over33333=5
+[RenderDiag] scroll-interval-cont n=41 avg=26501 max=54962 p95_upper=47000 us over33333=5
+[RenderDiag] scroll-interval fps=37.73 cont_fps=37.73 pauses=0 longest_pause=0 us
+[RenderDiag] settings-scroll-interval n=134 avg=25620 max=235316 p95_upper=37000 us over33333=10
+[RenderDiag] settings-scroll-interval-cont n=132 avg=22616 max=155376 p95_upper=35000 us over33333=8
+[RenderDiag] settings-scroll-interval fps=39.03 cont_fps=44.22 pauses=2 longest_pause=235316 us
+[RenderDiag] stopwatch-interval n=329 avg=24890 max=27659 p95_upper=26000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=329 avg=24890 max=27659 p95_upper=26000 us over33333=0
+[RenderDiag] stopwatch-interval fps=40.18 cont_fps=40.18 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=228 avg=16801 max=33258 p95_upper=26000 us over33333=0
+[RenderDiag] wake-request-to-end n=1 avg=38515 max=38515 p95_upper=39000 us over33333=1
+[RenderDiag] window_us=60123999 loops=1476 layouts=716 paints=669 stack_free=5404 internal_free=193179 internal_largest=151552 psram_free=7788376 psram_largest=7733248
+[RenderDiag] list_cache bytes=103316 allocations=5 failures=0 fits=5 renders=97
+[RenderDiag] settings_list_cache bytes=45632 allocations=5 failures=0 fits=5 renders=203
+[UsbDiag] history now=367s n=13
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=27s sof=0 vbus=1
+[UsbDiag] t=28s sof=1 vbus=1
+[UsbDiag] t=98s sof=0 vbus=1
+[UsbDiag] t=99s sof=1 vbus=1
+[UsbDiag] t=172s sof=0 vbus=1
+[UsbDiag] t=173s sof=1 vbus=1
+[UsbDiag] t=195s sof=0 vbus=1
+[UsbDiag] t=196s sof=1 vbus=1
+[UsbDiag] t=339s sof=0 vbus=1
+[UsbDiag] t=340s sof=1 vbus=1
+[UsbDiag] t=364s sof=0 vbus=1
+[UsbDiag] t=365s sof=1 vbus=1
+[Slots] booting slot=1
+I (394970) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (395002) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (395004) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (395005) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (395037) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (395043) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (395044) multifirm-host: slot 1 boot verification took 423 ms
+I (395044) multifirm-host: slot 1 boot SHA-256 calculation took 189 ms
+I (395044) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (395076) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (395078) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (395079) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (395111) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (395117) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+[Slots] boot committed; shutting down
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037b24e
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (203) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) load
+I (207) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) load
+I (210) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (280) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) load
+I (295) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) load
+I (303) boot: Loaded app from partition at offset 0x420000
+I (303) boot: Disabling RNG early entropy source...
+I (313) octal_psram: vendor id    : 0x0d (AP)
+I (313) octal_psram: dev id       : 0x02 (generation 3)
+I (313) octal_psram: density      : 0x03 (64 Mbit)
+I (315) octal_psram: good-die     : 0x01 (Pass)
+I (320) octal_psram: Latency      : 0x01 (Fixed)
+I (324) octal_psram: VCC          : 0x01 (3V)
+I (328) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (333) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (338) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (342) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (348) octal_psram: DriveStrength: 0x00 (1/1)
+I (352) MSPI Timing: PSRAM timing tuning index: 4
+I (356) esp_psram: Found 8MB PSRAM device
+I (360) esp_psram: Speed: 80MHz
+I (363) cpu_start: Multicore app
+I (772) esp_psram: SPI SRAM memory test OK
+I (781) cpu_start: Pro cpu start user code
+I (781) cpu_start: cpu freq: 240000000 Hz
+I (781) app_init: Application information:
+I (782) app_init: Project name:     M5StopWatch-KantanPlay
+I (786) app_init: App version:      0.1.0
+I (790) app_init: Compile time:     Sep 20 2026 01:01:44
+I (795) app_init: ELF file SHA256:  094c136e3...
+I (800) app_init: ESP-IDF:          5.5.0
+I (803) efuse_init: Min chip rev:     v0.0
+I (807) efuse_init: Max chip rev:     v0.99 
+I (811) efuse_init: Chip rev:         v0.2
+I (815) heap_init: Initializing. RAM available for dynamic allocation:
+I (821) heap_init: At 3FC9C1B8 len 0004D558 (309 KiB): RAM
+I (826) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (831) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (837) heap_init: At 600FE020 len 00001FC8 (7 KiB): RTCRAM
+I (842) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (849) spi_flash: detected chip: generic
+I (852) spi_flash: flash io: dio
+I (856) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (862) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (4) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (10) main_task: Calling app_main()
+I (34) M5GFX: [Autodetect] board_M5StopWatch
+[Autodetect] board_M5StopWatch (id=30)
+[Display] width=468 height=468 expected=468x468 result=PASS
+[PSRAM] total=8388608 free=7942692 bytes
+Compliant with KANTAN Music
+[Settings] restored key=1 volume=10 vibration=1
+[Audio] rate=48000 dma=128x4 mono feed=256x2 master=0.798105 speaker=255
+[Input] period_ms=5 core=1 priority=4; touch: chord; A:7th B:swap
+[InputStats] work_max_us=5208 work_over_5ms=4 interval_max_us=5277
+[UIDelta] cells=1 frames=10 max_us=2672
+I (11534) esp_image: segment 0: paddr=00020020 vaddr=3c070020 size=8dc04h (580612) map
+I (11590) esp_image: segment 1: paddr=000adc2c vaddr=3fc99200 size=023ech (  9196) 
+I (11592) esp_image: segment 2: paddr=000b0020 vaddr=42000020 size=625c0h (402880) map
+I (11633) esp_image: segment 3: paddr=001125e8 vaddr=3fc9b5ec size=011e8h (  4584) 
+I (11634) esp_image: segment 4: paddr=001137d8 vaddr=40374000 size=151d8h ( 86488) 
+I (11646) esp_image: segment 5: paddr=001289b8 vaddr=600fe000 size=00050h (    80) 
+I (11647) esp_image: segment 0: paddr=00020020 vaddr=3c070020 size=8dc04h (580612) map
+I (11708) esp_image: segment 1: paddr=000adc2c vaddr=3fc99200 size=023ech (  9196) 
+I (11709) esp_image: segment 2: paddr=000b0020 vaddr=42000020 size=625c0h (402880) map
+I (11750) esp_image: segment 3: paddr=001125e8 vaddr=3fc9b5ec size=011e8h (  4584) 
+I (11752) esp_image: segment 4: paddr=001137d8 vaddr=40374000 size=151d8h ( 86488) 
+I (11763) esp_image: segment 5: paddr=001289b8 vaddr=600fe000 size=00050h (    80) 
+[InputStats] work_max_us=5263 work_over_5ms=8 interval_max_us=5277
+[UIDelta] cells=1 frames=22 max_us=2672
+[UIDelta] cells=7 frames=2 max_us=11677
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40379e0e
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x14f0
+load:0x403c8700,len:0xd24
+load:0x403cb700,len:0x2ef0
+entry 0x403c8924
+I (24) boot: ESP-IDF v5.5.4 2nd stage bootloader
+I (24) boot: compile time Sep  7 2026 17:31:17
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) boot.esp32s3: Boot SPI Speed : 80MHz
+I (34) boot.esp32s3: SPI Mode       : DIO
+I (38) boot.esp32s3: SPI Flash Size : 16MB
+I (42) boot: Enabling RNG early entropy source...
+I (47) boot: Partition Table:
+I (49) boot: ## Label            Usage          Type ST Offset   Length
+I (55) boot:  0 nvs              WiFi data        01 02 00009000 00010000
+I (62) boot:  1 otadata          OTA data         01 00 00019000 00002000
+I (68) boot:  2 phy_init         RF data          01 01 0001b000 00001000
+I (75) boot:  3 multifirm_meta   Unknown data     01 40 0001c000 00004000
+I (81) boot:  4 ota_0            OTA app          00 10 00020000 00400000
+I (88) boot:  5 ota_1            OTA app          00 11 00420000 001f0000
+I (95) boot:  6 ota_2            OTA app          00 12 00610000 001f0000
+I (101) boot:  7 ota_3            OTA app          00 13 00800000 001f0000
+I (108) boot:  8 multifirm_nvs    WiFi data        01 02 009f0000 00010000
+I (114) boot:  9 storage          Unknown data     01 81 00a00000 00400000
+I (121) boot: 10 coredump         Unknown data     01 03 00e00000 00010000
+I (127) boot: End of partition table
+I (131) esp_image: segment 0: paddr=00020020 vaddr=3c070020 size=8dc04h (580612) map
+I (241) esp_image: segment 1: paddr=000adc2c vaddr=3fc99200 size=023ech (  9196) load
+I (243) esp_image: segment 2: paddr=000b0020 vaddr=42000020 size=625c0h (402880) map
+I (316) esp_image: segment 3: paddr=001125e8 vaddr=3fc9b5ec size=011e8h (  4584) load
+I (318) esp_image: segment 4: paddr=001137d8 vaddr=40374000 size=151d8h ( 86488) load
+I (339) esp_image: segment 5: paddr=001289b8 vaddr=600fe000 size=00050h (    80) load
+I (347) boot: Loaded app from partition at offset 0x20000
+I (348) boot: Disabling RNG early entropy source...
+I (358) octal_psram: vendor id    : 0x0d (AP)
+I (358) octal_psram: dev id       : 0x02 (generation 3)
+I (358) octal_psram: density      : 0x03 (64 Mbit)
+I (360) octal_psram: good-die     : 0x01 (Pass)
+I (364) octal_psram: Latency      : 0x01 (Fixed)
+I (369) octal_psram: VCC          : 0x01 (3V)
+I (373) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (378) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (383) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (387) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (392) octal_psram: DriveStrength: 0x00 (1/1)
+I (397) MSPI Timing: PSRAM timing tuning index: 4
+I (401) esp_psram: Found 8MB PSRAM device
+I (405) esp_psram: Speed: 80MHz
+I (408) cpu_start: Multicore app
+I (692) esp_psram: SPI SRAM memory test OK
+I (701) cpu_start: Pro cpu start user code
+I (701) cpu_start: cpu freq: 240000000 Hz
+I (701) app_init: Application information:
+I (702) app_init: Project name:     wararyoLauncher
+I (702) app_init: App version:      0.1.0-dev
+I (702) app_init: Compile time:     Sep 26 2026 00:53:47
+I (702) app_init: ELF file SHA256:  160b8f1e1...
+I (702) app_init: ESP-IDF:          5.5.0
+I (702) efuse_init: Min chip rev:     v0.0
+I (702) efuse_init: Max chip rev:     v0.99 
+I (703) efuse_init: Chip rev:         v0.2
+I (703) heap_init: Initializing. RAM available for dynamic allocation:
+I (703) heap_init: At 3FCA6BD0 len 00042B40 (266 KiB): RAM
+I (703) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (703) heap_init: At 600FE050 len 00001F98 (7 KiB): RTCRAM
+I (704) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (704) spi_flash: detected chip: generic
+I (705) spi_flash: flash io: dio
+I (705) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (706) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+I (301) pm: Frequency switching config: CPU_MAX: 240, APB_MAX: 80, APB_MIN: 80, Light sleep: ENABLED
+I (302) sleep: Code start at 0x42000020, total 402880, data start at 0x3c000000, total 33554432 Bytes
+[Power] dfs max=240MHz min=80MHz light_sleep=1 lock=ESP_OK result=ESP_OK
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=336379 free=256875 largest=212992 bytes
+[Memory] psram total=8388608 free=7942712 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=340 bytes=170790
+[WatchFace] digital cache=ready bytes=51728 internal
+[Time] rtc_read=ok utc=2026-09-26 03:51:10 trusted=yes
+[Slots] layout=supported
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=90 screen_off=30s stored=ok
+[Memory] ui-internal total=336379 free=200723 largest=159744 bytes
+[Memory] ui-psram total=8388608 free=7939596 largest=7864320 bytes
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+I (2325) esp_image: segment 0: paddr=00420020 vaddr=3c060020 size=59c34h (367668) map
+I (2358) esp_image: segment 1: paddr=00479c5c vaddr=3fc97100 size=03544h ( 13636) 
+I (2360) esp_image: segment 2: paddr=0047d1a8 vaddr=40374000 size=02e70h ( 11888) 
+I (2361) esp_image: segment 3: paddr=00480020 vaddr=42000020 size=5a320h (369440) map
+I (2393) esp_image: segment 4: paddr=004da348 vaddr=40376e70 size=101f4h ( 66036) 
+I (2399) esp_image: segment 5: paddr=004ea544 vaddr=600fe000 size=00020h (    32) 
+I (2399) multifirm-host: slot 1 image verification took 425 ms
+I (2400) multifirm-host: slot 1 SHA-256 calculation took 190 ms
+[Slots] slot=1 state=ready name=M5StopWatch-KantanPlay version=0.1.0 error=ESP_OK
+I (2908) esp_image: segment 0: paddr=00610020 vaddr=3c0c0020 size=4b958h (309592) map
+I (2936) esp_image: segment 1: paddr=0065b980 vaddr=3fc9fa00 size=04698h ( 18072) 
+I (2938) esp_image: segment 2: paddr=00660020 vaddr=42000020 size=b7118h (749848) map
+I (3003) esp_image: segment 3: paddr=00717140 vaddr=3fca4098 size=004f4h (  1268) 
+I (3004) esp_image: segment 4: paddr=0071763c vaddr=40374000 size=1b920h (112928) 
+I (3014) esp_image: segment 5: paddr=00732f64 vaddr=600fe000 size=00050h (    80) 
+I (3014) multifirm-host: slot 2 image verification took 611 ms
+I (3015) multifirm-host: slot 2 SHA-256 calculation took 274 ms
+[Slots] slot=2 state=ready name=M5StopWatch-MuteHid version=0.0.1-phase0 error=ESP_OK
+I (3365) esp_image: segment 0: paddr=00800020 vaddr=3c090020 size=2ae98h (175768) map
+I (3381) esp_image: segment 1: paddr=0082aec0 vaddr=3fc98bf0 size=04cb4h ( 19636) 
+I (3384) esp_image: segment 2: paddr=0082fb7c vaddr=40374000 size=0049ch (  1180) 
+I (3384) esp_image: segment 3: paddr=00830020 vaddr=42000020 size=82d10h (535824) map
+I (3432) esp_image: segment 4: paddr=008b2d38 vaddr=4037449c size=14748h ( 83784) 
+I (3440) multifirm-host: slot 3 image verification took 421 ms
+I (3441) multifirm-host: slot 3 SHA-256 calculation took 187 ms
+[Slots] slot=3 state=ready name=VibeWatch version=esp-idf: v4.4.7 38eeba2 error=ESP_OK
+[UsbDiag] history now=2s n=1
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] history now=6s n=3
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=3s sof=0 vbus=1
+[UsbDiag] t=4s sof=1 vbus=1
+[UsbDiag] history now=30s n=5
+[UsbDiag] t=0s sof=1 vbus=1
+[UsbDiag] t=3s sof=0 vbus=1
+[UsbDiag] t=4s sof=1 vbus=1
+[UsbDiag] t=27s sof=0 vbus=1
+[UsbDiag] t=28s sof=1 vbus=1
+[Power] screen=off
+[RenderDiag] transition-draw n=11 avg=17111 max=23206 p95_upper=24000 us over33333=0
+[RenderDiag] scroll-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-scroll-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-single-draw n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] single-draw n=3 avg=28315 max=35223 p95_upper=36000 us over33333=1
+[RenderDiag] transition-interval n=10 avg=20947 max=26394 p95_upper=27000 us over33333=0
+[RenderDiag] transition-interval-cont n=10 avg=20947 max=26394 p95_upper=27000 us over33333=0
+[RenderDiag] transition-interval fps=47.74 cont_fps=47.74 pauses=0 longest_pause=0 us
+[RenderDiag] scroll-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] scroll-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] settings-scroll-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-scroll-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] settings-scroll-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] stopwatch-interval n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval-cont n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] stopwatch-interval fps=0.00 cont_fps=0.00 pauses=0 longest_pause=0 us
+[RenderDiag] sampled-input-to-end n=6 avg=20393 max=35929 p95_upper=36000 us over33333=1
+[RenderDiag] wake-request-to-end n=0 avg=0 max=0 p95_upper=1000 us over33333=0
+[RenderDiag] window_us=60031103 loops=251 layouts=19 paints=13 stack_free=5772 internal_free=200223 internal_largest=151552 psram_free=7849200 psram_largest=7733248
+[RenderDiag] list_cache bytes=88872 allocations=4 failures=0 fits=4 renders=4
+[RenderDiag] settings_list_cache bytes=0 allocations=0 failures=0 fits=0 renders=0

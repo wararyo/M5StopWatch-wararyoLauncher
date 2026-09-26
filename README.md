@@ -108,6 +108,7 @@ UIは M5StopWatch-UserDemo のストップウォッチに合わせ、左右2つ�
 フォントや文字集合を変えたときは `pip install freetype-py` のうえ
 `python tools/build_font.py --source <GenShinGothic-Medium.ttf>` で
 `src/ui/graphics/fonts/GenShinGothicMedium28.vlw` を作り直します。
+埋め込みフォントはSIL Open Font License 1.1で、ライセンス文を同じフォルダに置いています（[フォント記録](docs/task10/fonts.md)）。
 
 試作のビルドと書き込み手順、測定モードの使い方は
 [measurement/README.md](measurement/README.md) にあります。

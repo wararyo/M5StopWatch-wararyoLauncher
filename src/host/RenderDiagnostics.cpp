@@ -70,6 +70,37 @@ WatchData sampleData() {
     d.localTime.tm_mon=8; d.localTime.tm_mday=19; d.localTime.tm_wday=6;
     d.batteryPercent=82; return d;
 }
+#ifdef LAUNCHER_RENDER_SHOTS
+// One frame as text: "[Shot] name w h", then base64 lines of run-length
+// pairs (run-1, then the pixel as read back, high byte first), then
+// "[ShotEnd]". The panel is mostly black, so runs keep it small.
+void dumpShot(const char* name,const uint16_t* pixels,int w,int h) {
+    static const char digits[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    uint8_t chunk[57]; int used=0; unsigned total=0;
+    auto flush=[&] {
+        if(!used) return;
+        char line[80]; int n=0;
+        for(int i=0;i<used;i+=3) {
+            const uint32_t v=uint32_t(chunk[i])<<16|(i+1<used ? uint32_t(chunk[i+1])<<8 : 0)|(i+2<used ? chunk[i+2] : 0);
+            line[n++]=digits[v>>18&63]; line[n++]=digits[v>>12&63];
+            line[n++]=i+1<used ? digits[v>>6&63] : '='; line[n++]=i+2<used ? digits[v&63] : '=';
+        }
+        line[n]=0; std::printf("[ShotData] %s\n",line); total+=used; used=0;
+    };
+    auto put=[&](uint8_t b) { chunk[used++]=b; if(used==57) flush(); };
+    std::printf("[Shot] %s %d %d\n",name,w,h);
+    const size_t count=size_t(w)*h;
+    for(size_t i=0,runs=0;i<count;++runs) {
+        size_t run=1;
+        while(run<256 && i+run<count && pixels[i+run]==pixels[i]) ++run;
+        put(uint8_t(run-1)); put(uint8_t(pixels[i]>>8)); put(uint8_t(pixels[i]));
+        i+=run;
+        if(runs%2048==2047) vTaskDelay(1);
+    }
+    flush();
+    std::printf("[ShotEnd] %s bytes=%u\n",name,total);
+}
+#endif
 class TestFace final : public WatchFace {
     Element a_,b_; int ha_=-1,hb_=-1;
 public:
@@ -567,6 +598,50 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     unsigned(c.bytes),unsigned(c.allocations),unsigned(c.failures),unsigned(c.fits),unsigned(c.renders));
             }
             std::printf("[Verify] checks=%u mismatches=%u result=%s\n",checks,failures,failures ? "FAIL" : "PASS");
+#ifdef LAUNCHER_RENDER_SHOTS
+            // Pictures of the faces for looking at on the PC
+            // (tools/render_shots.py), after the check so they change nothing.
+            {
+                auto shoot=[&](const char* name,const FrameModel& fm,const WatchData& fd) {
+                    renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
+                    dumpShot(name,incremental,w,h);
+                };
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData scene;
+                auto item=[](int i,const char* label,const IconBitmap* icon,std::optional<uint16_t> colour) {
+                    auto& it=scene.background.items[i];
+                    it=BackgroundInfo{}; it.appId=static_cast<LaunchTargetId>(i==0 ? 0 : 41);
+                    std::snprintf(it.label,sizeof(it.label),"%s",label);
+                    it.icon=icon; it.suggestedColor=colour;
+                    scene.background.count=uint8_t(std::max<int>(scene.background.count,i+1));
+                };
+                display.fillScreen(0xf800); display.readRect(0,0,1,1,incremental);
+                std::printf("[ShotProbe] red=%04x\n",unsigned(incremental[0]));
+                FrameModel sm; sm.viewport={w,h};
+                scene=sampleData(); shoot("digital",sm,scene);
+                item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("digital-items",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); shoot("digital-seconds",sm,scene);
+                item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("digital-seconds-item",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1;
+                shoot("digital-unknown",sm,scene);
+                scene=sampleData(); scene.charging=true; scene.batteryPercent=5;
+                item(0,"A very long label the chip has to shorten",nullptr,std::nullopt);
+                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+                shoot("digital-mixed",sm,scene);
+                scene=sampleData(); scene.batteryPercent=100;
+                item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("digital-full",sm,scene);
+                scene=sampleData();
+                item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                sm.launcher.transition=0.45f; shoot("digital-transition",sm,scene);
+            }
+#endif
         }
     }
     heap_caps_free(incremental); heap_caps_free(reference);

@@ -1,0 +1,12 @@
+[Font] D-DIN-PRO-Exp-600-SemiBold.ttf at 100px
+[Font] src/ui/graphics/fonts/DDinProExpSemiBold100.vlw: 12 glyphs, 31970 bytes
+[OK] DDinProExpSemiBold100.vlw matches the current font and character set
+[Font] D-DIN-PRO-Exp-700-Bold.ttf at 28px
+[Font] src/ui/graphics/fonts/DDinProExpBold28.vlw: 95 glyphs, 25562 bytes
+[OK] DDinProExpBold28.vlw matches the current font and character set
+[Font] D-DIN-PRO-Exp-700-Bold.ttf at 22px
+[Font] src/ui/graphics/fonts/DDinProExpBold22.vlw: 95 glyphs, 17205 bytes
+[OK] DDinProExpBold22.vlw matches the current font and character set
+[Font] D-DIN-PRO-Condensed-600-SemiBold.ttf at 120px
+[Font] src/ui/graphics/fonts/DDinProCondensedSemiBold120.vlw: 12 glyphs, 33663 bytes
+[OK] DDinProCondensedSemiBold120.vlw matches the current font and character set

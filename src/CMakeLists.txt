@@ -1,6 +1,6 @@
 idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     "ui/rendering/Element.cpp" "ui/rendering/Renderer.cpp"
-    "ui/graphics/Text.cpp" "ui/graphics/VlwFont.cpp"
+    "ui/graphics/Text.cpp" "ui/graphics/VlwFont.cpp" "ui/graphics/WatchFonts.cpp" "ui/graphics/VlwGlyphs.cpp" "ui/graphics/MaskImage.cpp"
     "ui/list/ListController.cpp" "ui/list/ListView.cpp"
     "ui/overlays/ToastLayer.cpp" "ui/overlays/StatsOverlay.cpp"
     "host/ScreenManager.cpp" "host/HostRuntime.cpp" "host/HostRenderer.cpp" "host/RenderDiagnostics.cpp"
@@ -19,5 +19,7 @@ idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     # The linker symbols (_binary_<name>_start) come from the file names alone,
     # so they do not change with these directories.
     EMBED_FILES "ui/graphics/fonts/GenShinGothicMedium28.vlw" "assets/AppIcons.bin"
+        "ui/graphics/fonts/DDinProExpSemiBold100.vlw" "ui/graphics/fonts/DDinProCondensedSemiBold120.vlw"
+        "ui/graphics/fonts/DDinProExpBold28.vlw" "ui/graphics/fonts/DDinProExpBold22.vlw"
     REQUIRES app_update esp_app_format nvs_flash esp_psram spi_flash esp_hw_support esp_timer esp_driver_usb_serial_jtag esp_driver_gpio esp_pm)
 target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)

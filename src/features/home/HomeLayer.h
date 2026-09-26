@@ -34,6 +34,7 @@ public:
         return face_ ? face_->backgroundInterest(data.background) : BackgroundInterest{};
     }
     uint16_t listBackground() const { return face_ ? face_->listBackground() : 0; }
+    const DigitalWatchFace& digital() const { return digital_; }
     void plan(FramePlan& frame,Gfx& g) override;
     void paint(Gfx& g,const FramePlan& frame) override;
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const {

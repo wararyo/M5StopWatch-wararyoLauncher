@@ -1,4 +1,4 @@
-"""Build the embedded VLW font subset from a TrueType font.
+"""Build an embedded VLW font subset from a TrueType font.
 
 LovyanGFX reads VLW, so the embedded asset stays VLW; this tool rasterises it
 directly instead of subsetting a file made by an external web service. FreeType
@@ -7,14 +7,21 @@ vlw-font-creator.m5stack.com exactly: for the 307 glyph subset every metric
 matches and 50 of about 146,000 bitmap pixels differ by 1/255.
 
 Embedding the whole font is not an option (about 2.3MiB in a 4MiB host image),
-so the subset keeps ASCII, kana and the punctuation the UI uses, plus every
-non-ASCII character that appears in `src/`. Characters outside the subset are
-drawn as `?` by `fitText`, per docs/plan.md 5.2.
+so the default subset (the UI's Japanese font) keeps ASCII, kana and the
+punctuation the UI uses, plus every non-ASCII character that appears in `src/`.
+Characters outside the subset are drawn as `?` by `fitText`, per docs/plan.md 5.2.
+
+The watch face fonts hold far less, so they name their characters in a file
+under tools/fonts/ (`--chars-file`) and are written elsewhere (`--output`).
+Without either option the tool builds the default subset exactly as before.
+The commands for every committed asset are in docs/task10/fonts.md.
 
 Needs `pip install freetype-py`, and only when the font or the character set
 changes; the build itself uses the committed subset.
 
 Usage: python tools/build_font.py --source <font.ttf> [--size 28] [--check]
+       python tools/build_font.py --source <font.ttf> --size <px> --chars-file <chars.txt>
+                                  --output <asset.vlw> [--check]
        python tools/build_font.py --source <font.ttf> --compare <other.vlw>
 """
 import argparse
@@ -45,6 +52,15 @@ def harvest(directory):
             if ord(character) > 0x7F:
                 found.add(character)
     return found
+
+
+def listed_characters(path):
+    """Every character in a UTF-8 file, line breaks aside. All are required."""
+    text = path.read_text(encoding="utf-8").replace("\r", "").replace("\n", "")
+    codes = {ord(character) for character in text}
+    if not codes:
+        raise SystemExit(f"{path}: no characters")
+    return codes, set(codes)
 
 
 def character_set():
@@ -137,14 +153,19 @@ def main():
     parser.add_argument("--source", type=Path, required=True,
                         help="the TrueType font to rasterise; it is not kept in this repository")
     parser.add_argument("--size", type=int, default=28, help="pixel size (default 28)")
-    parser.add_argument("--output", type=Path, default=OUTPUT)
+    parser.add_argument("--output", type=Path, default=OUTPUT,
+                        help="the asset to write or check (default: the UI's Japanese subset)")
+    parser.add_argument("--chars-file", type=Path,
+                        help="embed exactly the characters in this UTF-8 file instead of "
+                             "the default Japanese UI set")
     parser.add_argument("--check", action="store_true",
                         help="only report whether the existing subset is current")
     parser.add_argument("--compare", type=Path,
                         help="report the difference against another VLW instead of writing")
     arguments = parser.parse_args()
 
-    wanted, required = character_set()
+    wanted, required = (listed_characters(arguments.chars_file) if arguments.chars_file
+                        else character_set())
     # The VLW index is a 16 bit binary search; anything outside the BMP cannot
     # be stored and is rendered as the fallback character instead.
     outside = sorted(code for code in required if code > 0xFFFF)
@@ -159,15 +180,19 @@ def main():
     if arguments.check:
         current = arguments.output.read_bytes() if arguments.output.exists() else b""
         if current != subset:
-            raise SystemExit(f"{arguments.output} is stale; run python tools/build_font.py")
+            raise SystemExit(f"{arguments.output} is stale; run python tools/build_font.py "
+                             "(docs/task10/fonts.md has the command)")
         print(f"[OK] {arguments.output.name} matches the current font and character set")
         return 0
 
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_bytes(subset)
     print(f"[Font] {arguments.source.name} at {arguments.size}px")
-    print(f"[Font] {arguments.output.relative_to(ROOT).as_posix()}: "
-          f"{len(glyphs)} glyphs, {len(subset)} bytes")
+    try:
+        shown = arguments.output.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        shown = arguments.output.as_posix()
+    print(f"[Font] {shown}: {len(glyphs)} glyphs, {len(subset)} bytes")
     # Range gaps are expected; only the characters the UI names must exist.
     absent = sorted(code for code in missing if code in required)
     if absent:

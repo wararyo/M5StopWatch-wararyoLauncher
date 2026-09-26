@@ -1,0 +1,193 @@
+﻿Processing m5stopwatch-render-check (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/m5stack-cores3.html
+PLATFORM: Espressif 32 (6.12.0) > M5Stack CoreS3
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-espidf @ 3.50500.0 (5.5.0) 
+ - tool-cmake @ 3.30.2 
+ - tool-esp-rom-elfs @ 0.0.1+20241011 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - tool-idf @ 1.0.1 
+ - tool-mconf @ 1.4060000.20190628 (406.0.0) 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-esp32ulp @ 1.23800.240113 (2.38.0) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20241119
+Reading CMake configuration...
+Generating assembly for certificate bundle...
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 4 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.16
+|-- M5GFX @ 0.2.28
+|-- M5StopWatch-MultiFirm @ 0.1.0+sha.f5a8fd8
+Building in release mode
+Generating assembly for .pio\build\m5stopwatch-render-check\GenShinGothicMedium28.vlw.S
+Generating assembly for .pio\build\m5stopwatch-render-check\AppIcons.bin.S
+Generating assembly for .pio\build\m5stopwatch-render-check\DDinProExpSemiBold100.vlw.S
+Generating assembly for .pio\build\m5stopwatch-render-check\DDinProCondensedSemiBold120.vlw.S
+Generating assembly for .pio\build\m5stopwatch-render-check\DDinProExpBold28.vlw.S
+Generating assembly for .pio\build\m5stopwatch-render-check\DDinProExpBold22.vlw.S
+Compiling .pio\build\m5stopwatch-render-check\src\main.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\input\InputController.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\rendering\Element.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\rendering\Renderer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\graphics\Text.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\graphics\VlwFont.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\graphics\WatchFonts.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\graphics\MaskImage.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\list\ListController.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\list\ListView.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\overlays\ToastLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\overlays\StatsOverlay.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\host\ScreenManager.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\host\HostRuntime.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\host\HostRenderer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\host\RenderDiagnostics.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\hal\M5Hal.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\hal\InputWake.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\power\DrainLog.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\power\UsbDiag.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\services\TimeService.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\home\HomeDataSource.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\services\StopwatchService.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\storage\SettingsStore.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\storage\NvsBackend.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\home\HomeLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\home\faces\DigitalWatchFace.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\assets\AppIcons.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\launcher\AppListLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\launcher\LauncherController.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\settings\SettingsScreen.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\settings\SettingsLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\external\ExternalAppScreen.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\external\ExternalLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\stopwatch\StopwatchFormat.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\stopwatch\StopwatchScreen.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\stopwatch\StopwatchLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\stopwatch\StopwatchBackgroundInfo.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\background\BackgroundInfoHub.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\multifirm\MultiFirmAdapter.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\.pio\build\m5stopwatch-render-check\GenShinGothicMedium28.vlw.S.o
+Compiling .pio\build\m5stopwatch-render-check\.pio\build\m5stopwatch-render-check\AppIcons.bin.S.o
+Compiling .pio\build\m5stopwatch-render-check\.pio\build\m5stopwatch-render-check\DDinProExpSemiBold100.vlw.S.o
+Compiling .pio\build\m5stopwatch-render-check\.pio\build\m5stopwatch-render-check\DDinProCondensedSemiBold120.vlw.S.o
+Compiling .pio\build\m5stopwatch-render-check\.pio\build\m5stopwatch-render-check\DDinProExpBold28.vlw.S.o
+Compiling .pio\build\m5stopwatch-render-check\.pio\build\m5stopwatch-render-check\DDinProExpBold22.vlw.S.o
+Generating LD script .pio\build\m5stopwatch-render-check\esp-idf\esp_system\ld\memory.ld.in
+Generating LD script .pio\build\m5stopwatch-render-check\esp-idf\esp_system\ld\sections.ld.in
+Compiling .pio\build\m5stopwatch-render-check\app_trace\app_trace.c.o
+Compiling .pio\build\m5stopwatch-render-check\app_trace\app_trace_util.c.o
+Compiling .pio\build\m5stopwatch-render-check\app_trace\host_file_io.c.o
+Compiling .pio\build\m5stopwatch-render-check\app_trace\port\port_uart.c.o
+Generating LD script .pio\build\m5stopwatch-render-check\memory.ld
+Compiling .pio\build\m5stopwatch-render-check\app_update\esp_ota_ops.c.o
+Compiling .pio\build\m5stopwatch-render-check\app_update\esp_ota_app_desc.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_common.c.o
+Archiving .pio\build\m5stopwatch-render-check\esp-idf\app_trace\libapp_trace.a
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_common_loader.c.o
+Indexing .pio\build\m5stopwatch-render-check\esp-idf\app_trace\libapp_trace.a
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_clock_init.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_mem.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_random.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_efuse.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\flash_encrypt.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\secure_boot.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_random_esp32s3.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\bootloader_flash\src\bootloader_flash.c.o
+Archiving .pio\build\m5stopwatch-render-check\esp-idf\app_update\libapp_update.a
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\bootloader_flash\src\flash_qio_mode.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\bootloader_flash\src\bootloader_flash_config_esp32s3.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_utility.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\flash_partitions.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\esp_image_format.c.o
+Indexing .pio\build\m5stopwatch-render-check\esp-idf\app_update\libapp_update.a
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\bootloader_sha.c.o
+Compiling .pio\build\m5stopwatch-render-check\bootloader_support\src\esp32s3\secure_boot_secure_features.c.o
+Compiling .pio\build\m5stopwatch-render-check\cmock\CMock\src\cmock.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\commands.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\esp_console_common.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\esp_console_repl_internal.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\split_argv.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\linenoise\linenoise.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\esp_console_repl_chip.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_cmd.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_date.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_dbl.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_dstr.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_end.c.o
+Archiving .pio\build\m5stopwatch-render-check\esp-idf\cmock\libcmock.a
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_file.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_hashtable.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_int.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_lit.c.o
+Archiving .pio\build\m5stopwatch-render-check\esp-idf\bootloader_support\libbootloader_support.a
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_rem.c.o
+Indexing .pio\build\m5stopwatch-render-check\esp-idf\cmock\libcmock.a
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_rex.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_str.c.o
+Indexing .pio\build\m5stopwatch-render-check\esp-idf\bootloader_support\libbootloader_support.a
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\arg_utils.c.o
+Compiling .pio\build\m5stopwatch-render-check\console\argtable3\argtable3.c.o
+Compiling .pio\build\m5stopwatch-render-check\cxx\cxx_exception_stubs.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\cxx\cxx_guards.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\cxx\cxx_init.cpp.o
+pio : src/host/RenderDiagnostics.cpp: In function 'void launcher::runRepaintCheck(HostRenderer&, M5GFX&, const SlotCata
+log&)':
+At line:1 char:357
++ ... DER_SHOTS'; pio run -e m5stopwatch-render-check *> "docs/task10/20260 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (src/host/Render...SlotCatalog&)'::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+src/host/RenderDiagnostics.cpp:609:70: error: 'A very long label the pill h...' directive output truncated writing 49 b
+ytes into a region of size 48 [-Werror=format-truncation=]
+  609 |                     "A very long label the pill has to shorten, 999:59");
+      |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+src/host/RenderDiagnostics.cpp:608:30: note: 'snprintf' output 50 bytes into a destination of size 48
+  608 |                 std::snprintf(shown.background.items[0].label,BackgroundLabelBytes,
+      |                 ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  609 |                     "A very long label the pill has to shorten, 999:59");
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\adc_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\adc_dma_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\timer_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\i2c\i2c.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\i2s_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\mcpwm_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\pcnt_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\rmt_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\sigma_delta_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\deprecated\rtc_temperature_legacy.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\touch_sensor\touch_sensor_common.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\touch_sensor\esp32s3\touch_sensor.c.o
+Compiling .pio\build\m5stopwatch-render-check\driver\twai\twai.c.o
+Compiling .pio\build\m5stopwatch-render-check\efuse\esp32s3\esp_efuse_table.c.o
+Compiling .pio\build\m5stopwatch-render-check\efuse\esp32s3\esp_efuse_fields.c.o
+Archiving .pio\build\m5stopwatch-render-check\esp-idf\console\libconsole.a
+Compiling .pio\build\m5stopwatch-render-check\efuse\esp32s3\esp_efuse_rtc_calib.c.o
+Compiling .pio\build\m5stopwatch-render-check\efuse\esp32s3\esp_efuse_utility.c.o
+Compiling .pio\build\m5stopwatch-render-check\efuse\src\esp_efuse_api.c.o
+Archiving .pio\build\m5stopwatch-render-check\esp-idf\cxx\libcxx.a
+Compiling .pio\build\m5stopwatch-render-check\efuse\src\esp_efuse_fields.c.o
+Compiling .pio\build\m5stopwatch-render-check\efuse\src\esp_efuse_utility.c.o
+Indexing .pio\build\m5stopwatch-render-check\esp-idf\console\libconsole.a
+Compiling .pio\build\m5stopwatch-render-check\efuse\src\efuse_controller\keys\with_key_purposes\esp_efuse_api_key.c.o
+Indexing .pio\build\m5stopwatch-render-check\esp-idf\cxx\libcxx.a
+Compiling .pio\build\m5stopwatch-render-check\efuse\src\esp_efuse_startup.c.o
+cc1plus.exe: some warnings being treated as errors
+Compiling .pio\build\m5stopwatch-render-check\esp-tls\esp_tls.c.o
+*** [.pio\build\m5stopwatch-render-check\src\host\RenderDiagnostics.cpp.o] Error 1
+========================= [FAILED] Took 40.75 seconds =========================
+
+Environment               Status    Duration
+------------------------  --------  ------------
+m5stopwatch-render-check  FAILED    00:00:40.752
+==================== 1 failed, 0 succeeded in 00:00:40.752 ====================

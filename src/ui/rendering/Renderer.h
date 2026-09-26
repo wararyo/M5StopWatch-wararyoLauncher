@@ -36,6 +36,9 @@ public:
     // panel flushes, so a time taken right after covers the transfer too.
     bool draw(RenderLayer* const* layers,int count,FrameOverlay* overlay=nullptr);
     uint32_t layouts() const { return layouts_; }
+    // What the last frame sent to the panel: the whole screen, the bounding
+    // box of its repaints, or nothing.
+    Rect lastDirty() const { return lastDirty_; }
     uint32_t paints() const { return paints_; }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
     void capacityForTest(int n) { capacity_=n; invalidate(); }
@@ -46,5 +49,6 @@ private:
     bool full_=true,overflowReported_=false;
     int capacity_=FramePlan::Capacity;
     uint32_t layouts_=0,paints_=0;
+    Rect lastDirty_{};
 };
 }

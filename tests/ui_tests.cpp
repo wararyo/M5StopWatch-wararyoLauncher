@@ -5,6 +5,11 @@
 #include "ui/rendering/Element.h"
 #include "ui/list/ListController.h"
 #include "ui/list/ListLayout.h"
+#include "ui/graphics/MaskImage.h"
+#include "ui/graphics/VlwGlyphs.h"
+#include <fstream>
+#include <iterator>
+#include <vector>
 #include <array>
 #include <cstdlib>
 #include <iostream>
@@ -208,7 +213,7 @@ void launcherController() {
     // opens the list when the face asks, and a repeated request is not a
     // second slide.
     CHECK(clock.atRest());
-    const Rect apps=digitalLayout(v).apps;
+    const Rect apps=digitalAppsTarget(v,0);
     e={}; e.gesture=Gesture::Tap; e.x=apps.x+apps.w/2; e.y=apps.y+apps.h/2;
     CHECK(!clock.handle(e,0).changed && !clock.listShown() && clock.atRest());
     CHECK(clock.openList(0) && clock.listShown() && clock.nextUpdate()==ListController::FrameUs);
@@ -549,12 +554,11 @@ void repaint() {
 Events gesture(Gesture g,int x,int y) { Events e{}; e.gesture=g; e.x=x; e.y=y; return e; }
 void homeInput() {
     const Viewport v{468,468};
-    const auto layout=digitalLayout(v);
+    const auto layout=digitalLayout(v,DigitalVariant::HourMinute,0);
     // The target covers what Digital draws for APPS, and nothing of the time.
     CHECK(layout.apps.contains(layout.appsIcon.x,layout.appsIcon.y));
-    CHECK(layout.apps.contains(layout.cx,layout.appsLabelY));
-    CHECK(!layout.apps.contains(layout.cx,layout.timeY));
-    CHECK(layout.apps==(Rect{170,351,128,70}));       // Where the fixed target was.
+    CHECK(layout.apps.contains(layout.cx,layout.appsBaseline-5));
+    CHECK(!layout.apps.contains(layout.cx,layout.timeBaseline));
     TestScreens s; TimeUs now=0;
     const int ax=layout.apps.x+layout.apps.w/2,ay=layout.apps.y+layout.apps.h/2;
     // Outside APPS: the face hears it and asks for nothing.
@@ -618,12 +622,158 @@ void digitalControl() {
     CHECK(!d.handle(tap,v).changed && d.handle(tap,v).request==HomeRequest::None);
     tap.y=390;
     CHECK(!d.handle(tap,v).changed && d.handle(tap,v).request==HomeRequest::OpenAppList);
-    // No labels are drawn yet, so none may wake the display.
-    BackgroundSnapshot running; running.count=1; running.items[0].nextChangeAt=5;
-    CHECK(d.backgroundInterest(running).count==0);
+    // The first two items are drawn, in the providers' order, so only their
+    // deadlines wake the display.
+    WatchData three; three.background.count=3;
+    three.background.items[0].appId=LaunchTargetId::External2;
+    three.background.items[1].appId=LaunchTargetId::Stopwatch;
+    three.background.items[2].appId=LaunchTargetId::External1;
+    const auto shown=d.backgroundInterest(three.background);
+    CHECK(shown.count==2 && shown.ids[0]==LaunchTargetId::External2 && shown.ids[1]==LaunchTargetId::Stopwatch);
+    // With items the APPS target moves down with the drawing, and the hit
+    // test follows the frame the face was last given.
+    CHECK(digitalAppsTarget(v,0).y<digitalAppsTarget(v,1).y && digitalAppsTarget(v,1)==digitalAppsTarget(v,2));
+    tap.y=digitalAppsTarget(v,0).y+2;
+    CHECK(d.handle(tap,v).request==HomeRequest::OpenAppList);
+    d.update(three); CHECK(d.items()==2);
+    CHECK(d.handle(tap,v).request==HomeRequest::None);
+    tap.y=digitalAppsTarget(v,2).y+digitalAppsTarget(v,2).h-2;
+    CHECK(d.handle(tap,v).request==HomeRequest::OpenAppList);
+    d.update(WatchData{}); CHECK(d.items()==0 && d.handle(tap,v).request==HomeRequest::None);
     // A smaller panel scales the target with the drawing.
-    const auto small=digitalLayout({234,234});
-    CHECK(small.apps==(Rect{85,175,64,35}));
+    CHECK(digitalAppsTarget({233,233},0)==(Rect{84,177,64,35}));
+}
+// Every part of Digital inside the round panel, the time in groups that tile
+// its row, and the chips in order (docs/task10/plan-10-3.md 3).
+bool insideCircle(const Viewport& v,const Rect& r) {
+    const float cx=v.width/2.0f,cy=v.height/2.0f,radius=std::min(v.width,v.height)/2.0f-1;
+    for (int x:{r.x,r.x+r.w}) for (int y:{r.y,r.y+r.h})
+        if ((x-cx)*(x-cx)+(y-cy)*(y-cy)>radius*radius) return false;
+    return true;
+}
+void digitalLayoutRules() {
+    const Viewport v{466,466};
+    for (auto variant:{DigitalVariant::HourMinute,DigitalVariant::HourMinuteSecond})
+        for (int items=0;items<=DigitalMaxItems;++items) {
+            const auto l=digitalLayout(v,variant,items);
+            const bool seconds=variant==DigitalVariant::HourMinuteSecond;
+            CHECK(insideCircle(v,l.hour) && insideCircle(v,l.minute) && insideCircle(v,l.appsIcon) && insideCircle(v,l.apps));
+            // The groups meet edge to edge: a digit changing in one never
+            // spills into the next, and the colons stay where they are.
+            CHECK(l.hour.x+l.hour.w==l.minute.x && l.hour.y==l.minute.y && l.hour.h==l.minute.h);
+            CHECK(l.colon1X==l.hourRight && l.minute.x==l.colon1X+22);
+            if (seconds) {
+                CHECK(l.minute.x+l.minute.w==l.second.x && l.second.x==l.secondX && insideCircle(v,l.second));
+                CHECK(l.secondX-(l.hourRight-114)==114+22+115+22);   // 388 wide in all
+                CHECK(l.colon2X==l.secondX-22 && l.minuteX==l.minute.x+115/2);
+            } else {
+                CHECK(l.second.empty() && l.minuteX==l.minute.x);
+                CHECK(l.minute.x+115-(l.hourRight-114)==251);
+            }
+            // The ink sits inside the boxes: 71 above the baseline, 1 below.
+            CHECK(l.hour.y<=l.timeBaseline-71 && l.hour.y+l.hour.h>=l.timeBaseline+1);
+            // The reference rows, and room made for the items.
+            CHECK(l.timeBaseline==(items ? 242 : 270) && l.batteryY==(items ? 61 : 79));
+            CHECK(l.apps==digitalAppsTarget(v,items) && l.apps.contains(l.appsIcon.x,l.appsIcon.y));
+            CHECK(l.hour.y+l.hour.h<l.chipY-l.chipHeight/2 || !items);
+            // Chips: the widest allowed, side by side, stay on the panel.
+            if (items) {
+                const int limit=digitalChipWidthLimit(l,items);
+                const int widths[DigitalMaxItems]={limit,limit};
+                Rect chips[DigitalMaxItems];
+                CHECK(placeDigitalChips(l,widths,items,chips)==items);
+                for (int i=0;i<items;++i) {
+                    CHECK(insideCircle(v,chips[i]) && chips[i].h==48 && chips[i].y+24==312);
+                    CHECK(!chips[i].intersects(l.hour) && !chips[i].intersects(l.apps));
+                }
+                if (items==2) CHECK(chips[1].x==chips[0].x+chips[0].w+16);
+            }
+        }
+    // The reference chips: 120 wide each, centred as a pair, left to right.
+    const auto l=digitalLayout(v,DigitalVariant::HourMinute,2);
+    const int widths[]={120,120};
+    Rect chips[2];
+    placeDigitalChips(l,widths,2,chips);
+    CHECK(chips[0]==(Rect{105,288,120,48}) && chips[1]==(Rect{241,288,120,48}));
+    // One chip is centred alone; more items than fit count as two.
+    placeDigitalChips(l,widths,1,chips);
+    CHECK(chips[0].x==173);
+    CHECK(digitalLayout(v,DigitalVariant::HourMinute,5).timeBaseline==242);
+    CHECK(placeDigitalChips(l,widths,5,chips)==2);
+    // Other metrics (a built-in fallback font) move the groups with them.
+    DigitalMetrics wide; wide.hourWidth=120; wide.minuteWidth=120; wide.colonWidth=26;
+    const auto f=digitalLayout(v,DigitalVariant::HourMinuteSecond,0,wide);
+    CHECK(f.minute.x==f.colon1X+26 && f.secondX-f.colon2X==26 && insideCircle(v,f.hour) && insideCircle(v,f.second));
+}
+// An app's icon fitted into a chip: scaled with its aspect, centred, averaged.
+void maskFitting() {
+    // 44x44 fully covered, into 36x36: all of it covered.
+    std::array<uint8_t,44*44> full{}; full.fill(255);
+    std::array<uint8_t,36*36> out{};
+    CHECK(fitMask({full.data(),44,44},36,36,out.data()));
+    for (auto a:out) CHECK(a==255);
+    // A 4x2 mask into 8x8 keeps its aspect: 8x4 in the middle rows.
+    const uint8_t wide[8]={255,255,255,255,255,255,255,255};
+    std::array<uint8_t,64> box{}; box.fill(7);
+    CHECK(fitMask({wide,4,2},8,8,box.data()));
+    for (int y=0;y<8;++y) for (int x=0;x<8;++x) CHECK(box[y*8+x]==(y>=2 && y<6 ? 255 : 0));
+    // Halving averages: a checkerboard becomes an even grey.
+    std::array<uint8_t,16> checker{};
+    for (int i=0;i<16;++i) checker[i]=((i%4)+(i/4))%2 ? 255 : 0;
+    std::array<uint8_t,4> half{};
+    CHECK(fitMask({checker.data(),4,4},2,2,half.data()));
+    for (auto a:half) CHECK(a==128);
+    // Nothing usable, nothing written.
+    std::array<uint8_t,4> untouched{{9,9,9,9}};
+    CHECK(!fitMask({nullptr,4,4},2,2,untouched.data()) && !fitMask({full.data(),0,4},2,2,untouched.data()));
+    CHECK(!fitMask({full.data(),4,4},0,2,untouched.data()) && untouched[0]==9);
+    // Blending in RGB565: the ends are exact, the middle rounds per channel.
+    CHECK(blend565(0xffff,0x0000,255)==0xffff && blend565(0xffff,0x0000,0)==0x0000);
+    CHECK(blend565(0xffff,0x0000,128)==((16<<11)|(32<<5)|16));
+    CHECK(blend565(0x349f,0x349f,77)==0x349f);
+}
+// The committed time digits, read the way the faces read them: their groups'
+// widest values are the fixed widths docs/task10/fonts.md records, and the
+// Digital layout's defaults.
+std::vector<uint8_t> asset(const char* name) {
+    std::ifstream in(std::string("src/ui/graphics/fonts/")+name,std::ios::binary);
+    return {std::istreambuf_iterator<char>(in),std::istreambuf_iterator<char>()};
+}
+void timeGlyphs() {
+    struct Expect { const char* name; int ascent,descent,hour,minute,colon; };
+    const DigitalMetrics digital;
+    for (const auto& e:{Expect{"DDinProExpSemiBold100.vlw",71,1,digital.hourWidth,digital.minuteWidth,digital.colonWidth},
+                        Expect{"DDinProCondensedSemiBold120.vlw",84,1,99,100,21}}) {
+        const auto bytes=asset(e.name);
+        VlwGlyphs glyphs;
+        CHECK(glyphs.load(bytes.data(),bytes.size()));
+        CHECK(glyphs.ascent()==e.ascent && glyphs.descent()==e.descent);
+        int hour=glyphs.width("--"),minute=hour;
+        for (int i=0;i<60;++i) {
+            char two[3]={char('0'+i/10),char('0'+i%10),0};
+            if (i<24) hour=std::max(hour,glyphs.width(two));
+            minute=std::max(minute,glyphs.width(two));
+        }
+        CHECK(hour==e.hour && minute==e.minute && glyphs.width(":")==e.colon);
+        // Every glyph's ink stays inside its advance, so the groups can tile.
+        for (const char* c="0123456789:-";*c;++c) {
+            const auto* g=glyphs.find(uint8_t(*c));
+            CHECK(g && g->dx>=0 && g->dx+g->width<=g->advance && g->bitmap>=bytes.data());
+            CHECK(g->bitmap+g->width*g->height<=bytes.data()+bytes.size());
+        }
+        CHECK(!glyphs.find('A') && glyphs.width("1A1")==2*glyphs.find('1')->advance);
+        // The raised colon still fits in the time's box.
+        CHECK(glyphs.find(':')->dy+digital.colonLift<=e.ascent);
+        // A cut asset loads nothing.
+        VlwGlyphs cut;
+        CHECK(!cut.load(bytes.data(),bytes.size()-1) && !cut.loaded() && !cut.find('0'));
+    }
+    const auto first=asset("DDinProExpSemiBold100.vlw");
+    VlwGlyphs zero; const auto* g=(zero.load(first.data(),first.size()),zero.find('0'));
+    CHECK(g && g->advance==56 && g->dx==6 && g->width==45 && g->dy==71 && g->height==72);
+    // The 95 character text fonts are too many for this reader, by design.
+    const auto text=asset("DDinProExpBold28.vlw");
+    VlwGlyphs many; CHECK(!many.load(text.data(),text.size()));
 }
 void watchChangeBits() {
     WatchData a,b;
@@ -649,9 +799,9 @@ void watchChangeBits() {
 int main() {
     navigation(); flick(); launcherList(); launcherController(); composition();
     listLayout(); listController(); deadlines(); repaint();
-    homeInput(); digitalControl(); watchChangeBits();
+    homeInput(); digitalControl(); digitalLayoutRules(); maskFitting(); timeGlyphs(); watchChangeBits();
     std::cout<<"PASS: navigation/geometry, launcher controller, frame composition, "
                "shared list layout/controller, display deadlines, "
                "3000 differential framebuffer cases with dirty bounds, "
-               "home input, digital control, watch changes\n";
+               "home input, digital control, digital layout, mask fitting, time glyphs, watch changes\n";
 }

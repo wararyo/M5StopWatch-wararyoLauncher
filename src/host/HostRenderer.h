@@ -34,6 +34,7 @@ public:
     const ListView& settingsListView() const { return settings_.menuView(); }
     uint32_t layouts() const { return renderer_.layouts(); }
     uint32_t paints() const { return renderer_.paints(); }
+    Rect lastDirty() const { return renderer_.lastDirty(); }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
     void capacityForTest(int n) { renderer_.capacityForTest(n); }
     // The chip carries a clock, so two draws of the same model differ. The
@@ -41,6 +42,7 @@ public:
     void suppressStatsForTest(bool suppress) { statsSuppressed_=suppress; invalidate(); }
     ListView& listViewForTest() { return appList_.view(); }
     SettingsLayer& settingsForTest() { return settings_; }
+    int digitalCachedParts() const { return home_.digital().cachedParts(); }
 #endif
 private:
     RenderLayer* layer(FrameLayer id);

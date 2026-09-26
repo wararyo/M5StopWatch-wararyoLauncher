@@ -7,6 +7,8 @@ bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay) 
     for(int i=0;i<count;++i) layers[i]->plan(frame_,display_);
     frame_.resolve();
     const bool painted=frame_.anyPaint();
+    lastDirty_=!painted ? Rect{} : frame_.full() ? Rect{0,0,int(display_.width()),int(display_.height())}
+                                                 : frame_.dirtyBounds();
     if(painted) {
         display_.startWrite(); display_.clearClipRect();
         if(frame_.full()) display_.fillScreen(0);

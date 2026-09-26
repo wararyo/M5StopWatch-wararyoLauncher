@@ -578,6 +578,72 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 std::printf("[Verify] variants internal_free_before=%u after=%u\n",unsigned(before),
                     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
             }
+            // Work 10-3: the battery row, the items and their chips, and the
+            // caches against drawing directly (docs/task10/plan-10-3.md 6).
+            // Frames are built in static storage: a WatchData is a few hundred
+            // bytes and this function already runs deep on the main stack.
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData shown;
+                auto withItems=[&](int count) -> const WatchData& {
+                    const char* labels[]={"02:40","12:34","00:07","100:00"};
+                    shown=d;
+                    for(int i=0;i<count && i<BackgroundCapacity;++i) {
+                        auto& item=shown.background.items[i];
+                        item=BackgroundInfo{};
+                        item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
+                        std::snprintf(item.label,sizeof(item.label),"%s",labels[i]);
+                        item.icon=i%2==0 ? appIcon(IconId::Stopwatch) : nullptr;
+                        if(i!=2) item.suggestedColor=i==0 ? StopwatchAccent : uint16_t(0xfd03);
+                    }
+                    shown.background.count=uint8_t(std::min(count,BackgroundCapacity));
+                    return shown;
+                };
+                m={}; m.viewport={w,h}; d=sampleData();
+                for(int percent:{0,30,100,-1}) { d.batteryPercent=percent; check("battery-level",m,d); }
+                d.batteryPercent=82;
+                d.charging=true; check("battery-charging",m,d);
+                d.charging=false; check("battery-discharging",m,d);
+                check("item-added",m,withItems(1));
+                check("item-second",m,withItems(2));
+                std::snprintf(shown.background.items[0].label,BackgroundLabelBytes,"02:41"); check("item-label",m,shown);
+                shown.background.items[1].suggestedColor=uint16_t(0x0000); check("item-colour",m,shown);
+                shown.background.items[1].icon=appIcon(IconId::Settings); check("item-icon",m,shown);
+                std::snprintf(shown.background.items[0].label,BackgroundLabelBytes,
+                    "A long label the chip has to shorten, 999:59");
+                check("item-long",m,shown);
+                std::snprintf(shown.background.items[1].label,BackgroundLabelBytes,"計測中");
+                check("item-japanese",m,shown);
+                check("item-four",m,withItems(4));           // two drawn
+                check("item-removed",m,withItems(1));
+                check("item-none",m,d);
+                withItems(2);
+                m.toast="保存しました"; check("item-toast-on",m,shown);
+                m.toast=nullptr; check("item-toast-off",m,shown);
+                m.launcher.transition=0.45f; check("item-transition",m,shown);
+                m.launcher.transition=0; check("item-transition-back",m,shown);
+                renderer.handle(hold);
+                for(int s=0;s<3;++s) { ++shown.localTime.tm_sec; check("item-second-tick",m,shown); }
+                shown.localTime.tm_min=59; shown.localTime.tm_sec=59; check("item-minute-edge",m,shown);
+                shown.localTime.tm_hour=23; check("item-hour-edge",m,shown);
+                shown.localTime.tm_hour=0; shown.localTime.tm_min=0; shown.localTime.tm_sec=0;
+                shown.localTime.tm_mday=20; shown.localTime.tm_wday=0; check("item-day-edge",m,shown);
+                shown.timeValid=false; check("item-unknown-time",m,shown);
+                renderer.handle(hold);
+                // The same frames from the caches and drawn directly.
+                auto faceDirect=[&](const char* name,const FrameModel& fm,const WatchData& fd) {
+                    renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
+                    renderer.selectFace("digital",true); renderer.draw(fm,fd); display.readRect(0,0,w,h,reference);
+                    renderer.selectFace("digital");
+                    compare(name);
+                };
+                m={}; m.viewport={w,h}; d=sampleData();
+                faceDirect("digital-direct",m,d);
+                faceDirect("digital-direct-items",m,withItems(2));
+                renderer.handle(hold);
+                faceDirect("digital-direct-seconds",m,withItems(1));
+                renderer.handle(hold);
+            }
             display.fillScreen(0x1234); renderer.invalidate(); check("wake-invalidate",m,d);
             renderer.selectFace("digital",true); check("cache-disabled",m,d);
             m.launcher.transition=0.45f; check("cache-disabled-transition",m,d);
@@ -598,6 +664,53 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     unsigned(c.bytes),unsigned(c.allocations),unsigned(c.failures),unsigned(c.fits),unsigned(c.renders));
             }
             std::printf("[Verify] checks=%u mismatches=%u result=%s\n",checks,failures,failures ? "FAIL" : "PASS");
+            // Work 10-3: how long Digital's frames take and how much of the
+            // panel they send, per kind of update, with no input involved.
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData frame;
+                auto run=[&](const char* name,const FrameModel& fm,int frames,auto&& step) {
+                    renderer.invalidate(); renderer.draw(fm,frame);
+                    TimeUs total=0,longest=0; uint64_t area=0; unsigned painted=0;
+                    for(int i=0;i<frames;++i) {
+                        step(i);
+                        const TimeUs start=esp_timer_get_time();
+                        renderer.draw(fm,frame);
+                        const TimeUs spent=esp_timer_get_time()-start;
+                        total+=spent; longest=std::max(longest,spent);
+                        const Rect dirty=renderer.lastDirty();
+                        if(!dirty.empty()) { ++painted; area+=uint64_t(dirty.w)*dirty.h; }
+                        if(i%8==7) vTaskDelay(1);
+                    }
+                    std::printf("[Perf] %s frames=%d painted=%u avg_us=%lld max_us=%lld avg_dirty_px=%llu\n",name,frames,painted,
+                        (long long)(total/frames),(long long)longest,(unsigned long long)(painted ? area/painted : 0));
+                };
+                auto stopwatchItem=[&](int seconds) {
+                    auto& item=frame.background.items[0];
+                    item=BackgroundInfo{}; item.appId=LaunchTargetId::Stopwatch;
+                    std::snprintf(item.label,sizeof(item.label),"%02d:%02d",seconds/60%60,seconds%60);
+                    item.icon=appIcon(IconId::Stopwatch); item.suggestedColor=StopwatchAccent;
+                    frame.background.count=1;
+                };
+                FrameModel pm; pm.viewport={w,h};
+                frame=sampleData();
+                run("digital-static",pm,30,[&](int) {});
+                run("digital-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
+                stopwatchItem(0);
+                run("digital-item-second",pm,60,[&](int i) { stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData();
+                run("digital-second",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; });
+                stopwatchItem(0);
+                run("digital-second-item",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData(); stopwatchItem(160);
+                run("digital-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                pm.launcher.transition=0;
+                std::printf("[Perf] digital caches=%d/5 internal_free=%u largest=%u\n",renderer.digitalCachedParts(),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),
+                    unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+            }
 #ifdef LAUNCHER_RENDER_SHOTS
             // Pictures of the faces for looking at on the PC
             // (tools/render_shots.py), after the check so they change nothing.

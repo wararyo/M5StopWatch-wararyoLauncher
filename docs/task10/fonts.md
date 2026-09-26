@@ -1,6 +1,7 @@
 # 作業10: フォント資産の記録
 
-作成日: 2026-09-26（10-0）。状態: 書体・サイズ・収録文字を確定。VLWの生成・組み込みは10-3で行う。
+作成日: 2026-09-26（10-0）。状態: 書体・サイズ・収録文字を確定。
+更新日: 2026-09-26（10-3）。VLWを生成・組み込み、生成手順とハッシュを6節に記録。時刻の描き方とコロンの位置を7節に記録。
 [作業10の計画](plan.md)3節と[10-3](plan-10-3.md)2節の「元ファイル・ライセンス・生成手順・サイズ・収録文字」の記録先。
 
 ## 1. 採用する書体（2026-09-26確定）
@@ -56,7 +57,7 @@ VLWはフォント名の欄を持たず、`build_font.py`も書き込まない�
 
 - `src/ui/graphics/fonts/OFL-GenShinGothic.txt` — 10-0で追加。作業3の導入時に不足していたもの。
   著作権表示は元フォントのnameテーブル（ID 0）から転記。M+ FONTS由来のグリフはM+ FONTS LICENSE（無条件の利用・改変・再配布を許可）で、同梱義務はない。
-- `src/ui/graphics/fonts/OFL-D-DIN-PRO.txt` — 10-3でVLWをコミットするときに、配布物の`OFL-1.1.txt`（著作権表示を含む）から追加する。
+- `src/ui/graphics/fonts/OFL-D-DIN-PRO.txt` — 10-3で配布物の`OFL-1.1.txt`（著作権表示を含む）をそのまま複製して追加した（SHA-256 `4b9161aa1e9978d729be842940dd14d9b865d195066346c3907f764f05518fa3`、元ファイルと同一）。
 
 ## 4. 実測（10-0、`build_font.py`の`render`・`build`で生成して計測）
 
@@ -94,7 +95,49 @@ VLWはフォント名の欄を持たず、`build_font.py`も書き込まない�
 
 インクの張り出しは10-3の配置計算で確認する。
 
-## 6. 生成手順
+## 6. 生成手順（10-3）
 
-10-3で`build_font.py`に`--output`・`--chars-file`を追加した後、実際のコマンドと生成物のSHA-256をここへ追記する。
-既存の日本語資産は引数省略時の動作と`--check`で従来どおり再現できることを確認する。
+`build_font.py`に`--output`（書き出し・検査する資産）と`--chars-file`（収録する文字をUTF-8で列挙したファイル。改行以外のすべての文字）を追加した。
+どちらも省略すると従来どおり日本語資産を作る。収録文字の一覧は`tools/fonts/`に置く。
+
+| ファイル | 内容 | SHA-256 |
+|---|---|---|
+| `tools/fonts/time.txt` | `0123456789:-` | `3917e74c24915c96fd8937978fbac77c712b666b2abf4161e8465c212ac76ae5` |
+| `tools/fonts/ascii.txt` | U+0020〜U+007E | `01dbc9a42e2c64d4ecbeb1925bebffadb1c1174a3f6695a3897853cb1135e7b7` |
+
+`<D-DIN>`は`D-DIN-PRO-main/TTF`、`<GenShin>`は`GenShinGothic-Medium.ttf`（2節）。freetype-py 2.13.2（10-0と同じ）。
+
+```sh
+python tools/build_font.py --source <D-DIN>/Exp/D-DIN-PRO-Exp-600-SemiBold.ttf --size 100 \
+    --chars-file tools/fonts/time.txt --output src/ui/graphics/fonts/DDinProExpSemiBold100.vlw
+python tools/build_font.py --source <D-DIN>/Exp/D-DIN-PRO-Exp-700-Bold.ttf --size 28 \
+    --chars-file tools/fonts/ascii.txt --output src/ui/graphics/fonts/DDinProExpBold28.vlw
+python tools/build_font.py --source <D-DIN>/Exp/D-DIN-PRO-Exp-700-Bold.ttf --size 22 \
+    --chars-file tools/fonts/ascii.txt --output src/ui/graphics/fonts/DDinProExpBold22.vlw
+python tools/build_font.py --source <D-DIN>/Condensed/D-DIN-PRO-Condensed-600-SemiBold.ttf --size 120 \
+    --chars-file tools/fonts/time.txt --output src/ui/graphics/fonts/DDinProCondensedSemiBold120.vlw
+python tools/build_font.py --source <GenShin>          # 日本語資産（引数省略時の従来動作）
+```
+
+各コマンドに`--check`を付けると、コミット済みの資産が元ファイルと収録文字から作り直した結果と一致するか検査する。
+10-3の完了時点で5資産とも一致した（[ログ](20260926-10-3-font-check-final.log)）。
+
+| 資産 | グリフ | bytes | SHA-256 |
+|---|---:|---:|---|
+| `DDinProExpSemiBold100.vlw` | 12 | 31,970 | `19b44192162c6e11c088aaa7f5b3bae820d4905c9d41ff01e81c22a877e7f458` |
+| `DDinProExpBold28.vlw` | 95 | 25,562 | `41556fa3b3b8eb3e07cf8da2cdc9067014031b356978f9f43d0dab15dc53226e` |
+| `DDinProExpBold22.vlw` | 95 | 17,205 | `6da732877d4b9ea4bbb1a24a3b74d6e97b33bd33652c4ad0e01ac1f1f6475853` |
+| `DDinProCondensedSemiBold120.vlw` | 12 | 33,663 | `fdbf09203d4ee3985c6462320dbff2506127e826f37130355a7700d76aa9b389` |
+| `GenShinGothicMedium28.vlw` | 347 | 175,599 | `f7687e8a5214eeea3d8b90b85c90aab4a41e5639e494c85756bb0fd9c3b63d2d` |
+
+bytesは4節の実測と一致する。日本語資産は[10-0の所見1](baseline.md)を「未収録の字を収録して再生成」で解消した。
+引数省略時の従来動作のまま作り直すと、既存の340字は寸法・画素とも差0で、増えたのは`src/`にだけある7字
+（描画検証の6字と、情報欄の検証ラベル「計測中」の「測」）（[比較ログ](20260926-10-3-font-genshin.log)）。
+
+## 7. 描き方（10-3）
+
+- 時刻の数字（`DDinPro*SemiBold*`）はLovyanGFXのフォントとして読み込まない。`VLWfont::drawChar`は1文字ごとにグリフ全体をスタックへ複製する（`alloca(幅×高さ)`、100pxの数字で約3.6KB）。
+  UIタスク（8KiB）で試したところスタック余裕が5,700→2,676 bytesに落ちたため、`ui/graphics/VlwGlyphs`で資産の中のビットマップを直接指し、`pushGrayscaleImage`で描く。
+  画素はLovyanGFXで描いた場合とバイト単位で一致した（描画検証の画像で確認）。スタック余裕は5,412 bytesに戻った。
+- 日付・電池・APPS・情報ラベル（28px・22px）は通常のVLWフォントとして描く（1文字数百bytes）。
+- D-DIN-PROのコロンは数字の中心より約11px低い。Digitalでは**8px上げて描く**（2026-09-26、画像を見てユーザーが決定）。持ち上げた後も時刻のascent（71px）に収まる。

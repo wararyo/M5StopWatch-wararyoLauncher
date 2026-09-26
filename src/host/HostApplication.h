@@ -5,6 +5,8 @@
 #include "hal/Hal.h"
 #include "multifirm/SlotService.h"
 #include "services/StopwatchService.h"
+#include "features/background/BackgroundInfoHub.h"
+#include "features/stopwatch/StopwatchBackgroundInfo.h"
 namespace launcher {
 // What the application ends once an external boot is certain (plan.md 8.2
 // step 5). The slot service calls it on the UI task, after the boot partition
@@ -30,8 +32,12 @@ private:
 class HostApplication {
 public:
     HostApplication(Hal& hal,RenderPort& renderer,DisplayDataSource& data,int width,int height)
-        :shutdown_(stopwatch_,hal),screens_(stopwatch_,runtimeSettings_,width,height),
-         runtime_(hal,renderer,data,screens_) {}
+        :stopwatchInfo_(stopwatch_),shutdown_(stopwatch_,hal),
+         screens_(stopwatch_,runtimeSettings_,width,height),
+         runtime_(hal,renderer,data,screens_,&background_) {
+        // Registration order is display order (docs/task10/plan.md 4.1).
+        background_.add(stopwatchInfo_);
+    }
     // The slot service must not keep calling into a shutdown that is gone.
     ~HostApplication() { if (slots_) slots_->bindShutdown(nullptr); }
     HostApplication(const HostApplication&)=delete;
@@ -46,9 +52,14 @@ public:
     HostRuntime& runtime() { return runtime_; }
     ScreenManager& screens() { return screens_; }
     const StopwatchService& stopwatch() const { return stopwatch_; }
+    BackgroundInfoHub& background() { return background_; }
     const RuntimeSettings& runtimeSettings() const { return runtimeSettings_; }
 private:
     StopwatchService stopwatch_;
+    // Service, then the providers that read it, then the hub that collects
+    // them, all before the runtime that is lent the hub.
+    StopwatchBackgroundInfo stopwatchInfo_;
+    BackgroundInfoHub background_;
     RuntimeSettings runtimeSettings_{};
     HostShutdown shutdown_;
     ScreenManager screens_;

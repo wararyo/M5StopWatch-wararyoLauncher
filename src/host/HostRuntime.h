@@ -3,6 +3,7 @@
 #include "host/ScreenManager.h"
 #include "host/RenderPort.h"
 #include "features/home/DisplayDataSource.h"
+#include "features/background/BackgroundInfoHub.h"
 #include <algorithm>
 namespace launcher {
 // The single UI task's loop: input, power, deadlines, slot results and when to
@@ -10,8 +11,10 @@ namespace launcher {
 // state (host/HostApplication.h owns it).
 class HostRuntime {
 public:
-    HostRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, ScreenManager& screens)
-        : hal_(hal), renderer_(renderer), data_(data),
+    // Without a hub the clock gets an empty background snapshot.
+    HostRuntime(Hal& hal, RenderPort& renderer, DisplayDataSource& data, ScreenManager& screens,
+                BackgroundInfoHub* background = nullptr)
+        : hal_(hal), renderer_(renderer), data_(data), background_(background),
           input_(std::max(1, std::min(screens.viewport().width, screens.viewport().height) / 50)),
           screens_(screens) {}
     HostRuntime(const HostRuntime&) = delete;
@@ -29,6 +32,7 @@ private:
     Hal& hal_;
     RenderPort& renderer_;
     DisplayDataSource& data_;
+    BackgroundInfoHub* background_;
     SlotService* slots_=nullptr;
     InputController input_;
     ScreenManager& screens_;

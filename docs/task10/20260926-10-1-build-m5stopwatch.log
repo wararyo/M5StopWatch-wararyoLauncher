@@ -1,0 +1,92 @@
+﻿Processing m5stopwatch (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/m5stack-cores3.html
+PLATFORM: Espressif 32 (6.12.0) > M5Stack CoreS3
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-espidf @ 3.50500.0 (5.5.0) 
+ - tool-cmake @ 3.30.2 
+ - tool-esp-rom-elfs @ 0.0.1+20241011 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - tool-idf @ 1.0.1 
+ - tool-mconf @ 1.4060000.20190628 (406.0.0) 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-esp32ulp @ 1.23800.240113 (2.38.0) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20241119
+Reading CMake configuration...
+Generating assembly for certificate bundle...
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 4 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.16
+|-- M5GFX @ 0.2.28
+|-- M5StopWatch-MultiFirm @ 0.1.0+sha.f5a8fd8
+Building in release mode
+Generating assembly for .pio\build\m5stopwatch\GenShinGothicMedium28.vlw.S
+Generating assembly for .pio\build\m5stopwatch\AppIcons.bin.S
+Compiling .pio\build\m5stopwatch\src\main.cpp.o
+Compiling .pio\build\m5stopwatch\src\input\InputController.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\rendering\Element.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\rendering\Renderer.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\graphics\Text.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\graphics\VlwFont.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\list\ListController.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\list\ListView.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\overlays\ToastLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\ui\overlays\StatsOverlay.cpp.o
+Compiling .pio\build\m5stopwatch\src\host\ScreenManager.cpp.o
+Compiling .pio\build\m5stopwatch\src\host\HostRuntime.cpp.o
+Compiling .pio\build\m5stopwatch\src\host\HostRenderer.cpp.o
+Compiling .pio\build\m5stopwatch\src\host\RenderDiagnostics.cpp.o
+Compiling .pio\build\m5stopwatch\src\hal\M5Hal.cpp.o
+Compiling .pio\build\m5stopwatch\src\hal\InputWake.cpp.o
+Compiling .pio\build\m5stopwatch\src\power\DrainLog.cpp.o
+Compiling .pio\build\m5stopwatch\src\power\UsbDiag.cpp.o
+Compiling .pio\build\m5stopwatch\src\services\TimeService.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\home\HomeDataSource.cpp.o
+Compiling .pio\build\m5stopwatch\src\services\StopwatchService.cpp.o
+Compiling .pio\build\m5stopwatch\src\storage\SettingsStore.cpp.o
+Compiling .pio\build\m5stopwatch\src\storage\NvsBackend.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\home\HomeLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\home\faces\DigitalWatchFace.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\launcher\AppIcons.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\launcher\AppListLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\launcher\LauncherController.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\settings\SettingsScreen.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\settings\SettingsLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\external\ExternalAppScreen.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\external\ExternalLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\stopwatch\StopwatchFormat.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\stopwatch\StopwatchScreen.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\stopwatch\StopwatchLayer.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\stopwatch\StopwatchBackgroundInfo.cpp.o
+Compiling .pio\build\m5stopwatch\src\features\background\BackgroundInfoHub.cpp.o
+Compiling .pio\build\m5stopwatch\src\multifirm\MultiFirmAdapter.cpp.o
+Compiling .pio\build\m5stopwatch\.pio\build\m5stopwatch\GenShinGothicMedium28.vlw.S.o
+Compiling .pio\build\m5stopwatch\.pio\build\m5stopwatch\AppIcons.bin.S.o
+pio : In file included from src/features/stopwatch/StopwatchBackgroundInfo.cpp:1:
+At line:1 char:302
++ ... tch {} } }; pio run -e m5stopwatch *> docs/task10/20260926-10-1-build ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (In file include...oundInfo.cpp:1::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+src/features/stopwatch/StopwatchBackgroundInfo.h:19:61: error: 'size_t' has not been declared
+   19 | TimeUs formatStopwatchBackground(TimeUs elapsed,char* label,size_t size);
+      |                                                             ^~~~~~
+Generating LD script .pio\build\m5stopwatch\esp-idf\esp_system\ld\memory.ld.in
+Generating LD script .pio\build\m5stopwatch\esp-idf\esp_system\ld\sections.ld.in
+*** [.pio\build\m5stopwatch\src\features\stopwatch\StopwatchBackgroundInfo.cpp.o] Error 1
+========================= [FAILED] Took 60.65 seconds =========================
+Environment    Status    Duration
+-------------  --------  ------------
+m5stopwatch    FAILED    00:01:00.647
+==================== 1 failed, 0 succeeded in 00:01:00.647 ====================
+

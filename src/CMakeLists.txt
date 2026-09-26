@@ -12,6 +12,7 @@ idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     "features/settings/SettingsScreen.cpp" "features/settings/SettingsLayer.cpp"
     "features/external/ExternalAppScreen.cpp" "features/external/ExternalLayer.cpp"
     "features/stopwatch/StopwatchFormat.cpp" "features/stopwatch/StopwatchScreen.cpp" "features/stopwatch/StopwatchLayer.cpp"
+    "features/stopwatch/StopwatchBackgroundInfo.cpp" "features/background/BackgroundInfoHub.cpp"
     "multifirm/MultiFirmAdapter.cpp" INCLUDE_DIRS "."
     # Subset produced by tools/build_font.py; the full 2.3MiB VLW is not embedded.
     # App list icon masks produced by tools/build_icons.py from icons/*.png.

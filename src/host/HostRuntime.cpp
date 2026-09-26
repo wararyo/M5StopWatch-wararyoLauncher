@@ -65,6 +65,10 @@ void HostRuntime::step() {
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
     if (!power_.screenOff()) {
         dirty_ = screens_.update(now) || dirty_;
+        // A provider's notification redraws a clock on screen. A covered
+        // clock waits: the frame that uncovers it collects anyway, and a dark
+        // panel is not woken for a label (docs/task10/plan.md 4.3).
+        if (background_ && background_->pending() && !dirty_ && clockVisible(screens_.model())) dirty_ = true;
     }
     if (!power_.screenOff() && (dirty_ || now >= nextDisplay_)) {
         const auto model = screens_.model();
@@ -73,11 +77,20 @@ void HostRuntime::step() {
             hal_.setBrightness(effective.brightness); appliedBrightness_ = effective.brightness;
         }
         power_.setTimeout(TimeUs(effective.screenOffSec) * 1000000);
-        const auto watch = data_.sample(now);
+        auto watch = data_.sample(now);
+        const bool clock = clockVisible(model);
+        // The applications' labels are sampled for a visible clock only, so a
+        // stopwatch left running costs nothing behind a screen. A hidden clock
+        // gets the last copy, which it does not draw.
+        if (background_) {
+            if (clock) background_->collect(now);
+            watch.background = background_->snapshot();
+        }
         renderer_.draw(model, watch);
         // The clock's own deadlines only while the composition shows it: an
-        // open screen or the raised list drives its frames by itself.
-        nextDisplay_ = clockVisible(model) ?
+        // open screen or the raised list drives its frames by itself. The
+        // labels' deadlines join once a face shows them (task 10-2).
+        nextDisplay_ = clock ?
             std::min(renderer_.nextUpdate(now, watch), data_.nextUpdate(now)) : INT64_MAX;
         // A misbehaving display provider must not make an overdue busy loop.
         if (nextDisplay_ <= now) nextDisplay_ = now + 16000;

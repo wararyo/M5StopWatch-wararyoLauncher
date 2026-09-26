@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "C:\Users\wararyo\Git\M5stopWatch-wararyoLauncher\tools\test_runtime.py", line 34, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\wararyo\Git\M5stopWatch-wararyoLauncher\tools\test_runtime.py", line 27, in main
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    "-finput-charset=UTF-8", "-fexec-charset=UTF-8",
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    "-I", str(ROOT / "src"), *[str(ROOT / s) for s in sources],
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    "-o", str(binary)], check=True)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['C:\\msys64\\ucrt64\\bin\\g++.EXE', '-std=c++17', '-Wall', '-Wextra', '-Werror', '-finput-charset=UTF-8', '-fexec-charset=UTF-8', '-I', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\tests\\runtime_tests.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\input\\InputController.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\host\\ScreenManager.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\host\\HostRuntime.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\ui\\rendering\\Element.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\ui\\list\\ListController.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\launcher\\LauncherController.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\services\\TimeService.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\home\\HomeDataSource.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\storage\\SettingsStore.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\settings\\SettingsScreen.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\external\\ExternalAppScreen.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\services\\StopwatchService.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\stopwatch\\StopwatchFormat.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\stopwatch\\StopwatchScreen.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\stopwatch\\StopwatchBackgroundInfo.cpp', 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\src\\features\\background\\BackgroundInfoHub.cpp', '-o', 'C:\\Users\\wararyo\\AppData\\Local\\Temp\\launcher-runtime-yvj2j49h\\runtime_tests.exe']' returned non-zero exit status 1.

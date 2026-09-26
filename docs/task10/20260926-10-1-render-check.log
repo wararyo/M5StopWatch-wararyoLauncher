@@ -1,0 +1,90 @@
+I (316) esp_image: segment 3: paddr=00111c38 vaddr=3fc9b5ec size=011e0h (  4576) load
+I (317) esp_image: segment 4: paddr=00112e20 vaddr=40374000 size=15120h ( 86304) load
+I (338) esp_image: segment 5: paddr=00127f48 vaddr=600fe000 size=00050h (    80) load
+I (347) boot: Loaded app from partition at offset 0x20000
+I (347) boot: Disabling RNG early entropy source...
+I (357) octal_psram: vendor id    : 0x0d (AP)
+I (357) octal_psram: dev id       : 0x02 (generation 3)
+I (357) octal_psram: density      : 0x03 (64 Mbit)
+I (359) octal_psram: good-die     : 0x01 (Pass)
+I (364) octal_psram: Latency      : 0x01 (Fixed)
+I (368) octal_psram: VCC          : 0x01 (3V)
+I (372) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (377) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (382) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (386) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (391) octal_psram: DriveStrength: 0x00 (1/1)
+I (396) MSPI Timing: PSRAM timing tuning index: 4
+I (400) esp_psram: Found 8MB PSRAM device
+I (404) esp_psram: Speed: 80MHz
+I (407) cpu_start: Multicore app
+I (692) esp_psram: SPI SRAM memory test OK
+I (700) cpu_start: Pro cpu start user code
+I (700) cpu_start: cpu freq: 240000000 Hz
+I (701) app_init: Application information:
+I (701) app_init: Project name:     wararyoLauncher
+I (701) app_init: App version:      0.1.0-dev
+I (701) app_init: Compile time:     Sep 26 2026 13:59:13
+I (701) app_init: ELF file SHA256:  c6285f7c1...
+I (701) app_init: ESP-IDF:          5.5.0
+I (701) efuse_init: Min chip rev:     v0.0
+I (702) efuse_init: Max chip rev:     v0.99 
+I (702) efuse_init: Chip rev:         v0.2
+I (702) heap_init: Initializing. RAM available for dynamic allocation:
+I (702) heap_init: At 3FCA6DD8 len 00042938 (266 KiB): RAM
+I (702) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (702) heap_init: At 600FE050 len 00001F98 (7 KiB): RTCRAM
+I (703) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (704) spi_flash: detected chip: generic
+I (704) spi_flash: flash io: dio
+I (705) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (705) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+I (276) pm: Frequency switching config: CPU_MAX: 240, APB_MAX: 80, APB_MIN: 80, Light sleep: ENABLED
+I (277) sleep: Code start at 0x42000020, total 400400, data start at 0x3c000000, total 33554432 Bytes
+[Power] dfs max=240MHz min=80MHz light_sleep=1 lock=ESP_OK result=ESP_OK
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=335859 free=256355 largest=212992 bytes
+[Memory] psram total=8388608 free=7942712 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=340 bytes=170790
+[WatchFace] digital cache=ready bytes=51728 internal
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+[ListView] text image allocation failed: 64x46, drawing directly
+[ListView] text image allocation failed: 92x46, drawing directly
+[ListView] text image allocation failed: 164x46, drawing directly
+[ListView] text image allocation failed: 164x46, drawing directly
+[WatchFace] digital cache=direct bytes=51728 internal
+[Renderer] element capacity exceeded: full repaint
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[WatchFace] digital cache=ready bytes=51728 internal
+[Verify] lifecycle internal_free_before=203239 after=203239
+[Verify] list cache bytes=72496 allocations=28 failures=4 fits=33 renders=233
+[Verify] checks=369 mismatches=0 result=PASS
+[RenderDiag] synthetic JST time / battery / slots; no RTC or flash read
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=90 screen_off=30s stored=ok
+[Memory] ui-internal total=335859 free=200291 largest=159744 bytes
+[Memory] ui-psram total=8388608 free=7820516 largest=6815744 bytes

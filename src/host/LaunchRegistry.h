@@ -1,8 +1,8 @@
 #pragma once
+#include "core/AppId.h"
 #include <array>
 #include <cstdint>
 namespace launcher {
-enum class LaunchTargetId { Stopwatch,Settings,External1,External2,External3 };
 enum class TargetKind { Builtin,External };
 // Index into the embedded mask set (tools/build_icons.py writes this order).
 // Entries are appended, never reordered: the asset is indexed by this value.

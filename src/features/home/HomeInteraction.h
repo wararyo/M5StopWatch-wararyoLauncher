@@ -1,5 +1,6 @@
 #pragma once
 #include "features/home/HomeModel.h"
+#include "features/background/BackgroundInfoHub.h"
 #include "ui/rendering/Viewport.h"
 #include <cstring>
 namespace launcher {
@@ -43,7 +44,7 @@ struct WatchEnvironment {
 enum WatchChange : uint16_t {
     WatchTime=1,        // The clock reading or its validity.
     WatchBattery=2,     // Percent or charging.
-    WatchBackground=4,  // Background items added, removed, relabelled.
+    WatchBackground=4,  // Background items added, removed, relabelled, restyled.
     WatchProgress=8,    // The list's slide over the clock.
     WatchResumed=16,    // First frame after a full repaint (a wake, say).
     WatchSelected=32,   // First frame of a newly selected face.
@@ -52,7 +53,8 @@ using WatchChanges=uint16_t;
 inline bool sameBackground(const BackgroundSnapshot& a,const BackgroundSnapshot& b) {
     if (a.count!=b.count) return false;
     for (int i=0;i<a.count;++i)
-        if (a.items[i].appId!=b.items[i].appId || std::strcmp(a.items[i].label,b.items[i].label)!=0) return false;
+        if (a.items[i].appId!=b.items[i].appId || std::strcmp(a.items[i].label,b.items[i].label)!=0 ||
+            !sameStyle(a.items[i],b.items[i])) return false;
     return true;
 }
 // The data half of the changes; progress, resume and selection are the clock

@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cstdio>
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
-#include "features/launcher/AppIcons.h"
+#include "assets/AppIcons.h"
 #include "ui/graphics/Text.h"
 #include "ui/graphics/VlwFont.h"
 #include "host/LaunchRegistry.h"

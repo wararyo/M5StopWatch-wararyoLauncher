@@ -1,4 +1,5 @@
 #include "StopwatchBackgroundInfo.h"
+#include "assets/AppIcons.h"
 #include <cinttypes>
 #include <cstdio>
 namespace launcher {
@@ -22,6 +23,9 @@ bool StopwatchBackgroundInfo::sample(TimeUs now,BackgroundInfo& out) const {
     // The next boundary after now, even when this frame is late; saturated
     // rather than wrapped at the end of the monotonic range.
     out.nextChangeAt=now>INT64_MAX-wait ? INT64_MAX : now+wait;
+    // The launcher's stopwatch mask, shared rather than copied.
+    out.icon=appIcon(IconId::Stopwatch);
+    out.suggestedColor=StopwatchAccent;
     return true;
 }
 }

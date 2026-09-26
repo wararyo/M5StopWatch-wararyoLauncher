@@ -1,0 +1,47 @@
+﻿Processing m5stopwatch-render-check (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/m5stack-cores3.html
+PLATFORM: Espressif 32 (6.12.0) > M5Stack CoreS3
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-espidf @ 3.50500.0 (5.5.0) 
+ - tool-cmake @ 3.30.2 
+ - tool-esp-rom-elfs @ 0.0.1+20241011 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - tool-idf @ 1.0.1 
+ - tool-mconf @ 1.4060000.20190628 (406.0.0) 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-esp32ulp @ 1.23800.240113 (2.38.0) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20241119
+Warning! Could not find file "AppIcons.bin"
+Reading CMake configuration...
+Generating assembly for certificate bundle...
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 4 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.16
+|-- M5GFX @ 0.2.28
+|-- M5StopWatch-MultiFirm @ 0.1.0+sha.f5a8fd8
+Building in release mode
+Generating assembly for .pio\build\m5stopwatch-render-check\GenShinGothicMedium28.vlw.S
+pio : *** [.pio\build\m5stopwatch-render-check\AppIcons.bin.S] Source `src\features\launcher\icons\AppIcons.bin' not fo
+und, needed by target `.pio\build\m5stopwatch-render-check\AppIcons.bin.S'.
+At line:1 char:383
++ ... r-check') { pio run -e $e *> "docs/task10/20260926-10-1-icons-build-$ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (*** [.pio\build...ppIcons.bin.S'.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+========================= [FAILED] Took 37.18 seconds =========================
+
+Environment               Status    Duration
+------------------------  --------  ------------
+m5stopwatch-render-check  FAILED    00:00:37.184
+==================== 1 failed, 0 succeeded in 00:00:37.184 ====================

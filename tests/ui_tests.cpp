@@ -639,6 +639,10 @@ void watchChangeBits() {
     CHECK(watchChanges(a,b)==0);
     a=b; b.background.items[0].label[0]='y'; CHECK(watchChanges(a,b)==WatchBackground);
     a=b; b.background.items[0].appId=LaunchTargetId::External1; CHECK(watchChanges(a,b)==WatchBackground);
+    static const uint8_t mask[1]={255}; static const IconBitmap icon{mask,1,1};
+    a=b; b.background.items[0].icon=&icon; CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].suggestedColor=uint16_t(0); CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].suggestedColor.reset(); CHECK(watchChanges(a,b)==WatchBackground);
     a=b; b.background.count=0; b.localTime.tm_min=3;
     CHECK(watchChanges(a,b)==(WatchBackground|WatchTime));
 }

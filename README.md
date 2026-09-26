@@ -101,7 +101,8 @@ UIは M5StopWatch-UserDemo のストップウォッチに合わせ、左右2つ�
 [作業7の詳細計画](docs/task7/plan.md)と[検証記録](docs/task7/task7-validation.md)を参照してください。
 
 一覧のアイコンは `icons/*.png`（44×44のグレースケールマスク）から
-`python tools/build_icons.py` で `src/features/launcher/icons/AppIcons.bin` を作り、円の上に重ねて描きます。
+`python tools/build_icons.py` で `src/assets/AppIcons.bin` を作り、円の上に重ねて描きます。
+ストップウォッチの情報をホームへ出すときも、同じアイコンを使います。
 アイコンを差し替えたときだけ実行し直します。
 
 日本語表示にはGenShinGothic 28pxの部分集合を埋め込みます。TrueTypeフォントはリポジトリに含めないため、

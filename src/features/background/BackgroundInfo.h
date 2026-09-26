@@ -1,18 +1,28 @@
 #pragma once
 #include "core/AppId.h"
 #include "core/Time.h"
+#include "ui/graphics/IconBitmap.h"
 #include <array>
 #include <cstdint>
+#include <optional>
 namespace launcher {
 // What an application running behind the screens asks the watch face to show
-// (docs/task10/plan.md 4). The application formats the label; a face picks an
-// icon from the id, places the text and may leave it out, but never parses or
-// reformats it. No display, HAL or screen type appears here.
+// (docs/task10/plan.md 4). The application formats the label and brings its
+// own icon and, if it likes, a colour; the face sizes, colours, places and may
+// leave them out, but never parses or reformats the label, and keeps no table
+// from ids to pictures. No display, HAL or screen type appears here.
 inline constexpr int BackgroundLabelBytes=48;   // UTF-8, terminator included
 inline constexpr int BackgroundCapacity=4;      // providers, hence items
 struct BackgroundInfo {
     TimeUs nextChangeAt=INT64_MAX;  // When the label changes; INT64_MAX: never.
+    // A one-colour 8 bit coverage mask, or none. Only the reference is copied:
+    // descriptor and pixels are static and unchanging while the app runs, and
+    // another picture is another asset, never the same one rewritten.
+    const IconBitmap* icon=nullptr;
     LaunchTargetId appId{};
+    // RGB565, or none. Black is a colour like any other; whether to use it is
+    // the face's choice.
+    std::optional<uint16_t> suggestedColor{};
     char label[BackgroundLabelBytes]{};
 };
 // One frame's information, copied out of the providers so it cannot change
@@ -43,8 +53,9 @@ inline TimeUs nextChange(const BackgroundSnapshot& s,const BackgroundInterest& i
 }
 // An application's source of background information. It lives as long as the
 // launcher, independent of whether its screen is open, and is asked only on the
-// UI task. `out` arrives with the provider's id, an empty label and no
-// deadline; returning false, or leaving the label empty, means nothing to show.
+// UI task. `out` arrives with the provider's id, an empty label, no icon, no
+// colour and no deadline; returning false, or leaving the label empty, means
+// nothing to show.
 class BackgroundInfoProvider {
 public:
     virtual ~BackgroundInfoProvider()=default;

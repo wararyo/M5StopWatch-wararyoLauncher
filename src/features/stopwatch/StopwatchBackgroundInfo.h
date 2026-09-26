@@ -4,9 +4,11 @@
 #include <cstddef>
 namespace launcher {
 // The stopwatch's line on the watch face (docs/task10/plan.md 4.2): only while
-// running, `mm:ss` under an hour and `HH:mm` from then on. It reads the service
-// and nothing else, so it keeps working with the stopwatch screen closed, and
-// its deadlines follow the measurement, not the wall clock.
+// running, `mm:ss` under an hour and `HH:mm` from then on, with the
+// stopwatch's own icon and colour. It reads the service and nothing else, so
+// it keeps working with the stopwatch screen closed, and its deadlines follow
+// the measurement, not the wall clock. The look lives here, not in the
+// service, which only measures.
 class StopwatchBackgroundInfo final : public BackgroundInfoProvider {
 public:
     explicit StopwatchBackgroundInfo(const StopwatchService& service):service_(service) {}

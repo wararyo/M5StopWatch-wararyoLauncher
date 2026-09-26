@@ -23,7 +23,9 @@ def main():
                        "src/services/StopwatchService.cpp",
                        "src/features/stopwatch/StopwatchFormat.cpp", "src/features/stopwatch/StopwatchScreen.cpp",
                        "src/features/stopwatch/StopwatchBackgroundInfo.cpp",
-                       "src/features/background/BackgroundInfoHub.cpp"]
+                       "src/features/background/BackgroundInfoHub.cpp",
+                       # Stands in for src/assets/AppIcons.cpp, which links the embedded icons.
+                       "tests/HostAppIcons.cpp"]
             subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
                             "-finput-charset=UTF-8", "-fexec-charset=UTF-8",
                             "-I", str(ROOT / "src"), *[str(ROOT / s) for s in sources],

@@ -44,13 +44,17 @@ uint8_t BackgroundInfoHub::collect(TimeUs now) {
         if (!providers_[i]->sample(now,item)) continue;
         // The id is the one the provider registered under, whatever it wrote.
         item.appId=providers_[i]->id();
+        item.icon=usableIcon(item.icon);
         if (sanitizeBackgroundLabel(item.label)>0) ++scratch_.count;
     }
     uint8_t changes=BackgroundUnchanged;
     for (int i=0;i<snapshot_.count;++i) {
         const auto* next=find(scratch_,snapshot_.items[i].appId);
         if (!next) changes|=BackgroundRemoved;
-        else if (std::strcmp(next->label,snapshot_.items[i].label)!=0) changes|=BackgroundRelabeled;
+        else {
+            if (std::strcmp(next->label,snapshot_.items[i].label)!=0) changes|=BackgroundRelabeled;
+            if (!sameStyle(*next,snapshot_.items[i])) changes|=BackgroundRestyled;
+        }
     }
     for (int i=0;i<scratch_.count;++i)
         if (!find(snapshot_,scratch_.items[i].appId)) changes|=BackgroundAdded;

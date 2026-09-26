@@ -1,5 +1,5 @@
 #include "AppListLayer.h"
-#include "AppIcons.h"
+#include "assets/AppIcons.h"
 #include "AppListLayout.h"
 namespace launcher {
 void AppListLayer::plan(FramePlan& frame,Gfx& g) {

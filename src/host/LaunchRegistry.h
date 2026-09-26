@@ -1,12 +1,10 @@
 #pragma once
 #include "core/AppId.h"
+#include "assets/AppIcons.h"
 #include <array>
 #include <cstdint>
 namespace launcher {
 enum class TargetKind { Builtin,External };
-// Index into the embedded mask set (tools/build_icons.py writes this order).
-// Entries are appended, never reordered: the asset is indexed by this value.
-enum class IconId : uint8_t { Stopwatch,Settings,App1,App2,App3,Count };
 struct LaunchEntry { LaunchTargetId id; const char* name; IconId icon; TargetKind kind; int slot; };
 inline constexpr std::array<LaunchEntry,5> LaunchRegistry{{
     {LaunchTargetId::Stopwatch,"ストップウォッチ",IconId::Stopwatch,TargetKind::Builtin,-1},

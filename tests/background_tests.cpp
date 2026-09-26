@@ -3,6 +3,7 @@
 #include "features/background/BackgroundInfoHub.h"
 #include "features/stopwatch/StopwatchBackgroundInfo.h"
 #include "services/TimeService.h"
+#include "assets/AppIcons.h"
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -20,6 +21,8 @@ struct FakeProvider : BackgroundInfoProvider {
     const char* raw=nullptr;
     LaunchTargetId writtenId{};
     bool lies=false;
+    const IconBitmap* icon=nullptr;
+    std::optional<uint16_t> color{};
     mutable int samples=0;
     FakeProvider(LaunchTargetId id,std::string label):appId(id),text(std::move(label)) {}
     LaunchTargetId id() const override { return appId; }
@@ -29,6 +32,7 @@ struct FakeProvider : BackgroundInfoProvider {
         if (raw) std::memcpy(out.label,raw,sizeof(out.label));
         else std::snprintf(out.label,sizeof(out.label),"%s",text.c_str());
         if (lies) out.appId=writtenId;
+        out.icon=icon; out.suggestedColor=color;
         out.nextChangeAt=due;
         return true;
     }
@@ -164,6 +168,52 @@ void labelsAreCheckedAndOwned() {
     // The notification is held until the next collection.
     CHECK(!two.pending()); two.invalidate(); CHECK(two.pending());
     two.collect(0); CHECK(!two.pending());
+}
+
+void iconsAndColoursComeFromTheApp() {
+    static const uint8_t mask[6]={0,64,128,192,255,255};
+    static const IconBitmap timerIcon{mask,3,2},otherIcon{mask,2,3};
+    BackgroundInfoHub hub;
+    FakeProvider p(LaunchTargetId::External1,"12:34");
+    hub.add(p);
+    // No icon and no colour are carried as such: the face falls back to its own.
+    CHECK(hub.collect(0)==BackgroundAdded);
+    CHECK(hub.snapshot().items[0].icon==nullptr && !hub.snapshot().items[0].suggestedColor);
+    // Only the reference is copied, and a restyle is a change of its own kind.
+    p.icon=&timerIcon; p.color=0x349f;
+    CHECK(hub.collect(0)==BackgroundRestyled);
+    CHECK(hub.snapshot().items[0].icon==&timerIcon && hub.snapshot().items[0].suggestedColor==uint16_t(0x349f));
+    WatchData frame{}; frame.background=hub.snapshot();
+    CHECK(hub.collect(0)==BackgroundUnchanged);
+    // Another asset, not the same one rewritten: a new reference.
+    p.icon=&otherIcon;
+    CHECK(hub.collect(0)==BackgroundRestyled && frame.background.items[0].icon==&timerIcon);
+    // Black is a colour, distinct from none.
+    p.color=uint16_t(0);
+    CHECK(hub.collect(0)==BackgroundRestyled && hub.snapshot().items[0].suggestedColor==uint16_t(0));
+    p.color.reset();
+    CHECK(hub.collect(0)==BackgroundRestyled && !hub.snapshot().items[0].suggestedColor);
+    // Label and look together.
+    p.text="12:35"; p.color=uint16_t(0x2e17);
+    CHECK(hub.collect(0)==(BackgroundRelabeled|BackgroundRestyled));
+    // An icon that cannot be drawn is no icon.
+    static const IconBitmap noPixels{nullptr,3,2},noWidth{mask,0,2},noHeight{mask,3,-1};
+    for (const IconBitmap* bad:{&noPixels,&noWidth,&noHeight}) {
+        p.icon=bad; hub.collect(0);
+        CHECK(hub.snapshot().items[0].icon==nullptr);
+    }
+    // An id the launcher does not know keeps the picture it brought.
+    BackgroundInfoHub other; FakeProvider unknown(static_cast<LaunchTargetId>(42),"x");
+    unknown.icon=&timerIcon; other.add(unknown); other.collect(0);
+    CHECK(other.snapshot().items[0].icon==&timerIcon);
+    // The stopwatch brings the launcher's own stopwatch mask and colour.
+    StopwatchService service; StopwatchBackgroundInfo provider(service);
+    service.start(0);
+    BackgroundInfo out;
+    CHECK(provider.sample(Second,out));
+    CHECK(out.icon && out.icon==appIcon(IconId::Stopwatch) && out.suggestedColor==StopwatchAccent);
+    BackgroundInfoHub stopwatch; stopwatch.add(provider); stopwatch.collect(Second);
+    CHECK(stopwatch.collect(2*Second)==BackgroundRelabeled);     // the same asset each time
 }
 
 void deadlinesFollowTheShownItems() {
@@ -386,6 +436,7 @@ int main() {
     deadlinesFollowTheShownItems();
     stopwatchFormat();
     stopwatchProvider();
+    iconsAndColoursComeFromTheApp();
     homeGetsTheLabelAfterTheScreenCloses();
     labelsWakeOnlyAFaceThatShowsThem();
     std::cout << "background tests passed\n";

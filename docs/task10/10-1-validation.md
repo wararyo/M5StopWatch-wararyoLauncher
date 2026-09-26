@@ -2,6 +2,7 @@
 
 実施日: 2026-09-26。[10-1計画](plan-10-1.md)の完了条件を確認し、**10-1を完了とした**。
 ユーザー操作を要する項目はない（表示部品は10-3で追加するため、目視確認は対象外）。
+2026-09-26追記: アイコンと推奨色を供給元が持つ計画変更に追従した（5節）。
 
 ## 1. 実装の要点
 
@@ -60,6 +61,46 @@
 
 ## 4. 全体計画への補足候補（10-6で反映）
 
+- アプリのアイコン資産と色は`src/assets/AppIcons.h`（`IconId`・`appIcon`・`*Accent`）。一覧と情報供給元が共有する。
+
 - `AppId`の実装名は`LaunchTargetId`（`src/core/AppId.h`）。値を明示し、配列位置をIDにしない。
 - Hubは`HostApplication`が所有し、Runtimeが可視の時計のフレームでだけ収集して`WatchData`へ合成する。
 - 非表示中の状態変更通知（`invalidate()`の保持）と表示期限（表示対象IDの`nextChangeAt`）は別の経路。
+
+## 5. 追記: アイコンと推奨色（2026-09-26）
+
+計画（[plan.md](plan.md) 4.1節、[plan-10-1.md](plan-10-1.md)「アイコンと推奨色の所有」）の更新に合わせて実装を直した。
+
+| 場所 | 変更 |
+|---|---|
+| `src/features/background/BackgroundInfo.h` | `const IconBitmap* icon`（静的な8bit濃淡マスクの参照）と`std::optional<uint16_t> suggestedColor`（RGB565、未指定と黒を区別）を追加 |
+| `src/features/background/BackgroundInfoHub.*` | 画素なし・幅または高さが0以下のアイコンを「アイコンなし」へ正規化（`usableIcon`）。アイコン参照・推奨色の変化を`BackgroundRestyled`として検出（`sameStyle`） |
+| `src/features/home/HomeInteraction.h` | `WatchBackground`の比較にアイコン参照・推奨色を含めた |
+| `src/features/stopwatch/StopwatchBackgroundInfo.cpp` | 一覧と同じストップウォッチのマスク（`appIcon(IconId::Stopwatch)`）と`StopwatchAccent`（0x349f）を返す。StopwatchServiceは変更なし |
+| `src/assets/AppIcons.{h,cpp}`・`AppIcons.bin`（移動） | 画像データと取得経路をランチャーから共通資産へ分離（`git mv`、内容は同一）。`IconId`をLaunchRegistryから移し、各アプリの色（`StopwatchAccent`・`SettingsAccent`・`ExternalAccent`）を一覧と共有する。LaunchRegistryは`IconId`をこのヘッダーから参照する |
+| `platformio.ini`・`src/CMakeLists.txt`・`tools/build_icons.py`・`README.md` | 資産の新しいパス。リンカーシンボルはファイル名だけで決まるため変わらない。`build_icons.py --check`は一致 |
+| `tests/HostAppIcons.cpp`（新規） | ホストテストには埋め込み資産がないため、`appIcon`の代わりに小さな静的マスクを返す |
+
+依存の確認:
+
+- `src/services/StopwatchService.*`・`Stopwatch.h`のincludeは`services/Stopwatch.h`・`core/Time.h`・`<cstdint>`だけで、描画資産に依存しない。
+- `src/features/stopwatch`・`background`・`home`・`src/assets`のいずれも`LaunchRegistry`を参照しない。ホーム側にIDからアイコンへの対応表はない。
+
+検証:
+
+- ホスト: 全7スイートPASS（[ログ](20260926-10-1-icons-host.log)）。`background_tests: iconsAndColoursComeFromTheApp`で、
+  参照だけの受け渡しとフレームのコピーが後の変更の影響を受けないこと、`BackgroundRestyled`の検出、黒と未指定の区別、ラベルと同時の変更、
+  不正アイコン3種の正規化、未知IDでの資産の保持、ストップウォッチが一覧と同じマスク・色を返し、毎回同じ参照であることを確認した。
+  `ui_tests: watchChangeBits`にアイコン・推奨色の変化を追加した。
+- ビルド: 3構成SUCCESS・`verify_build.py` PASS。
+
+| 構成 | イメージ | 静的RAM（10-2比） | SHA-256 |
+|---|---:|---:|---|
+| m5stopwatch | 1,083,232 | 39,940（+128） | `5bb88d599f191b3cf8871be138d36486b02b02314320599eeb4d7ef9d1f54ec7` |
+| m5stopwatch-measure | 1,087,584 | 57,084（+128） | `467c4ee985e34e29e1a080b0ff24bd3ef87a7290fba6069a610e0d050c49d4bf` |
+| m5stopwatch-render-check | 1,083,936 | 56,764（+128） | `3a80d1e2641f83f1f2591738b1215904cf96813419aed4a1045f0e3781ae8b08` |
+
+  最初のビルドは`platformio.ini`の`board_build.embed_files`に旧パスが残っていて失敗した（[ログ](20260926-10-1-icons-build-m5stopwatch.log)）。
+  修正後、製品構成だけはCMakeの古い構成情報（`Couldn't find target config`）で2回失敗したため、ビルドディレクトリをcleanして成功した（`-2`〜`-4`）。
+- 実機: 描画検証版で`[Icons] AppIcons count=5 size=44x44 bytes=9692`、`[Verify] checks=375 mismatches=0 result=PASS`
+  （[ログ](20260926-10-1-icons-render-check.log)）。一覧のアイコン描画は移動後の資産で変わらない。検証後に製品版を導入した。

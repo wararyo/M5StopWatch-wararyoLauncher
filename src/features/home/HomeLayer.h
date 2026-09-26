@@ -24,8 +24,8 @@ public:
     bool selectFace(Gfx& g,const char* id,bool disableCache=false);
     // The frame's input. An empty clip leaves the face registering empty
     // boxes, which erase whatever it painted last.
-    void prepare(const DrawRegion& region,const WatchData& data,float listProgress) {
-        region_=region; data_=data; progress_=listProgress;
+    void prepare(const WatchEnvironment& environment,const WatchData& data) {
+        environment_=environment; data_=data;
     }
     // The next frame is a full repaint (a wake, another screen before it).
     void resume() { resumed_=true; }
@@ -36,7 +36,7 @@ public:
     uint16_t listBackground() const { return face_ ? face_->listBackground() : 0; }
     const DigitalWatchFace& digital() const { return digital_; }
     void plan(FramePlan& frame,Gfx& g) override;
-    void paint(Gfx& g,const FramePlan& frame) override;
+    void paint(Gfx& g,const PaintContext& context) override;
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const {
         return face_ ? face_->nextUpdate(now,data) : INT64_MAX;
     }
@@ -45,9 +45,9 @@ private:
     std::array<WatchFace*,4> registry_{};
     WatchFace* face_=nullptr;
     bool switched_=true;
-    DrawRegion region_{};
+    WatchEnvironment environment_{};
     WatchData data_{},previous_{};
-    float progress_=0,previousProgress_=0;
+    float previousProgress_=0;
     bool resumed_=true;
 };
 }

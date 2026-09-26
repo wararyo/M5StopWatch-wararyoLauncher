@@ -3,6 +3,7 @@
 #include "host/RenderPort.h"
 #include "features/external/ExternalLayer.h"
 #include "features/home/HomeLayer.h"
+#include "features/launcher/AppListBackgroundLayer.h"
 #include "features/launcher/AppListLayer.h"
 #include "features/settings/SettingsLayer.h"
 #include "features/stopwatch/StopwatchLayer.h"
@@ -50,6 +51,7 @@ private:
     Renderer renderer_;
     const lgfx::IFont* nameFont_=&fonts::lgfxJapanGothic_24;
     HomeLayer home_;
+    AppListBackgroundLayer appListBackground_;
     AppListLayer appList_;
     SettingsLayer settings_;
     ExternalLayer external_;

@@ -6,15 +6,17 @@ namespace launcher {
 // The default face: battery, date, the time in D-DIN-PRO (hours and minutes,
 // or with seconds after a long press), up to two background items as chips,
 // and APPS. Positions come from DigitalLayout; this class measures the fonts,
-// keeps the caches and paints on black (docs/task10/plan-10-3.md).
+// keeps the caches and paints on black (docs/task10/plan-10-3.md), which is
+// the Renderer's base, so it has no background of its own to restore. It
+// slides up with the list by itself (docs/task10/plan-10-4.md 5).
 class DigitalWatchFace final : public WatchFace {
 public:
     const char* id() const override { return "digital"; }
     bool begin(Gfx&,bool disableCache=false) override;
     void end() override;
     void update(const WatchData& d,const WatchEnvironment&,WatchChanges) override { control_.update(d); }
-    void plan(FramePlan&,Gfx&,const DrawRegion&,const WatchData&) override;
-    void paint(Gfx&,const FramePlan&) override;
+    void plan(FramePlan&,Gfx&,const WatchEnvironment&,const WatchData&) override;
+    void paint(Gfx&,const PaintContext&) override;
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return control_.nextUpdate(now,data); }
     HomeOutcome handle(const HomeEvent& e) override { return control_.handle(e,viewport_); }
     BackgroundInterest backgroundInterest(const BackgroundSnapshot& s) const override { return control_.backgroundInterest(s); }
@@ -80,7 +82,6 @@ private:
     bool charging_=false;
     std::array<Element,PartCount> elements_{};
     std::array<Rect,PartCount> boxes_{};
-    std::array<int,PartCount> handles_{};
     Viewport viewport_{};
     Rect clip_{};
     int offset_=0;

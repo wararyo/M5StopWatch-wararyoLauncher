@@ -1,5 +1,6 @@
 #include "DigitalWatchFace.h"
 #include "ui/graphics/MaskImage.h"
+#include "ui/graphics/Shapes.h"
 #include "ui/graphics/Text.h"
 #include "ui/graphics/VlwFont.h"
 #include "ui/graphics/WatchFonts.h"
@@ -111,8 +112,10 @@ void DigitalWatchFace::end() {
     }
     elements_={};
 }
-void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const DrawRegion& region,const WatchData& d) {
-    viewport_=region.viewport; offset_=region.offsetY; clip_=region.clip;
+void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const WatchEnvironment& env,const WatchData& d) {
+    // The whole face rides up with the list's edge, as it always has.
+    viewport_=env.viewport; clip_=env.clip;
+    offset_=-static_cast<int>(env.listProgress*viewport_.height);
     variant_=control_.variant();
     const bool seconds=variant_==DigitalVariant::HourMinuteSecond;
     const auto& t=d.localTime;
@@ -190,7 +193,7 @@ void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const DrawRegion& region,con
         chips_[0].key,chips_[1].key,0xa995};
     for (int i=0;i<PartCount;++i) {
         boxes_[i]=boxes_[i].empty() ? Rect{} : shifted(boxes_[i]);
-        handles_[i]=frame.add(elements_[i],intersect(boxes_[i],clip_),hashes[i]);
+        frame.add(elements_[i],intersect(boxes_[i],clip_),hashes[i]);
     }
 }
 void DigitalWatchFace::paintBattery(Gfx& g,int dx,int dy) {
@@ -206,9 +209,9 @@ void DigitalWatchFace::paintBattery(Gfx& g,int dx,int dy) {
     if (charging_) {
         // A bolt across the empty body.
         const int cx=x+body/2;
-        g.drawWideLine(cx+2,top+3,cx-2,top+h/2,0.9f,Lime);
-        g.drawWideLine(cx-2,top+h/2,cx+2,top+h/2,0.9f,Lime);
-        g.drawWideLine(cx+2,top+h/2,cx-2,top+h-3,0.9f,Lime);
+        drawWideLineClipped(g,cx+2,top+3,cx-2,top+h/2,0.9f,Lime);
+        drawWideLineClipped(g,cx-2,top+h/2,cx+2,top+h/2,0.9f,Lime);
+        drawWideLineClipped(g,cx+2,top+h/2,cx-2,top+h-3,0.9f,Lime);
     } else if (batteryPercent_>=0) {
         const int level=std::max(1,(inner*batteryPercent_+50)/100);
         g.fillRect(x+4,top+4,level,h-8,Lime);
@@ -288,12 +291,9 @@ void DigitalWatchFace::paintTime(Gfx& g,TimeCache& cache,const char* text,const 
     }
     cache.sprite.pushSprite(&g,box.x,box.y);
 }
-void DigitalWatchFace::paint(Gfx& g,const FramePlan& frame) {
-    if (clip_.empty()) return;
+void DigitalWatchFace::paint(Gfx& g,const PaintContext& context) {
     for (int i=0;i<PartCount;++i) {
-        const Rect clip=intersect(boxes_[i],clip_);
-        if (clip.empty() || !frame.shouldPaint(handles_[i])) continue;
-        g.setClipRect(clip.x,clip.y,clip.w,clip.h);
+        if (!context.clip(g,boxes_[i])) continue;
         switch (i) {
         case Battery: paintBattery(g,0,0); break;
         case Date: paintDate(g,0,0); break;
@@ -315,6 +315,6 @@ void DigitalWatchFace::paint(Gfx& g,const FramePlan& frame) {
         case Apps: paintApps(g,0,0); break;
         }
     }
-    g.clearClipRect(); g.setTextSize(1);
+    g.setTextSize(1);
 }
 }

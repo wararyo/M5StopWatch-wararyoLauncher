@@ -12,6 +12,8 @@
 #include "assets/AppIcons.h"
 #include "ui/graphics/Text.h"
 #include "ui/graphics/VlwFont.h"
+#include "ui/graphics/WatchFonts.h"
+#include "ui/graphics/Shapes.h"
 #include "host/LaunchRegistry.h"
 #include <cstring>
 #endif
@@ -102,18 +104,103 @@ void dumpShot(const char* name,const uint16_t* pixels,int w,int h) {
 }
 #endif
 class TestFace final : public WatchFace {
-    Element a_,b_; int ha_=-1,hb_=-1;
+    static constexpr Rect A{40,100,170,100},B{130,120,170,100};
+    Element a_,b_;
 public:
     const char* id() const override { return "test-overlap"; }
     bool begin(Gfx&,bool) override { a_={}; b_={}; return true; }
     void end() override {}
-    void plan(FramePlan& f,Gfx&,const DrawRegion&,const WatchData& d) override {
-        ha_=f.add(a_,{40,100,170,100},hashValue(d.localTime.tm_min));
-        hb_=f.add(b_,{130,120,170,100},1);
+    void plan(FramePlan& f,Gfx&,const WatchEnvironment& env,const WatchData& d) override {
+        f.add(a_,intersect(A,env.clip),hashValue(d.localTime.tm_min));
+        f.add(b_,intersect(B,env.clip),1);
     }
-    void paint(Gfx& g,const FramePlan& f) override {
-        if(f.shouldPaint(ha_)) g.fillRect(40,100,170,100,0x1234);
-        if(f.shouldPaint(hb_)) g.fillRect(130,120,170,100,0x5678);
+    void paint(Gfx& g,const PaintContext& c) override {
+        if(c.clip(g,A)) g.fillRect(A.x,A.y,A.w,A.h,0x1234);
+        if(c.clip(g,B)) g.fillRect(B.x,B.y,B.w,B.h,0x5678);
+    }
+    TimeUs nextUpdate(TimeUs,const WatchData&) const override { return INT64_MAX; }
+};
+// A face with scenery, for checking the damage against a full repaint on
+// something other than black (docs/task10/plan-10-4.md 6-7). Sky bands, a
+// sun and a tree with antialiased edges, and ground; with any background item
+// the scenery moves up to make room, as Forest will. Over it the time and an
+// item chip are drawn transparently, blending with the restored scenery, and
+// a ring overlaps the time without ever changing. It stays still while the
+// list covers it, and asks for a list background of any colour.
+class BackdropFace final : public WatchFace {
+    enum Part { Time,Ring,Chip,PartCount };
+    Element elements_[PartCount];
+    Rect boxes_[PartCount]{};
+    WatchEnvironment env_{};
+    Rect shownClip_{};
+    bool info_=false,shownInfo_=false,planned_=false;
+    char time_[8]{},label_[BackgroundLabelBytes]{};
+    uint16_t list_=0x0000;
+    const lgfx::IFont* font() const { return watchTextFont() ? watchTextFont() : &fonts::FreeSans18pt7b; }
+    // The ground's top edge: the scenery's one moving part.
+    int horizon() const { return info_ ? 250 : 300; }
+public:
+    const char* id() const override { return "test-backdrop"; }
+    void listBackgroundForTest(uint16_t color) { list_=color; }
+    uint16_t listBackground() const override { return list_; }
+    bool begin(Gfx&,bool) override { for(auto& e:elements_) e={}; planned_=false; return true; }
+    void end() override {}
+    void plan(FramePlan& f,Gfx& g,const WatchEnvironment& env,const WatchData& d) override {
+        env_=env;
+        info_=d.background.count>0;
+        // The scenery rearranged: everything of it that shows changes. The
+        // list's edge moved: the band between the two bottoms of the clip.
+        if(planned_ && info_!=shownInfo_) f.damage(unite(env.clip,shownClip_));
+        else if(planned_ && env.clip!=shownClip_) {
+            const int a=shownClip_.y+shownClip_.h,b=env.clip.y+env.clip.h;
+            f.damage({0,std::min(a,b),env.viewport.width,std::abs(a-b)});
+        }
+        shownInfo_=info_; shownClip_=env.clip; planned_=true;
+        if(d.timeValid) std::snprintf(time_,sizeof(time_),"%02d:%02d",d.localTime.tm_hour%100,d.localTime.tm_min%100);
+        else std::strcpy(time_,"--:--");
+        std::snprintf(label_,sizeof(label_),"%s",info_ ? d.background.items[0].label : "");
+        g.setFont(font()); g.setTextSize(2);
+        const int cx=env.viewport.width/2,tw=g.textWidth(time_),th=g.fontHeight();
+        boxes_[Time]={cx-tw/2-2,horizon()-40-th,tw+4,th+4};
+        boxes_[Ring]={cx+tw/2-30,horizon()-40-th-20,52,52};
+        g.setTextSize(1);
+        const int lw=info_ ? g.textWidth(label_) : 0;
+        boxes_[Chip]=info_ ? Rect{cx-lw/2-24,horizon()+40,lw+48,44} : Rect{};
+        g.setTextSize(1);
+        const uint32_t hashes[PartCount]={hashString(time_),1,hashString(label_)};
+        for(int i=0;i<PartCount;++i) f.add(elements_[i],intersect(boxes_[i],env.clip),hashes[i]);
+    }
+    void paint(Gfx& g,const PaintContext& c) override {
+        const Viewport v=env_.viewport;
+        const int h=horizon();
+        if(c.clip(g,env_.clip)) {
+            constexpr uint16_t Sky[]={0x1a6f,0x2b31,0x4c13,0x7d55};
+            const int band=(h+3)/4;
+            for(int i=0;i<4;++i) g.fillRect(0,i*band,v.width,band,Sky[i]);
+            g.fillSmoothCircle(340,h-150,46,0xfec8);
+            g.fillRect(0,h,v.width,v.height-h,0x3a84);
+            drawWideLineClipped(g,120,h-170,70,h+2,9.5f,0x1d05);
+            drawWideLineClipped(g,120,h-170,170,h+2,9.5f,0x1d05);
+            g.fillSmoothCircle(120,h-110,38,0x2ea6);
+        }
+        if(c.clip(g,boxes_[Time])) {
+            g.setFont(font()); g.setTextSize(2); g.setTextDatum(top_center);
+            g.setTextColor(0xffff);
+            g.drawString(time_,v.width/2,boxes_[Time].y+2);
+        }
+        if(c.clip(g,boxes_[Ring])) {
+            const Rect r=boxes_[Ring];
+            g.fillSmoothCircle(r.x+r.w/2,r.y+r.h/2,24,0xf800);
+            g.fillSmoothCircle(r.x+r.w/2,r.y+r.h/2,16,0xffe0);
+        }
+        if(c.clip(g,boxes_[Chip])) {
+            const Rect r=boxes_[Chip];
+            g.fillSmoothRoundRect(r.x,r.y,r.w,r.h,r.h/2,0x5d1f);
+            g.setFont(font()); g.setTextSize(1); g.setTextDatum(middle_center);
+            g.setTextColor(0x0000);
+            g.drawString(label_,r.x+r.w/2,r.y+r.h/2);
+        }
+        g.setTextSize(1);
     }
     TimeUs nextUpdate(TimeUs,const WatchData&) const override { return INT64_MAX; }
 };
@@ -653,6 +740,81 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             renderer.registerFace(alternate); renderer.selectFace(alternate.id());
             check("alternate-face",m,d); ++d.localTime.tm_min; check("overlap-foreground",m,d);
             renderer.selectFace("digital"); m.launcher.transition=0; check("digital-restored",m,d);
+            // Work 10-4: the damage over scenery, the list's own background
+            // over the face, and the list's names on that background, against
+            // full repaints (docs/task10/plan-10-4.md 7). Twice: on the black
+            // list background and on a coloured one.
+            static BackdropFace backdrop;
+            renderer.registerFace(backdrop);
+            {
+                static WatchData scene;
+                auto info=[&](const char* label) {
+                    auto& it=scene.background.items[0];
+                    it=BackgroundInfo{}; it.appId=LaunchTargetId::Stopwatch;
+                    std::snprintf(it.label,sizeof(it.label),"%s",label);
+                    scene.background.count=1;
+                };
+                FrameModel bm;
+                for(const uint16_t colour:{uint16_t(0x0000),uint16_t(0x18c9)}) {
+                    backdrop.listBackgroundForTest(colour);
+                    renderer.selectFace(backdrop.id());
+                    bm=FrameModel{}; bm.viewport={w,h}; scene=sampleData();
+                    check("backdrop",bm,scene);
+                    ++scene.localTime.tm_min; check("backdrop-minute",bm,scene);
+                    scene.localTime.tm_hour=11; scene.localTime.tm_min=11; check("backdrop-narrower",bm,scene);
+                    info("02:40"); check("backdrop-info-on",bm,scene);
+                    info("12:41"); check("backdrop-info-label",bm,scene);
+                    bm.toast="保存しました"; check("backdrop-toast-on",bm,scene);
+                    bm.toast=nullptr; check("backdrop-toast-off",bm,scene);
+                    scene.background.count=0; check("backdrop-info-off",bm,scene);
+                    scene.timeValid=false; check("backdrop-unknown",bm,scene);
+                    scene=sampleData(); check("backdrop-known",bm,scene);
+                    // The list rising over it: a hair, half, nearly and fully
+                    // up, turning back half way, and down to rest again.
+                    bm.screen=ScreenId::AppList;
+                    for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,0.998f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
+                        bm.launcher.transition=p; check("backdrop-transition",bm,scene);
+                    }
+                    vTaskDelay(1);
+                    // Rows over the background: selections, positions between
+                    // rows, the names' images against the glyphs, a notice.
+                    bm.launcher.transition=1;
+                    for(int i=0;i<5;++i) {
+                        bm.launcher.list.selection=i;
+                        bm.launcher.list.scroll=float(i*rowSpacing(bm.viewport)+(i%2)*29);
+                        check("backdrop-list",bm,scene);
+                    }
+                    direct("backdrop-list-image",bm,scene);
+                    bm.toast="準備中"; check("backdrop-list-toast-on",bm,scene);
+                    bm.toast=nullptr; check("backdrop-list-toast-off",bm,scene);
+                    // The scenery rearranging under a half raised list.
+                    bm.launcher.transition=0.5f; info("00:07"); check("backdrop-info-under-list",bm,scene);
+                    scene.background.count=0; check("backdrop-info-gone-under-list",bm,scene);
+                    vTaskDelay(1);
+                }
+                // The face asking for another colour under a shown list: the
+                // background, every row and every cached name follow.
+                bm.launcher.transition=1; bm.launcher.list.scroll=float(rowSpacing(bm.viewport));
+                backdrop.listBackgroundForTest(0x4208); check("backdrop-colour",bm,scene);
+                direct("backdrop-colour-image",bm,scene);
+                bm.launcher.transition=0.4f; check("backdrop-colour-mid",bm,scene);
+                backdrop.listBackgroundForTest(0x0000); check("backdrop-colour-black",bm,scene);
+                backdrop.listBackgroundForTest(0x18c9); check("backdrop-colour-again",bm,scene);
+                // Names that cannot be cached, drawn straight onto the colour.
+                bm.launcher.transition=1;
+                view.releaseCache(); view.failAllocationsForTest(true);
+                check("backdrop-alloc-fail",bm,scene); direct("backdrop-image-alloc-fail",bm,scene);
+                view.failAllocationsForTest(false); view.releaseCache();
+                check("backdrop-alloc-recovered",bm,scene);
+                // Over capacity mid-slide, and back.
+                bm.launcher.transition=0.5f;
+                renderer.capacityForTest(2); check("backdrop-overflow",bm,scene);
+                renderer.capacityForTest(FramePlan::Capacity); check("backdrop-overflow-recovery",bm,scene);
+                // Back to Digital mid-slide: black under the list again.
+                renderer.selectFace("digital"); check("backdrop-to-digital",bm,scene);
+                bm.launcher.transition=0; bm.screen=ScreenId::Home; check("digital-after-backdrop",bm,d);
+                backdrop.listBackgroundForTest(0x18c9);
+            }
             // Repeated cache release/recreation gives before/after heap evidence.
             const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }
@@ -707,6 +869,32 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 frame=sampleData(); stopwatchItem(160);
                 run("digital-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
                 pm.launcher.transition=0;
+                // Work 10-4: the list scrolling on black and on a colour, and
+                // a small number changing over scenery (docs/task10/plan-10-4.md 7).
+                frame=sampleData();
+                auto scroll=[&](int i) { pm.launcher.list.scroll=float((i*7)%(4*rowSpacing(pm.viewport)+1)); };
+                pm.screen=ScreenId::AppList; pm.launcher.transition=1;
+                run("list-scroll",pm,60,scroll);
+                renderer.selectFace(backdrop.id());
+                run("backdrop-list-scroll",pm,60,scroll);
+                pm.screen=ScreenId::Home; pm.launcher.transition=0; pm.launcher.list.scroll=0;
+                run("backdrop-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
+                run("backdrop-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                backdrop.listBackgroundForTest(0x0000);
+                run("backdrop-transition-black",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                backdrop.listBackgroundForTest(0x18c9);
+                pm.launcher.transition=0;
+                renderer.selectFace("digital");
+                // What restoring the black base costs, without the transfer.
+                {
+                    display.startWrite();
+                    const TimeUs start=esp_timer_get_time();
+                    display.fillRect(0,0,w,h,0);
+                    const TimeUs spent=esp_timer_get_time()-start;
+                    display.endWrite();
+                    renderer.invalidate(); renderer.draw(pm,frame);
+                    std::printf("[Perf] base-fill px=%d us=%lld (no transfer)\n",w*h,(long long)spent);
+                }
                 std::printf("[Perf] digital caches=%d/5 internal_free=%u largest=%u\n",renderer.digitalCachedParts(),
                     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),
                     unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
@@ -753,6 +941,21 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
                 sm.launcher.transition=0.45f; shoot("digital-transition",sm,scene);
+                // Work 10-4: the list laid over scenery, on black and on a
+                // colour, drawn differentially after a slide from rest.
+                auto slide=[&](const char* name,float to) {
+                    sm.screen=ScreenId::AppList; sm.launcher.transition=0;
+                    renderer.invalidate(); renderer.draw(sm,scene);
+                    for(int i=1;i<=10;++i) { sm.launcher.transition=to*float(i)/10; renderer.draw(sm,scene); }
+                    display.readRect(0,0,w,h,incremental); dumpShot(name,incremental,w,h);
+                };
+                renderer.selectFace(backdrop.id());
+                scene=sampleData();
+                backdrop.listBackgroundForTest(0x0000); slide("backdrop-transition",0.45f);
+                backdrop.listBackgroundForTest(0x18c9); slide("backdrop-transition-colour",0.6f);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                sm.screen=ScreenId::Home; sm.launcher.transition=0; shoot("backdrop-info",sm,scene);
+                renderer.selectFace("digital");
             }
 #endif
         }

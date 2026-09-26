@@ -14,7 +14,7 @@ public:
         viewport_=viewport; model_=model; visible_=visible;
     }
     void plan(FramePlan& frame,Gfx& g) override;
-    void paint(Gfx& g,const FramePlan& frame) override;
+    void paint(Gfx& g,const PaintContext& context) override;
 private:
     // Title, three detail lines and two buttons.
     static constexpr int Capacity=6;
@@ -29,7 +29,6 @@ private:
     void build(Gfx& g,const lgfx::IFont* font,Viewport viewport,const ExternalModel& model);
     Item items_[Capacity]{};
     Element elements_[Capacity]{};
-    int handles_[Capacity]{};
     int count_=0;
     const lgfx::IFont* font_=nullptr;
     Viewport viewport_{};

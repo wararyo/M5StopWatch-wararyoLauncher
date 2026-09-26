@@ -11,9 +11,7 @@ void ToastLayer::plan(FramePlan& frame,Gfx& g) {
     const Viewport& m=viewport_;
     const char* text=text_;
     const uint32_t hash=text ? hashString(text) : 0;
-    if ((text!=nullptr)!=shown_ || (text && hash!=shownHash_)) frame.forceFull();
-    shown_=text!=nullptr; shownHash_=hash;
-    if (!text) { box_={}; fitted_[0]=0; handle_=frame.add(element_,{},0); return; }
+    if (!text) { box_={}; fitted_[0]=0; frame.add(element_,{},0); return; }
     g.setFont(font_); g.setTextSize(float(std::min(m.width,m.height))/468);
     const int height=scaled(m,46),centreY=scaled(m,360);
     // Width follows the text: the settings notices are three times as long as
@@ -26,18 +24,17 @@ void ToastLayer::plan(FramePlan& frame,Gfx& g) {
     box_={m.width/2-width/2,centreY-height/2,width,height};
     // A notice too long even for the chord is shortened, never silently clipped.
     fitText(g,text,fitted_,sizeof(fitted_),box_.w-2*scaled(m,12));
-    handle_=frame.add(element_,box_,hash);
+    frame.add(element_,box_,hash);
     g.setTextSize(1);
 }
-void ToastLayer::paint(Gfx& g,const FramePlan& frame) {
+void ToastLayer::paint(Gfx& g,const PaintContext& context) {
     const Viewport& m=viewport_;
-    if (box_.empty() || !frame.shouldPaint(handle_)) return;
+    if (!context.clip(g,box_)) return;
     const auto& b=box_;
-    g.setClipRect(b.x,b.y,b.w,b.h);
     g.fillRoundRect(b.x,b.y,b.w,b.h,scaled(m,14),Panel);
     g.setFont(font_); g.setTextSize(float(std::min(m.width,m.height))/468);
     g.setTextDatum(middle_center); g.setTextColor(White,Panel);
     g.drawString(fitted_,b.x+b.w/2,b.y+b.h/2);
-    g.clearClipRect(); g.setTextSize(1);
+    g.setTextSize(1);
 }
 }

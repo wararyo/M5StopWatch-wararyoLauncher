@@ -7,8 +7,8 @@ namespace launcher {
 // share these rectangles, so nothing outside a painted target can be tapped.
 //
 // Every box here is FIXED for the life of the screen. The panel is background
-// rather than a plan element (see StopwatchLayer), so an element that shrank
-// would leave its old pixels erased to black on top of the panel.
+// rather than a plan element (see StopwatchLayer) and is repainted wherever
+// the frame restores, so the boxes only have to cover what their text draws.
 inline Rect stopwatchButtonBox(const Viewport& m,int index) {
     const int w=offsetPx(m,105),h=offsetPx(m,72);
     const int cx=m.width/2+offsetPx(m,index==0 ? -72 : 72),cy=offsetPx(m,91);

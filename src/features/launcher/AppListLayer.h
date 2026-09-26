@@ -11,12 +11,13 @@ class AppListLayer final : public RenderLayer {
 public:
     void begin(const lgfx::IFont* font) { view_.begin(font); }
     // Hidden, the list still registers its slots empty, so whatever it painted
-    // last is erased.
-    void prepare(Viewport viewport,const AppListModel& model,bool visible) {
-        viewport_=viewport; model_=model; visible_=visible;
+    // last is erased. `background` is what AppListBackgroundLayer lays under
+    // the rows this frame.
+    void prepare(Viewport viewport,const AppListModel& model,bool visible,uint16_t background) {
+        viewport_=viewport; model_=model; visible_=visible; background_=background;
     }
     void plan(FramePlan& frame,Gfx& g) override;
-    void paint(Gfx& g,const FramePlan& frame) override { view_.paint(g,frame); }
+    void paint(Gfx& g,const PaintContext& context) override;
     ListView& view() { return view_; }
     const ListView& view() const { return view_; }
 private:
@@ -24,6 +25,7 @@ private:
     Viewport viewport_{};
     AppListModel model_{};
     bool visible_=false;
+    uint16_t background_=0;
     // A member, not a local: the view reads the rows again at paint.
     std::array<ListRow,AppListCount> rows_{};
 };

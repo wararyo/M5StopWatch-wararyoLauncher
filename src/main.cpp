@@ -47,6 +47,26 @@ void logHeap(const char* name, uint32_t caps) {
                 unsigned(heap_caps_get_free_size(caps)),
                 unsigned(heap_caps_get_largest_free_block(caps)));
 }
+// The panel draws into a PSRAM framebuffer that reads back, but M5GFX copies
+// the direct panel's readable=false onto it, so LovyanGFX blends transparent
+// text with black instead of what lies under it (docs/task10/plan-10-4.md).
+// Declared readable only when two known pixels actually come back, so the
+// direct fallback without PSRAM keeps its setting.
+void declareReadableFramebuffer(M5GFX& display) {
+    bool readable = true;
+    for (const uint16_t colour : {uint16_t(0x1234), uint16_t(0xedcb)}) {
+        display.drawPixel(0, 0, colour);
+        readable = readable && display.readPixel(0, 0) == colour;
+    }
+    display.drawPixel(0, 0, 0);
+    auto* panel = static_cast<lgfx::Panel_Device*>(display.getPanel());
+    if (readable && panel) {
+        auto config = panel->config();
+        config.readable = true;
+        panel->config(config);
+    }
+    std::printf("[Display] framebuffer readback=%s\n", readable ? "yes" : "no");
+}
 }
 
 extern "C" void app_main() {
@@ -58,6 +78,7 @@ extern "C" void app_main() {
     cfg.output_power = false;
     cfg.clear_display = true;
     M5.begin(cfg);
+    declareReadableFramebuffer(M5.Display);
     launcher::beginPowerManagement(240, LAUNCHER_CPU_MIN_MHZ);
     // The stored level is applied once NVS has been read; this only keeps the
     // boot screen visible until then.

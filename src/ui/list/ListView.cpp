@@ -27,8 +27,8 @@ const char* ListView::fit(Gfx& g,FittedText& f,const ListRow& row,int width) {
     return f.text;
 }
 void ListView::plan(FramePlan& frame,Gfx& g,const ListPlacement& placement,ListRows rows,
-                    const ListState& state,bool visible) {
-    placement_=placement; rows_=rows; selection_=state.selection;
+                    const ListState& state,bool visible,uint16_t background) {
+    placement_=placement; rows_=rows; selection_=state.selection; background_=background;
     const Viewport& m=placement.region.viewport;
     scale_=float(std::min(m.width,m.height))/468;
     const bool any=visible && visibleListRows(placement,rows.count,first_,last_);
@@ -46,7 +46,7 @@ void ListView::plan(FramePlan& frame,Gfx& g,const ListPlacement& placement,ListR
         }
         // An unused slot is registered empty, so the box it painted last - a
         // row that scrolled away, or the whole list going hidden - is erased.
-        if (slot.index<0) { slot.handle=frame.add(slot.element,{},0); continue; }
+        if (slot.index<0) { frame.add(slot.element,{},0); continue; }
         const auto& row=rows[slot.index];
         slot.layout=layoutListRow(placement,slot.index,row.icon);
         // A width that does not depend on the row's position, so a name is
@@ -58,18 +58,18 @@ void ListView::plan(FramePlan& frame,Gfx& g,const ListPlacement& placement,ListR
         hash=hashValue(uint32_t(reinterpret_cast<uintptr_t>(row.mask)),hash);
         hash=hashString(label,hash);
         hash=hashValue(uint32_t(slot.layout.centerY),hashValue(uint32_t(slot.layout.iconX),hash));
-        hash=hashValue(uint32_t(slot.layout.labelX),hash);
-        slot.handle=frame.add(slot.element,slot.layout.box,hash);
+        hash=hashValue(uint32_t(slot.layout.labelX)|uint32_t(background)<<16,hash);
+        frame.add(slot.element,slot.layout.box,hash);
     }
     g.setTextSize(1);
 }
 bool ListView::prepareImage(Gfx& g,TextImage& im,const char* text,uint16_t color) {
     if (im.keyed && im.font==font_ && im.scale==scale_ && im.color==color &&
-        std::strcmp(im.text,text)==0) return im.ready;
+        im.background==background_ && std::strcmp(im.text,text)==0) return im.ready;
     // Keyed before allocating: a key that fails stays failed, and is not
     // allocated again every frame, until the text or its look changes.
     im.keyed=copyKey(im.text,text); im.ready=false;
-    im.font=font_; im.scale=scale_; im.color=color;
+    im.font=font_; im.scale=scale_; im.color=color; im.background=background_;
     if (!im.keyed) return false;
     // The height drawString centres on, computed as it does: from the font's
     // line height at size 1 and the 16.16 fixed point scale.
@@ -91,20 +91,20 @@ bool ListView::prepareImage(Gfx& g,TextImage& im,const char* text,uint16_t color
         ++stats_.allocations; stats_.bytes+=size_t(w)*h*2;
     }
     // Drawn exactly as the direct path draws it: same font, scale, datum and
-    // colours over black, so the push matches pixel for pixel. drawString's
+    // colours over the background, so the push matches pixel for pixel. drawString's
     // placement only ever subtracts offsets from the point it is given, so
     // drawing it here at (pad, anchor) is the same picture moved.
     im.anchorY=ImagePadY+(height>>1);
-    im.sprite.fillScreen(0);
+    im.sprite.fillScreen(background_);
     im.sprite.setFont(font_); im.sprite.setTextSize(scale_);
-    im.sprite.setTextDatum(middle_left); im.sprite.setTextColor(color,0);
+    im.sprite.setTextDatum(middle_left); im.sprite.setTextColor(color,background_);
     im.sprite.drawString(text,ImagePadX,im.anchorY);
     ++stats_.renders;
     im.ready=true;
     return true;
 }
 void ListView::invalidate() {
-    for (auto& slot:slots_) { slot.element=Element{}; slot.handle=-1; slot.index=-1; }
+    for (auto& slot:slots_) { slot.element=Element{}; slot.index=-1; }
     first_=0; last_=-1; direct_=wasDirect_=false;
 }
 void ListView::releaseCache() {
@@ -112,16 +112,14 @@ void ListView::releaseCache() {
         // Field by field: the sprite owns its buffer and is not assignable.
         auto& im=slot.image;
         im.sprite.deleteSprite();
-        im.keyed=im.ready=false; im.text[0]=0; im.font=nullptr; im.scale=0; im.color=0;
+        im.keyed=im.ready=false; im.text[0]=0; im.font=nullptr; im.scale=0; im.color=im.background=0;
         slot.fitted=FittedText{};
     }
     stats_.bytes=0;
 }
 void ListView::paintRow(Gfx& g,const RowLayout& r,const ListRow& row,bool selected,
                         const char* label,Slot* slot) {
-    const auto& b=r.box;
     const Viewport& m=placement_.region.viewport;
-    g.setClipRect(b.x,b.y,b.w,b.h);
     if (row.icon) {
         const int radius=r.radius-(selected ? 0 : selectionGrowth(m));
         // An even diameter, so the circle centres on the pixel boundary at
@@ -145,18 +143,18 @@ void ListView::paintRow(Gfx& g,const RowLayout& r,const ListRow& row,bool select
     // A dimmed row greys its name out. The icon is left alone so the rows
     // still scan as one column.
     const uint16_t color=selected ? Lime : (row.dimmed ? Dimmed : White);
-    // The image's padding is black, which is what lies around the name: the
-    // row was erased and the circle ends well left of the text.
+    // The image's padding is the background, which is what lies around the
+    // name: the owner restored it and the circle ends well left of the text.
     if (slot && imagesEnabled_ && label[0] && prepareImage(g,slot->image,label,color)) {
         slot->image.sprite.pushSprite(&g,r.labelX-ImagePadX,r.centerY-slot->image.anchorY);
         return;
     }
     g.setFont(font_); g.setTextSize(scale_);
     g.setTextDatum(middle_left);
-    g.setTextColor(color,0);
+    g.setTextColor(color,background_);
     g.drawString(label,r.labelX,r.centerY);
 }
-void ListView::paint(Gfx& g,const FramePlan& frame) {
+void ListView::paint(Gfx& g,const PaintContext& context) {
     if (direct_) {
         // The frame is a full repaint (plan forced it), so every visible row
         // is drawn here without a slot or a cache.
@@ -165,17 +163,17 @@ void ListView::paint(Gfx& g,const FramePlan& frame) {
         for (int i=first_;i<=last_;++i) {
             const auto& row=rows_[i];
             const auto layout=layoutListRow(placement_,i,row.icon);
-            if (layout.box.empty()) continue;
+            if (!context.clip(g,layout.box)) continue;
             g.setFont(font_); g.setTextSize(scale_);
             fitText(g,row.label ? row.label : "",label,sizeof(label),labelWidth(m,row.icon));
             paintRow(g,layout,row,i==selection_,label,nullptr);
         }
     } else {
         for (auto& slot:slots_) {
-            if (slot.index<0 || slot.layout.box.empty() || !frame.shouldPaint(slot.handle)) continue;
+            if (slot.index<0 || !context.clip(g,slot.layout.box)) continue;
             paintRow(g,slot.layout,rows_[slot.index],slot.index==selection_,slot.fitted.text,&slot);
         }
     }
-    g.clearClipRect(); g.setTextSize(1);
+    g.setTextSize(1);
 }
 }

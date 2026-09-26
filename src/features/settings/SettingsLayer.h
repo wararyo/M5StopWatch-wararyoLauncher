@@ -24,7 +24,7 @@ public:
         viewport_=viewport; model_=model; visible_=visible; stats_=stats;
     }
     void plan(FramePlan& frame,Gfx& g) override;
-    void paint(Gfx& g,const FramePlan& frame) override;
+    void paint(Gfx& g,const PaintContext& context) override;
     const ListView& menuView() const { return menu_; }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
     ListView& menuViewForTest() { return menu_; }
@@ -52,7 +52,6 @@ private:
     void build(Viewport viewport,const SettingsModel& model,bool stats);
     Item items_[Capacity]{};
     Element elements_[Capacity]{};
-    int handles_[Capacity]{};
     int count_=0;
     Shown shown_=Shown::None;
     const lgfx::IFont* font_=nullptr;

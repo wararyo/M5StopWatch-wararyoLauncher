@@ -1,5 +1,5 @@
 #pragma once
-#include "ui/rendering/Element.h"
+#include "ui/rendering/PaintContext.h"
 #include "ui/graphics/Gfx.h"
 #include "ui/list/ListLayout.h"
 #include "ui/list/ListModel.h"
@@ -20,20 +20,26 @@ namespace launcher {
 //  - the shortened name, keyed by row id, source text, font, scale and width,
 //    so moving a row never shortens its name again;
 //  - the name rendered once into an RGB565 sprite in PSRAM, keyed by the
-//    shortened text, colour, font and scale, and pushed instead of drawing
+//    shortened text, colour, background, font and scale, and pushed instead of drawing
 //    the glyphs every frame. A failed allocation falls back to drawing the
 //    text directly and is not retried until the key changes.
 // Both live as long as the view and only ever occupy the slots, so they are
 // bounded by ListVisibleSlots; a hidden list keeps them for its return.
+//
+// The view draws no background. Its owner restores it (black is the
+// Renderer's base) and says which colour it is, so the names are drawn and
+// cached against it; the circles blend their edges with what is already on
+// the panel.
 class ListView {
 public:
     // Shared assets are given once, not looked up per frame.
     void begin(const lgfx::IFont* font) { font_=font; }
     // `rows` is borrowed until paint() returns. A hidden list registers its
-    // slots empty, so whatever it painted last is erased.
+    // slots empty, so whatever it painted last is erased. `background` is
+    // the colour the owner lays under the rows (RGB565).
     void plan(FramePlan& frame,Gfx& g,const ListPlacement& placement,ListRows rows,
-              const ListState& state,bool visible);
-    void paint(Gfx& g,const FramePlan& frame);
+              const ListState& state,bool visible,uint16_t background=0);
+    void paint(Gfx& g,const PaintContext& context);
     // Forgets what every slot last painted, for an owner that stops planning
     // this view for a while (another set of elements takes over its pixels)
     // and repaints in full when it returns. Until the next plan() the view
@@ -73,14 +79,14 @@ private:
         // What the sprite holds, or failed to hold; see the class comment.
         bool keyed=false,ready=false;
         char text[96]{};
-        uint16_t color=0;
+        uint16_t color=0,background=0;
         const lgfx::IFont* font=nullptr;
         float scale=0;
         int anchorY=0;
     };
     struct Slot {
         Element element;
-        int handle=-1,index=-1;
+        int index=-1;
         RowLayout layout{};
         FittedText fitted;
         TextImage image;
@@ -93,6 +99,7 @@ private:
     ListPlacement placement_{};
     ListRows rows_{};
     int selection_=-1,first_=0,last_=-1,slotLimit_=ListVisibleSlots;
+    uint16_t background_=0;
     // Direct: this frame draws every visible row outside the slots. The frame
     // after one has to repaint in full too, since nothing recorded those rows.
     bool direct_=false,wasDirect_=false;

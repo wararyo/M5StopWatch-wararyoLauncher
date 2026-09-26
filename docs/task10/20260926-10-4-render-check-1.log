@@ -1,0 +1,185 @@
+I (345) esp_image: segment 4: paddr=001389f8 vaddr=4037ea78 size=0a6a8h ( 42664) load
+I (355) esp_image: segment 5: paddr=001430a8 vaddr=600fe000 size=00050h (    80) load
+I (363) boot: Loaded app from partition at offset 0x20000
+I (363) boot: Disabling RNG early entropy source...
+I (374) octal_psram: vendor id    : 0x0d (AP)
+I (374) octal_psram: dev id       : 0x02 (generation 3)
+I (374) octal_psram: density      : 0x03 (64 Mbit)
+I (376) octal_psram: good-die     : 0x01 (Pass)
+I (380) octal_psram: Latency      : 0x01 (Fixed)
+I (384) octal_psram: VCC          : 0x01 (3V)
+I (389) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (393) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (398) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (403) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (408) octal_psram: DriveStrength: 0x00 (1/1)
+I (413) MSPI Timing: PSRAM timing tuning index: 5
+I (417) esp_psram: Found 8MB PSRAM device
+I (420) esp_psram: Speed: 80MHz
+I (423) cpu_start: Multicore app
+I (712) esp_psram: SPI SRAM memory test OK
+I (720) cpu_start: Pro cpu start user code
+I (720) cpu_start: cpu freq: 240000000 Hz
+I (720) app_init: Application information:
+I (721) app_init: Project name:     wararyoLauncher
+I (721) app_init: App version:      0.1.0-dev
+I (721) app_init: Compile time:     Sep 26 2026 20:34:15
+I (721) app_init: ELF file SHA256:  593ce6f67...
+I (721) app_init: ESP-IDF:          5.5.0
+I (721) efuse_init: Min chip rev:     v0.0
+I (721) efuse_init: Max chip rev:     v0.99 
+I (722) efuse_init: Chip rev:         v0.2
+I (722) heap_init: Initializing. RAM available for dynamic allocation:
+I (722) heap_init: At 3FCA8918 len 00040DF8 (259 KiB): RAM
+I (722) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (722) heap_init: At 600FE050 len 00001F98 (7 KiB): RTCRAM
+I (723) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (724) spi_flash: detected chip: generic
+I (724) spi_flash: flash io: dio
+I (724) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (725) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (0) main_task: Started on CPU1
+I (1) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (1) main_task: Calling app_main()
+I (22) M5GFX: [Autodetect] board_M5StopWatch
+I (276) pm: Frequency switching config: CPU_MAX: 240, APB_MAX: 80, APB_MIN: 80, Light sleep: ENABLED
+I (277) sleep: Code start at 0x42000020, total 428496, data start at 0x3c000000, total 33554432 Bytes
+[Power] dfs max=240MHz min=80MHz light_sleep=1 lock=ESP_OK result=ESP_OK
+[Launcher] firmware=wararyoLauncher version=0.1.0-dev idf=5.5.0
+[Board] recognized=30 display=468x468 cpu=240MHz core=1 tick=1000Hz
+[Memory] flash_query=ESP_OK flash=16777216 psram=8388608 bytes
+[Config] flash=DIO/80MHz psram=Octal/80MHz cache_instruction=16KiB cache_data=64KiB cache_line=64B
+[Memory] internal total=328883 free=249379 largest=204800 bytes
+[Memory] psram total=8388608 free=7942712 largest=7864320 bytes
+[MultiFirm] layout=valid running=ota_0 address=0x20000 size=0x400000 host=valid
+[Launcher] startup complete; starting single-task runtime
+[Font] GenShinGothicMedium28 glyphs=347 bytes=175599
+[Font] DDinProExpSemiBold100 glyphs ascent=71 descent=1 bytes=31970
+[Font] DDinProExpBold28 glyphs=95 bytes=25562
+[Font] DDinProExpBold22 glyphs=95 bytes=17205
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[Icons] AppIcons count=5 size=44x44 bytes=9692
+[ListView] text image allocation failed: 64x46, drawing directly
+[ListView] text image allocation failed: 120x46, drawing directly
+[ListView] text image allocation failed: 164x46, drawing directly
+[ListView] text image allocation failed: 164x46, drawing directly
+[Verify] variants internal_free_before=188575 after=188575
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=0/3 internal_bytes=0 items=0/2 psram_bytes=0
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=0/3 internal_bytes=0 items=0/2 psram_bytes=0
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=0/3 internal_bytes=0 items=0/2 psram_bytes=0
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=0/3 internal_bytes=0 items=0/2 psram_bytes=0
+[Renderer] element capacity exceeded: full repaint
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[Verify] FAIL backdrop-minute pixels=572 box=61,121-179,311
+[Verify] FAIL backdrop-narrower pixels=572 box=61,121-179,311
+[Verify] FAIL backdrop-info-label pixels=603 box=61,71-179,261
+[Verify] FAIL backdrop-toast-on pixels=603 box=61,71-179,261
+[Verify] FAIL backdrop-toast-off pixels=603 box=61,71-179,261
+[Verify] FAIL backdrop-unknown pixels=603 box=61,121-179,311
+[Verify] FAIL backdrop-known pixels=589 box=61,121-179,311
+[Verify] FAIL backdrop-transition pixels=149 box=82,121-158,185
+[Verify] FAIL backdrop-transition pixels=9298 box=61,121-179,311
+[Verify] FAIL backdrop-transition pixels=7200 box=62,121-179,303
+E (55539) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:
+E (55539) task_wdt:  - IDLE1 (CPU 1)
+E (55539) task_wdt: Tasks currently running:
+E (55540) task_wdt: CPU 0: IDLE0
+E (55540) task_wdt: CPU 1: main
+E (55540) task_wdt: Print CPU 1 (current core) backtrace
+
+
+Backtrace: 0x420400DF:0x3FC9B1C0 0x40379FDE:0x3FC9B1F0 0x40056F5F:0x3FCACD30 0x4202314F:0x3FCACD40 0x4201C777:0x3FCACD80 0x4201C81D:0x3FCACDB0 0x4200A1FA:0x3FCACE40 0x4200CB5A:0x3FCACE70 0x42004517:0x3FCAD540 0x42067B6B:0x3FCAD5B0
+
+[Verify] FAIL backdrop-transition pixels=41 box=108,121-132,138
+[Verify] FAIL backdrop-transition pixels=149 box=82,121-158,185
+[Verify] FAIL backdrop-transition pixels=149 box=82,121-158,185
+[Verify] FAIL backdrop-transition pixels=603 box=61,121-179,311
+[Verify] FAIL backdrop-info-gone-under-list pixels=2208 box=61,234-179,311
+[Verify] FAIL backdrop-minute pixels=572 box=61,121-179,311
+[Verify] FAIL backdrop-narrower pixels=572 box=61,121-179,311
+[Verify] FAIL backdrop-info-label pixels=603 box=61,71-179,261
+[Verify] FAIL backdrop-toast-on pixels=603 box=61,71-179,261
+[Verify] FAIL backdrop-toast-off pixels=603 box=61,71-179,261
+[Verify] FAIL backdrop-unknown pixels=603 box=61,121-179,311
+[Verify] FAIL backdrop-known pixels=589 box=61,121-179,311
+[Verify] FAIL backdrop-transition pixels=149 box=82,121-158,185
+[Verify] FAIL backdrop-transition pixels=41 box=108,121-132,138
+[Verify] FAIL backdrop-transition pixels=149 box=82,121-158,185
+[Verify] FAIL backdrop-transition pixels=149 box=82,121-158,185
+[Verify] FAIL backdrop-transition pixels=603 box=61,121-179,311
+[Verify] FAIL backdrop-info-gone-under-list pixels=3148 box=61,234-179,311
+[Verify] FAIL backdrop-colour-black pixels=1238 box=61,280-179,311
+[ListView] text image allocation failed: 232x46, drawing directly
+[ListView] text image allocation failed: 64x46, drawing directly
+[ListView] text image allocation failed: 164x46, drawing directly
+[ListView] text image allocation failed: 164x46, drawing directly
+[ListView] text image allocation failed: 164x46, drawing directly
+[Renderer] element capacity exceeded: full repaint
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[Verify] lifecycle internal_free_before=188575 after=188575
+[Verify] list cache bytes=72496 allocations=33 failures=9 fits=43 renders=271
+[Verify] checks=483 mismatches=29 result=FAIL
+[Perf] digital-static frames=30 painted=0 avg_us=211 max_us=725 avg_dirty_px=0
+[Perf] digital-minute frames=30 painted=30 avg_us=2805 max_us=3469 avg_dirty_px=8892
+[Perf] digital-item-second frames=60 painted=60 avg_us=3292 max_us=3745 avg_dirty_px=5766
+[Perf] digital-second frames=60 painted=59 avg_us=2824 max_us=3082 avg_dirty_px=8892
+[Perf] digital-second-item frames=60 painted=60 avg_us=9795 max_us=10009 avg_dirty_px=42699
+[Perf] digital-transition frames=40 painted=38 avg_us=22055 max_us=27447 avg_dirty_px=200969
+[Perf] list-scroll frames=60 painted=59 avg_us=22099 max_us=26533 avg_dirty_px=155699
+[Perf] backdrop-list-scroll frames=60 painted=60 avg_us=28906 max_us=34920 avg_dirty_px=155669
+[Perf] backdrop-minute frames=30 painted=30 avg_us=20427 max_us=20745 avg_dirty_px=11893
+[Perf] backdrop-transition frames=40 painted=38 avg_us=24370 max_us=47547 avg_dirty_px=96555
+[WatchFace] digital fonts time=vlw text=vlw small=vlw wide=vlw hour=114 minute=115 colon=22
+[WatchFace] digital cache time=3/3 internal_bytes=59584 items=2/2 psram_bytes=76032
+[Perf] digital caches=5/5 internal_free=188575 largest=147456
+[RenderDiag] synthetic JST time / battery / slots; no RTC or flash read
+[Nvs] init=ESP_OK namespace=launcher
+[Settings] brightness=90 screen_off=30s stored=ok
+[Memory] ui-internal total=328883 free=185627 largest=143360 bytes
+[Memory] ui-psram total=8388608 free=7740844 largest=6815744 bytes
+[Power] screen=off

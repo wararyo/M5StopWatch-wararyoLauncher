@@ -26,16 +26,17 @@ bool HomeLayer::selectFace(Gfx& g,const char* id,bool disableCache) {
 }
 void HomeLayer::plan(FramePlan& frame,Gfx& g) {
     WatchChanges changes=watchChanges(previous_,data_);
-    if(progress_!=previousProgress_) changes|=WatchProgress;
+    if(environment_.listProgress!=previousProgress_) changes|=WatchProgress;
     if(resumed_) changes|=WatchResumed;
     if(switched_) { frame.forceFull(); changes|=WatchSelected|WatchResumed; switched_=false; }
-    resumed_=false; previous_=data_; previousProgress_=progress_;
+    resumed_=false; previous_=data_; previousProgress_=environment_.listProgress;
     if(face_) {
-        face_->update(data_,{region_.viewport,region_.clip,progress_},changes);
-        face_->plan(frame,g,region_,data_);
+        face_->update(data_,environment_,changes);
+        face_->plan(frame,g,environment_,data_);
     }
 }
-void HomeLayer::paint(Gfx& g,const FramePlan& frame) {
-    if(face_) face_->paint(g,frame);
+void HomeLayer::paint(Gfx& g,const PaintContext& context) {
+    // Whatever the face draws stays in the part the list leaves uncovered.
+    if(face_) face_->paint(g,context.within(environment_.clip));
 }
 }

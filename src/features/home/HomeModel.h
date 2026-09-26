@@ -19,4 +19,8 @@ inline TimeUs nextMinute(TimeUs now,const WatchData& data) {
         data.subsecondUs<0 || data.subsecondUs>=1000000) return INT64_MAX;
     return now+(60-data.localTime.tm_sec)*1000000LL-data.subsecondUs;
 }
+inline TimeUs nextSecond(TimeUs now,const WatchData& data) {
+    if (!data.timeValid || data.subsecondUs<0 || data.subsecondUs>=1000000) return INT64_MAX;
+    return now+1000000-data.subsecondUs;
+}
 }

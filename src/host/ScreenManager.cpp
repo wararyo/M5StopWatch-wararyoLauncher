@@ -85,8 +85,20 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         if (out.leave) { active_->exit(); active_=nullptr; }
         return out.changed || out.leave || out.notice!=nullptr || out.enableStats || changed;
     }
+    // Decided before the launcher sees the event: a tap that lands as a
+    // drag or a slide settles is not the clock's.
+    const bool atRest=homeAtRest();
     const auto out=launcher_.handle(e,now);
     if (out.open) return launch(out.target,now);
-    return out.changed || changed;
+    bool homeChanged=false;
+    if (atRest && home_ && (e.gesture==Gesture::Tap || e.gesture==Gesture::LongPress)) {
+        HomeEvent event;
+        event.kind=e.gesture==Gesture::Tap ? HomeEventKind::Tap : HomeEventKind::LongPress;
+        event.x=e.x; event.y=e.y; event.at=now;
+        const auto face=home_->handle(event);
+        homeChanged=face.changed;
+        if (face.request==HomeRequest::OpenAppList) homeChanged=launcher_.openList(now) || homeChanged;
+    }
+    return out.changed || changed || homeChanged;
 }
 }

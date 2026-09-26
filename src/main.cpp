@@ -129,6 +129,7 @@ extern "C" void app_main() {
     static launcher::HostApplication application(hal, renderer, data, M5.Display.width(), M5.Display.height());
     application.bindSettings(settingsStore, timeService);
     application.bindSlots(slots);
+    application.bindHome(renderer);
     application.setInfo(app->project_name, app->version, esp_get_idf_version());
     auto& runtime = application.runtime();
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);

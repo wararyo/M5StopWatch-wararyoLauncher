@@ -17,15 +17,18 @@ namespace launcher {
 //
 // Static in main: the layers hold framebuffer metadata and caches that must
 // stay off the 8KiB UI stack.
-class HostRenderer final : public RenderPort {
+class HostRenderer final : public RenderPort, public HomeControlPort {
 public:
     explicit HostRenderer(M5GFX& display):display_(display),renderer_(display) {}
     bool begin(bool disableCache=false);
     bool registerFace(WatchFace& face) { return home_.registerFace(face); }
     bool selectFace(const char* id,bool disableCache=false) { return home_.selectFace(display_,id,disableCache); }
-    void invalidate() override { renderer_.invalidate(); }
+    void invalidate() override { renderer_.invalidate(); home_.resume(); }
     void draw(const FrameModel&,const WatchData&) override;
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return home_.nextUpdate(now,data); }
+    BackgroundInterest backgroundInterest(const WatchData& data) const override { return home_.backgroundInterest(data); }
+    HomeOutcome handle(const HomeEvent& event) override { return home_.handle(event); }
+    uint16_t listBackground() const { return home_.listBackground(); }
     const lgfx::IFont* listFont() const { return nameFont_; }
     const ListView& listView() const { return appList_.view(); }
     const ListView& settingsListView() const { return settings_.menuView(); }

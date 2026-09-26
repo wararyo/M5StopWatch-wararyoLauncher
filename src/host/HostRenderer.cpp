@@ -26,10 +26,10 @@ RenderLayer* HostRenderer::layer(FrameLayer id) {
 void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     const TimeUs start=esp_timer_get_time();
     const auto c=composer_.compose(m);
-    if(c.changed) renderer_.invalidate();
+    if(c.changed) { renderer_.invalidate(); home_.resume(); }
     // Every layer's input is fixed here, before anything plans, and stays
     // untouched until the frame has been painted.
-    home_.prepare(c.home,watch);
+    home_.prepare(c.home,watch,m.launcher.transition);
     appList_.prepare(c.viewport,m.launcher,c.list);
     settings_.prepare(c.viewport,m.settings,c.settings,m.stats);
     external_.prepare(c.viewport,m.external,c.external);

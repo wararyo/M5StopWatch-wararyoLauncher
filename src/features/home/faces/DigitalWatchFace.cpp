@@ -15,42 +15,58 @@ Rect textBox(Gfx& g,const char* text,int x,int y) {
 void DigitalWatchFace::timeFont(Gfx& g) { g.setFont(&fonts::FreeSansBold24pt7b); g.setTextSize(2.0f*scale_); }
 bool DigitalWatchFace::begin(Gfx& g,bool disableCache) {
     end();
+    viewport_={int(g.width()),int(g.height())};
     scale_=float(std::min(g.width(),g.height()))/468;
-    timeFont(g);
-    const int w=g.textWidth("00:00")+12,h=g.fontHeight()+12;
-    cache_.setPsram(false); cache_.setColorDepth(16);
-    cacheReady_=!disableCache && cache_.createSprite(w,h)!=nullptr;
-    g.setTextSize(1);
-    std::printf("[WatchFace] digital cache=%s bytes=%d internal\n",cacheReady_ ? "ready" : "direct",w*h*2);
+    cacheAllowed_=!disableCache;
+    makeCache(g);
     return true;
 }
+void DigitalWatchFace::makeCache(Gfx& g) {
+    cache_.deleteSprite(); cacheReady_=false; cached_[0]=0;
+    cacheVariant_=control_.variant();
+    const bool seconds=cacheVariant_==DigitalVariant::HourMinuteSecond;
+    timeFont(g);
+    const int w=g.textWidth(seconds ? "00:00:00" : "00:00")+12,h=g.fontHeight()+12;
+    cache_.setPsram(false); cache_.setColorDepth(16);
+    // Made at begin and when the variant changes, never per frame: a failure
+    // leaves the time drawn directly until the next variant change.
+    cacheReady_=cacheAllowed_ && cache_.createSprite(w,h)!=nullptr;
+    g.setTextSize(1);
+    std::printf("[WatchFace] digital cache=%s bytes=%d internal seconds=%d\n",cacheReady_ ? "ready" : "direct",w*h*2,int(seconds));
+}
 void DigitalWatchFace::end() {
+    // The variant is the face's setting, not part of its cache: it stays.
     cache_.deleteSprite(); cacheReady_=false; cached_[0]=0; elements_={};
 }
 void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const DrawRegion& region,const WatchData& d) {
     const auto& m=region.viewport;
-    viewport_=m; cx_=m.width/2; offset_=region.offsetY;
+    const auto layout=digitalLayout(m);
+    viewport_=m; cx_=layout.cx; offset_=region.offsetY;
     clip_=region.clip;
+    const bool seconds=control_.variant()==DigitalVariant::HourMinuteSecond;
+    if(control_.variant()!=cacheVariant_) makeCache(g);
     const bool valid=d.timeValid && d.localTime.tm_hour>=0 && d.localTime.tm_hour<24 &&
         d.localTime.tm_min>=0 && d.localTime.tm_min<60 && d.localTime.tm_wday>=0 &&
         d.localTime.tm_wday<7 && d.localTime.tm_mon>=0 && d.localTime.tm_mon<12 &&
-        d.localTime.tm_mday>=1 && d.localTime.tm_mday<=31;
+        d.localTime.tm_mday>=1 && d.localTime.tm_mday<=31 && d.localTime.tm_sec>=0 && d.localTime.tm_sec<=60;
     if(valid) {
-        std::snprintf(time_,sizeof(time_),"%02d:%02d",d.localTime.tm_hour,d.localTime.tm_min);
+        // A leap second shows as :59 rather than widening the digits.
+        if(seconds) std::snprintf(time_,sizeof(time_),"%02d:%02d:%02d",d.localTime.tm_hour,d.localTime.tm_min,std::min(d.localTime.tm_sec,59));
+        else std::snprintf(time_,sizeof(time_),"%02d:%02d",d.localTime.tm_hour,d.localTime.tm_min);
         std::snprintf(date_,sizeof(date_),"%s, %s %02d",Days[d.localTime.tm_wday],Months[d.localTime.tm_mon],d.localTime.tm_mday);
-    } else { std::snprintf(time_,sizeof(time_),"--:--"); std::snprintf(date_,sizeof(date_),"SET TIME"); }
+    } else { std::snprintf(time_,sizeof(time_),seconds ? "--:--:--" : "--:--"); std::snprintf(date_,sizeof(date_),"SET TIME"); }
     if(d.batteryPercent<0 || d.batteryPercent>100) std::snprintf(battery_,sizeof(battery_),"%s--%%",d.charging ? "+ " : "");
     else std::snprintf(battery_,sizeof(battery_),"%s%d%%",d.charging ? "+ " : "",d.batteryPercent);
     g.setTextSize(scale_); g.setFont(&fonts::FreeSans18pt7b);
-    boxes_[0]=textBox(g,battery_,cx_,offset_+scaled(m,80));
-    boxes_[1]=textBox(g,date_,cx_,offset_+scaled(m,123));
+    boxes_[0]=textBox(g,battery_,cx_,offset_+layout.batteryY);
+    boxes_[1]=textBox(g,date_,cx_,offset_+layout.dateY);
     timeFont(g);
-    timeBox_=textBox(g,time_,cx_,offset_+scaled(m,250));
-    if(cacheReady_) timeBox_={cx_-cache_.width()/2,offset_+scaled(m,250)-cache_.height()/2,cache_.width(),cache_.height()};
+    timeBox_=textBox(g,time_,cx_,offset_+layout.timeY);
+    if(cacheReady_) timeBox_={cx_-cache_.width()/2,offset_+layout.timeY-cache_.height()/2,cache_.width(),cache_.height()};
     boxes_[2]=timeBox_;
-    boxes_[3]={cx_-scaled(m,16),offset_+scaled(m,357),scaled(m,32),scaled(m,32)};
+    boxes_[3]=layout.appsIcon; boxes_[3].y+=offset_;
     g.setTextSize(scale_); g.setFont(&fonts::FreeSans12pt7b);
-    boxes_[4]=textBox(g,"APPS",cx_,offset_+scaled(m,400));
+    boxes_[4]=textBox(g,"APPS",cx_,offset_+layout.appsLabelY);
     const uint32_t hashes[]={hashString(battery_),hashString(date_),hashString(time_),0xd075,0xa995};
     for(int i=0;i<5;++i) handles_[i]=frame.add(elements_[i],intersect(boxes_[i],clip_),hashes[i]);
 }

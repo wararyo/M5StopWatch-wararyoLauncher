@@ -1,7 +1,7 @@
 #include "InputController.h"
 #include <cstdlib>
 namespace launcher {
-Events InputController::update(TimeUs now, const InputSnapshot& in, bool consumeTouch) {
+Events InputController::update(TimeUs now, const InputSnapshot& in, bool consumeTouch, bool longPress) {
     Events out{};
     out.activity = in.a || in.b || in.touching || previous_.a || previous_.b || previous_.touching;
     if (in.a && in.b) {
@@ -20,15 +20,21 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
         startX_ = in.x; startY_ = in.y;
         dragging_ = false; swallowed_ = consumeTouch;
         velocityY_ = 0; sampleTime_ = lastMoveTime_ = now;
+        homeTouch_ = longPressArmed_ = longPress && !swallowed_;
+        touchSince_ = now;
         if (!swallowed_) out.gesture = Gesture::TouchStart;
     }
     if (consumeTouch && in.touching) swallowed_ = true;
+    // The clock stopped being at rest under a still touch: nothing it began
+    // there reaches what replaced it, release included.
+    if (homeTouch_ && !longPress && !dragging_) swallowed_ = true;
+    if (swallowed_ || !longPress) longPressArmed_ = false;
     // Home cancels the whole gesture, including a release in this same sample.
     if (out.home) {
         out.next = out.decide = false;
         out.gesture = Gesture::Cancel;
         swallowed_ = in.touching;
-        dragging_ = false;
+        dragging_ = longPressArmed_ = false;
     } else if (in.touching && !swallowed_) {
         out.totalX = in.x - startX_; out.totalY = in.y - startY_;
         out.dx = in.x - previous_.x; out.dy = in.y - previous_.y;
@@ -38,16 +44,23 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
             velocityY_ += alpha * (out.dy * 1000000.0f / dt - velocityY_);
             if (out.dy) lastMoveTime_ = now;
         }
+        // Movement wins over time, even on the sample that reaches both, and a
+        // finger that came back to where it started stays a drag.
         if (!dragging_ && (std::abs(out.totalX) > threshold_ || std::abs(out.totalY) > threshold_)) {
-            dragging_ = true; out.gesture = Gesture::DragStart;
+            dragging_ = true; longPressArmed_ = false; out.gesture = Gesture::DragStart;
         } else if (dragging_ && (out.dx || out.dy)) out.gesture = Gesture::DragMove;
+        else if (longPressArmed_ && now - touchSince_ >= LongPressUs) {
+            // Once per touch, and the rest of it is spent: no drag, no tap.
+            out.gesture = Gesture::LongPress;
+            longPressArmed_ = false; swallowed_ = true;
+        }
     } else if (!in.touching && previous_.touching && !swallowed_) {
         out.x = previous_.x; out.y = previous_.y;
         out.totalX = previous_.x - startX_; out.totalY = previous_.y - startY_;
         out.gesture = dragging_ ? Gesture::DragEnd : Gesture::Tap;
         out.velocityY = now - lastMoveTime_ < 80000 ? velocityY_ : 0;
     }
-    if (!in.touching) swallowed_ = dragging_ = false;
+    if (!in.touching) swallowed_ = dragging_ = homeTouch_ = longPressArmed_ = false;
     previous_ = in;
     sampleTime_ = now;
     return out;

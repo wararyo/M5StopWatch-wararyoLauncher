@@ -15,8 +15,4 @@ inline DrawRegion launcherHomeRegion(Viewport v,float transition) {
     const int offset=-static_cast<int>(transition*v.height);
     return {v,offset,{0,0,v.width,std::max(0,v.height+offset)}};
 }
-// Tapping here on the clock opens the list.
-inline Rect appsTarget(const Viewport& m) {
-    return {m.width/2-scaled(m,64),m.height*3/4,scaled(m,128),scaled(m,70)};
-}
 }

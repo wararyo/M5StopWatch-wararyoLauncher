@@ -1,5 +1,6 @@
 #include "host/HostApplication.h"
 #include "TestScreens.h"
+#include "features/home/faces/DigitalLayout.h"
 #include "host/LaunchRegistry.h"
 #include "ui/list/ListLayout.h"
 #include <cstdlib>
@@ -266,8 +267,149 @@ void overload() {
         CHECK(h.usbSamples > 30);
     }
 }
+
+// Work 10-2: a still touch on the resting clock becomes one long press.
+Gesture held(InputController& c, TimeUs at, int x, int y, bool home = true) {
+    return c.update(at, {false, false, true, x, y}, false, home).gesture;
+}
+Gesture lifted(InputController& c, TimeUs at, bool home = true) { return c.update(at, {}, false, home).gesture; }
+void longPress() {
+    constexpr TimeUs L = InputController::LongPressUs;
+    InputController c;
+    // 599ms is not yet, 600ms is, and only once however long it is held.
+    CHECK(held(c, 0, 100, 100) == Gesture::TouchStart);
+    CHECK(held(c, L - 1000, 100, 100) == Gesture::None);
+    CHECK(held(c, L, 100, 100) == Gesture::LongPress);
+    CHECK(held(c, L + 10000, 100, 100) == Gesture::None);
+    CHECK(held(c, 3 * L, 100, 100) == Gesture::None);
+    // Spent: moving now is no drag, and letting go is no tap.
+    CHECK(held(c, 3 * L + 10000, 100, 200) == Gesture::None);
+    CHECK(lifted(c, 3 * L + 20000) == Gesture::None);
+    // The next touch starts afresh; 601ms (the next sample) fires it too.
+    TimeUs t = 5000000;
+    held(c, t, 100, 100); CHECK(held(c, t + L + 1000, 100, 100) == Gesture::LongPress);
+    lifted(c, t + L + 11000);
+    // A finger that trembles within the drag threshold still holds still.
+    t = 7000000;
+    held(c, t, 100, 100); held(c, t + 100000, 104, 97); held(c, t + 300000, 109, 100);
+    CHECK(held(c, t + L, 108, 105) == Gesture::LongPress);
+    lifted(c, t + L + 10000);
+    // Past the threshold it is a drag for good, back at the start or not.
+    t = 9000000;
+    held(c, t, 100, 100);
+    CHECK(held(c, t + 100000, 100, 110) == Gesture::DragStart);
+    CHECK(held(c, t + 200000, 100, 100) == Gesture::DragMove);
+    CHECK(held(c, t + L + 100000, 100, 100) == Gesture::None);
+    CHECK(lifted(c, t + L + 110000) == Gesture::DragEnd);
+    // Movement and time on the same sample: the drag wins.
+    t = 11000000;
+    held(c, t, 100, 100);
+    CHECK(held(c, t + L, 100, 110) == Gesture::DragStart);
+    lifted(c, t + L + 10000);
+    // Home on the sample that reaches 600ms: home, and no long press.
+    t = 13000000;
+    c.update(t, {true, true, true, 100, 100}, false, true);
+    auto e = c.update(t + L, {true, true, true, 100, 100}, false, true);
+    CHECK(e.home && e.gesture == Gesture::Cancel);
+    CHECK(c.update(t + L + 10000, {false, false, true, 100, 100}, false, true).gesture == Gesture::None);
+    c.update(t + L + 20000, {}, false, true);
+    // A touch that wakes the panel is consumed whole.
+    t = 15000000;
+    c.update(t, {false, false, true, 100, 100}, true, true);
+    CHECK(held(c, t + L, 100, 100) == Gesture::None && lifted(c, t + L + 10000) == Gesture::None);
+    // Elsewhere (home not at rest when the touch began) a long hold stays a
+    // tap, and home arriving under the finger does not arm it.
+    t = 17000000;
+    CHECK(held(c, t, 100, 100, false) == Gesture::TouchStart);
+    CHECK(held(c, t + L, 100, 100, true) == Gesture::None);
+    CHECK(held(c, t + 3 * L, 100, 100, true) == Gesture::None);
+    CHECK(lifted(c, t + 3 * L + 10000, true) == Gesture::Tap);
+    // The clock stops being at rest under a still touch (a button opened the
+    // list): the touch is consumed, no long press and no tap.
+    t = 20000000;
+    held(c, t, 100, 100);
+    CHECK(held(c, t + 100000, 100, 100, false) == Gesture::None);
+    CHECK(held(c, t + L, 100, 100, false) == Gesture::None);
+    CHECK(lifted(c, t + L + 10000, false) == Gesture::None);
+    // ...even when the release is the first sample that sees it.
+    t = 22000000;
+    held(c, t, 100, 100);
+    CHECK(lifted(c, t + 100000, false) == Gesture::None);
+    // A pull up is a drag: it moves the clock itself and carries on.
+    t = 24000000;
+    held(c, t, 100, 300);
+    CHECK(held(c, t + 50000, 100, 280) == Gesture::DragStart);
+    CHECK(held(c, t + 60000, 100, 200, false) == Gesture::DragMove);
+    CHECK(lifted(c, t + 70000, false) == Gesture::DragEnd);
+}
+// The runtime with Digital's behaviour behind the clock (its drawing aside).
+struct FaceHal : FakeHal, HomeControlPort {
+    DigitalControl digital;
+    int faceEvents = 0;
+    HomeOutcome handle(const HomeEvent& e) override { ++faceEvents; return digital.handle(e, {468, 468}); }
+    WatchData sample(TimeUs now) override {
+        WatchData d; d.timeValid = true;
+        d.localTime.tm_hour = 9; d.localTime.tm_min = 41;
+        d.localTime.tm_sec = int(now / 1000000 % 60); d.subsecondUs = now % 1000000;
+        return d;
+    }
+    TimeUs nextUpdate(TimeUs now, const WatchData& d) const override { return digital.nextUpdate(now, d); }
+};
+void homeGestures() {
+    FaceHal h;
+    HostApplication application(h, h, h, 468, 468); application.bindHome(h);
+    auto& r = application.runtime(); r.begin(); r.step();
+    // Frames drawn over whole seconds of idling.
+    auto framesOver = [&](int seconds) {
+        const int before = h.draws;
+        for (int i = 0; i < seconds; ++i) { h.time += 1000000; r.step(); }
+        return h.draws - before;
+    };
+    CHECK(framesOver(5) == 0); // Minutes: nothing due within them.
+    // Held still on the clock: the long press arrives while the finger rests
+    // (followed at the input period), the seconds show, and the display now
+    // waits for the next second.
+    const int draws = h.draws;
+    h.time = 10000000; h.input = {false, false, true, 234, 380}; r.step(); // on APPS
+    const TimeUs pressed = h.time;
+    for (int i = 0; i < 70 && h.faceEvents == 0; ++i) { h.time += 10000; r.step(); }
+    CHECK(h.faceEvents == 1 && h.digital.variant() == DigitalVariant::HourMinuteSecond);
+    CHECK(h.draws == draws + 1);
+    CHECK(h.time - pressed >= InputController::LongPressUs && h.time - pressed < InputController::LongPressUs + 20000);
+    // Released on APPS: the press was spent, so the list does not open.
+    h.time += 10000; h.input = {}; r.step();
+    CHECK(r.model().screen == ScreenId::Home && h.faceEvents == 1);
+    h.time += 200000; r.step();
+    CHECK(framesOver(5) == 5);              // One frame per second, no more.
+    // A tap on APPS asks for the list, which the system opens with its slide.
+    h.time += 10000; h.input = {false, false, true, 234, 380}; r.step();
+    h.time += 10000; h.input = {}; r.step();
+    CHECK(h.faceEvents == 2 && r.model().screen == ScreenId::AppList);
+    // Under the list the seconds wake nothing: the covered clock has no deadline.
+    for (int i = 0; i < 40; ++i) { h.time += 10000; r.step(); }
+    CHECK(r.model().launcher.transition == 1);
+    CHECK(framesOver(5) == 0);
+    // A long hold on the list is not the clock's, and stays the list's tap.
+    h.time += 10000; h.input = {false, false, true, 234, 60}; r.step();
+    for (int i = 0; i < 100; ++i) { h.time += 10000; r.step(); }
+    h.time += 10000; h.input = {}; r.step();
+    CHECK(h.faceEvents == 2);
+    // Home, then back to minutes with another long press.
+    h.time += 10000; h.input = {true, true}; r.step();
+    h.time += 600000; r.step();
+    h.time += 10000; h.input = {}; r.step();
+    CHECK(r.model().screen == ScreenId::Home);
+    h.time += 10000; h.input = {false, false, true, 100, 234}; r.step();
+    for (int i = 0; i < 70; ++i) { h.time += 10000; r.step(); }
+    h.time += 10000; h.input = {}; r.step();
+    CHECK(h.faceEvents == 3 && h.digital.variant() == DigitalVariant::HourMinute);
+    CHECK(r.model().screen == ScreenId::Home);
+    h.time += 200000; r.step();
+    CHECK(framesOver(5) == 0);              // The second period is gone.
+}
 int main() {
     buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep();
-    overload();
-    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, overload/early-wake\n";
+    overload(); longPress(); homeGestures();
+    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, overload/early-wake, "
+                 "long press, home gestures\n";
 }

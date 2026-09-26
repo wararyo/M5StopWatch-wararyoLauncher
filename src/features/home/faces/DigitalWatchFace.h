@@ -1,5 +1,6 @@
 #pragma once
 #include "features/home/WatchFace.h"
+#include "features/home/faces/DigitalLayout.h"
 namespace launcher {
 class DigitalWatchFace final : public WatchFace {
 public:
@@ -8,13 +9,19 @@ public:
     void end() override;
     void plan(FramePlan&,Gfx&,const DrawRegion&,const WatchData&) override;
     void paint(Gfx&,const FramePlan&) override;
-    TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return nextMinute(now,data); }
+    TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return control_.nextUpdate(now,data); }
+    HomeOutcome handle(const HomeEvent& e) override { return control_.handle(e,viewport_); }
+    BackgroundInterest backgroundInterest(const BackgroundSnapshot& s) const override { return control_.backgroundInterest(s); }
 private:
     void timeFont(Gfx& gfx);
     void paintTime(Gfx& gfx);
+    // Sized for the variant it was made for; remade once when that changes.
+    void makeCache(Gfx& gfx);
+    DigitalControl control_;
     M5Canvas cache_;
-    bool cacheReady_=false;
-    char cached_[8]{},time_[8]{},date_[32]{},battery_[24]{};
+    bool cacheReady_=false,cacheAllowed_=false;
+    DigitalVariant cacheVariant_=DigitalVariant::HourMinute;
+    char cached_[12]{},time_[12]{},date_[32]{},battery_[24]{};
     std::array<Element,5> elements_{};
     std::array<Rect,5> boxes_{};
     std::array<int,5> handles_{};

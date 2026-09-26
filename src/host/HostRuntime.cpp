@@ -17,10 +17,13 @@ void HostRuntime::step() {
     if (pending) followUntil_ = std::max(followUntil_, now + FollowUs);
     if (now >= nextInput_ || (pending && nextInput_ == INT64_MAX)) {
         const auto raw = hal_.sampleInput();
-        const auto e = input_.update(now, raw, wasOff && raw.touching);
+        // A long press is only for the clock at rest (docs/task10/plan-10-2.md 3).
+        const auto e = input_.update(now, raw, wasOff && raw.touching, screens_.homeAtRest());
         // Release edges also count as activity. Process home before screen events.
         power_.update(now, e.activity, screens_.active());
         if (e.home || e.next || e.decide || e.gesture != Gesture::None) {
+            // A long press changes the clock's own deadline (seconds shown or
+            // not); the redraw below takes the new one in this same step.
             const bool changed = screens_.handle(e, now);
 #ifdef LAUNCHER_RENDER_METRICS
             if (changed) recordInput(now);
@@ -88,10 +91,12 @@ void HostRuntime::step() {
         }
         renderer_.draw(model, watch);
         // The clock's own deadlines only while the composition shows it: an
-        // open screen or the raised list drives its frames by itself. The
-        // labels' deadlines join once a face shows them (task 10-2).
+        // open screen or the raised list drives its frames by itself. So do the
+        // labels the face shows: a hidden, covered or dark clock, or a face
+        // that leaves them out, is not woken for a label.
         nextDisplay_ = clock ?
-            std::min(renderer_.nextUpdate(now, watch), data_.nextUpdate(now)) : INT64_MAX;
+            std::min({renderer_.nextUpdate(now, watch), data_.nextUpdate(now),
+                      nextChange(watch.background, renderer_.backgroundInterest(watch))}) : INT64_MAX;
         // A misbehaving display provider must not make an overdue busy loop.
         if (nextDisplay_ <= now) nextDisplay_ = now + 16000;
         dirty_ = false;

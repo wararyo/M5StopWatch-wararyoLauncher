@@ -67,6 +67,11 @@ struct RecordingRender : RenderPort {
     void invalidate() override {}
     void draw(const FrameModel& m,const WatchData& d) override { ++draws; model=m; watch=d; }
     TimeUs nextUpdate(TimeUs now,const WatchData& d) const override { return nextMinute(now,d); }
+    // A face that shows the first two items, as Digital will (task 10-3).
+    bool showLabels=false;
+    BackgroundInterest backgroundInterest(const WatchData& d) const override {
+        return showLabels ? leadingItems(d.background,2) : BackgroundInterest{};
+    }
 };
 }
 
@@ -318,6 +323,63 @@ void homeGetsTheLabelAfterTheScreenCloses() {
     CHECK(render.watch.background.count==0);
 }
 
+void labelsWakeOnlyAFaceThatShowsThem() {
+    // An RTC that cannot be trusted: the clock asks for no frames of its own,
+    // and the label's deadlines still stand on their own.
+    StubHal hal; hal.rtc={1900,1,1,0,0,0}; RecordingRender render;
+    TimeService time; time.begin(hal);
+    HomeDataSource data(hal,time);
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
+    runtime.begin();
+    hal.time=1000; runtime.step();
+    auto pressButton=[&](bool a) {
+        (a ? hal.input.a : hal.input.b)=true; hal.time+=20000; runtime.step();
+        (a ? hal.input.a : hal.input.b)=false; hal.time+=20000; runtime.step();
+        hal.time+=200000; runtime.step();
+    };
+    auto framesOver=[&](int seconds) {
+        const int before=render.draws;
+        for (int i=0;i<seconds*10;++i) { hal.time+=100000; runtime.step(); }
+        return render.draws-before;
+    };
+    pressButton(true); pressButton(false); pressButton(false);   // list, open, start
+    CHECK(application.stopwatch().state()==StopwatchState::Running);
+    hal.input.a=hal.input.b=true; hal.time+=10000; runtime.step();
+    hal.time+=600000; runtime.step();
+    hal.input={}; hal.time+=10000; runtime.step();
+    CHECK(runtime.model().screen==ScreenId::Home && render.watch.background.count==1);
+    CHECK(!render.watch.timeValid);
+    // A face that leaves the label out is not woken for it.
+    CHECK(framesOver(5)==0);
+    // One that shows it is drawn once per change of the label, and each frame
+    // carries the new text.
+    render.showLabels=true; runtime.dataChanged(); hal.time+=1000; runtime.step();
+    std::string last=render.watch.background.items[0].label;
+    int changes=0;
+    for (int i=0;i<50;++i) {
+        const int before=render.draws;
+        hal.time+=100000; runtime.step();
+        if (render.draws!=before) {
+            CHECK(std::string(render.watch.background.items[0].label)!=last);
+            last=render.watch.background.items[0].label; ++changes;
+        }
+    }
+    CHECK(changes==5);
+    // Covered by the list: no frames for the label.
+    pressButton(true);
+    for (int i=0;i<30;++i) { hal.time+=10000; runtime.step(); }
+    CHECK(runtime.model().screen==ScreenId::AppList && runtime.model().launcher.transition==1);
+    CHECK(framesOver(5)==0);
+    // Back home the label moves again at once, and dark it stops.
+    hal.input.a=hal.input.b=true; hal.time+=10000; runtime.step();
+    hal.time+=600000; runtime.step();
+    hal.input={}; hal.time+=10000; runtime.step();
+    CHECK(framesOver(5)==5);
+    hal.time+=31*Second; runtime.step();
+    CHECK(runtime.power().screenOff());
+    CHECK(framesOver(5)==0);
+}
+
 int main() {
     collectsInRegistrationOrder();
     labelsAreCheckedAndOwned();
@@ -325,6 +387,7 @@ int main() {
     stopwatchFormat();
     stopwatchProvider();
     homeGetsTheLabelAfterTheScreenCloses();
+    labelsWakeOnlyAFaceThatShowsThem();
     std::cout << "background tests passed\n";
     return 0;
 }

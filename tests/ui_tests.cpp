@@ -204,12 +204,15 @@ void launcherController() {
     LauncherController clock(v);
     CHECK(!clock.listShown() && !clock.active() && clock.nextUpdate()==INT64_MAX);
     CHECK(clock.model().transition==0 && clock.model().list.selection==0);
-    // A tap outside the apps target does nothing; on it, the list comes up.
-    e={}; e.gesture=Gesture::Tap; e.x=234; e.y=100;
-    CHECK(!clock.handle(e,0).changed && !clock.listShown());
-    const Rect apps=appsTarget(v);
-    e.x=apps.x+apps.w/2; e.y=apps.y+apps.h/2;
-    CHECK(clock.handle(e,0).changed && clock.listShown() && clock.nextUpdate()==ListController::FrameUs);
+    // A tap on the clock is the watch face's, even on APPS: the launcher only
+    // opens the list when the face asks, and a repeated request is not a
+    // second slide.
+    CHECK(clock.atRest());
+    const Rect apps=digitalLayout(v).apps;
+    e={}; e.gesture=Gesture::Tap; e.x=apps.x+apps.w/2; e.y=apps.y+apps.h/2;
+    CHECK(!clock.handle(e,0).changed && !clock.listShown() && clock.atRest());
+    CHECK(clock.openList(0) && clock.listShown() && clock.nextUpdate()==ListController::FrameUs);
+    CHECK(!clock.atRest() && !clock.openList(10000));
     // A horizontal drag belongs to nobody.
     LauncherController sideways(v);
     e={}; e.gesture=Gesture::DragStart; e.totalX=100; e.totalY=10;
@@ -542,10 +545,109 @@ void repaint() {
     CHECK(plan.full() && plan.anyPaint());
     for(int i=0;i<N;++i) CHECK(plan.shouldPaint(handles[i]));
 }
+// Work 10-2: the clock's taps and long presses belong to the watch face.
+Events gesture(Gesture g,int x,int y) { Events e{}; e.gesture=g; e.x=x; e.y=y; return e; }
+void homeInput() {
+    const Viewport v{468,468};
+    const auto layout=digitalLayout(v);
+    // The target covers what Digital draws for APPS, and nothing of the time.
+    CHECK(layout.apps.contains(layout.appsIcon.x,layout.appsIcon.y));
+    CHECK(layout.apps.contains(layout.cx,layout.appsLabelY));
+    CHECK(!layout.apps.contains(layout.cx,layout.timeY));
+    CHECK(layout.apps==(Rect{170,351,128,70}));       // Where the fixed target was.
+    TestScreens s; TimeUs now=0;
+    const int ax=layout.apps.x+layout.apps.w/2,ay=layout.apps.y+layout.apps.h/2;
+    // Outside APPS: the face hears it and asks for nothing.
+    CHECK(s.homeAtRest());
+    CHECK(!s.handle(gesture(Gesture::Tap,234,100),now));
+    CHECK(s.home.events==1 && s.home.last.kind==HomeEventKind::Tap && s.home.last.x==234 && s.home.last.y==100);
+    CHECK(s.model().screen==ScreenId::Home);
+    // A long press anywhere, APPS too, is the variant; the list stays shut.
+    CHECK(s.handle(gesture(Gesture::LongPress,ax,ay),now));
+    CHECK(s.home.last.kind==HomeEventKind::LongPress && s.home.digital.variant()==DigitalVariant::HourMinuteSecond);
+    CHECK(s.model().screen==ScreenId::Home && s.homeAtRest());
+    // On APPS: the list opens with the buttons' slide.
+    CHECK(s.handle(gesture(Gesture::Tap,ax,ay),now));
+    CHECK(s.model().screen==ScreenId::AppList && !s.homeAtRest() && s.active());
+    // Not at rest: the list's gestures stay the list's.
+    const int heard=s.home.events;
+    s.handle(gesture(Gesture::LongPress,ax,ay),now);
+    CHECK(s.home.events==heard);
+    now+=400000; s.update(now);
+    // On the way back to the clock nothing reaches the face until it settles.
+    Events e{}; e.home=true; s.handle(e,now);
+    CHECK(s.homeAtRest());
+    e={}; e.next=true; s.handle(e,now);
+    now+=50000; s.update(now);
+    e={}; e.gesture=Gesture::DragStart; e.totalY=60; s.handle(e,now);
+    e.gesture=Gesture::DragEnd; s.handle(e,now);           // back down: returning
+    CHECK(s.model().screen==ScreenId::Home && s.model().launcher.transition>0 && !s.homeAtRest());
+    s.handle(gesture(Gesture::Tap,ax,ay),now);
+    CHECK(s.home.events==heard && s.model().screen==ScreenId::Home);
+    now+=400000; s.update(now);
+    CHECK(s.homeAtRest());
+    // An open screen is never the clock at rest, and gets its own taps.
+    e={}; e.next=true; s.handle(e,now); now+=400000; s.update(now);
+    e={}; e.decide=true; s.handle(e,now);
+    CHECK(s.model().screen==ScreenId::Stopwatch && !s.homeAtRest());
+    s.handle(gesture(Gesture::Tap,ax,ay),now);
+    CHECK(s.home.events==heard);
+    // Without a face bound, a tap on the clock does nothing; A still opens the list.
+    AppState state; ScreenManager bare(state.stopwatch,state.runtime,468,468);
+    CHECK(!bare.handle(gesture(Gesture::Tap,ax,ay),0) && bare.model().screen==ScreenId::Home);
+    e={}; e.next=true; CHECK(bare.handle(e,0) && bare.model().screen==ScreenId::AppList);
+}
+void digitalControl() {
+    const Viewport v{468,468};
+    DigitalControl d;
+    WatchData w; w.timeValid=true; w.localTime.tm_sec=58; w.subsecondUs=250000;
+    CHECK(d.variant()==DigitalVariant::HourMinute);
+    CHECK(d.nextUpdate(1000,w)==1000+1750000);           // 2s - 0.25s to the minute
+    HomeEvent press; press.kind=HomeEventKind::LongPress;
+    const auto out=d.handle(press,v);
+    CHECK(out.changed && out.request==HomeRequest::None && d.variant()==DigitalVariant::HourMinuteSecond);
+    CHECK(d.nextUpdate(1000,w)==1000+750000);            // the next second
+    w.localTime.tm_sec=0; w.subsecondUs=0;
+    CHECK(d.nextUpdate(1000,w)==1000+1000000);           // on a boundary: the next one
+    WatchData unset;                                     // an unset clock asks for nothing
+    CHECK(d.nextUpdate(1000,unset)==INT64_MAX);
+    d.handle(press,v);
+    CHECK(d.variant()==DigitalVariant::HourMinute && d.nextUpdate(1000,unset)==INT64_MAX);
+    // Taps change nothing of the face; only APPS asks for the list.
+    HomeEvent tap; tap.x=234; tap.y=100;
+    CHECK(!d.handle(tap,v).changed && d.handle(tap,v).request==HomeRequest::None);
+    tap.y=390;
+    CHECK(!d.handle(tap,v).changed && d.handle(tap,v).request==HomeRequest::OpenAppList);
+    // No labels are drawn yet, so none may wake the display.
+    BackgroundSnapshot running; running.count=1; running.items[0].nextChangeAt=5;
+    CHECK(d.backgroundInterest(running).count==0);
+    // A smaller panel scales the target with the drawing.
+    const auto small=digitalLayout({234,234});
+    CHECK(small.apps==(Rect{85,175,64,35}));
+}
+void watchChangeBits() {
+    WatchData a,b;
+    CHECK(watchChanges(a,b)==0);
+    b.timeValid=true; CHECK(watchChanges(a,b)==WatchTime);
+    a=b; b.localTime.tm_sec=1; CHECK(watchChanges(a,b)==WatchTime);
+    a=b; b.subsecondUs=5; CHECK(watchChanges(a,b)==0);          // not a reading of its own
+    a=b; b.batteryPercent=80; CHECK(watchChanges(a,b)==WatchBattery);
+    a=b; b.charging=true; CHECK(watchChanges(a,b)==WatchBattery);
+    a=b; b.background.count=1; b.background.items[0].label[0]='x';
+    CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].nextChangeAt=99;                 // a deadline alone
+    CHECK(watchChanges(a,b)==0);
+    a=b; b.background.items[0].label[0]='y'; CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].appId=LaunchTargetId::External1; CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.count=0; b.localTime.tm_min=3;
+    CHECK(watchChanges(a,b)==(WatchBackground|WatchTime));
+}
 int main() {
     navigation(); flick(); launcherList(); launcherController(); composition();
     listLayout(); listController(); deadlines(); repaint();
+    homeInput(); digitalControl(); watchChangeBits();
     std::cout<<"PASS: navigation/geometry, launcher controller, frame composition, "
                "shared list layout/controller, display deadlines, "
-               "3000 differential framebuffer cases with dirty bounds\n";
+               "3000 differential framebuffer cases with dirty bounds, "
+               "home input, digital control, watch changes\n";
 }

@@ -33,6 +33,13 @@ public:
     // The list rather than the clock is what the launcher shows (or is sliding to).
     bool listShown() const { return listShown_; }
     bool transitioning() const { return transition_>0 && transition_<1; }
+    // The clock alone, still and untouched: the only time the watch face gets
+    // taps and long presses.
+    bool atRest() const { return !listShown_ && transition_==0 && !transitionAnimating_ && drag_==Drag::None; }
+    // The slide up to the list, as A/B start it from the clock. Asked for by
+    // a watch face (HomeRequest::OpenAppList); false if the list is already
+    // shown or on its way, so a repeated request does not restart it.
+    bool openList(TimeUs now);
     bool scrolling() const { return list_.active(); }
     // An app opens over the list: whatever was still moving arrives now, so
     // the hidden launcher neither draws frames nor shows under the screen. The

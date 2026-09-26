@@ -531,6 +531,22 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             d.localTime.tm_mday=20; d.localTime.tm_wday=0; check("date",m,d);
             d.timeValid=false; d.batteryPercent=-1; check("unknown",m,d);
             d=sampleData(); d.charging=true; check("charging",m,d);
+            // Work 10-2: the seconds variant, with the cache remade for it,
+            // and the way back to minutes.
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                renderer.handle(hold); check("seconds",m,d);
+                ++d.localTime.tm_sec; check("second-tick",m,d);
+                d.localTime.tm_sec=11; check("second-narrow",m,d);
+                m.launcher.transition=0.45f; check("seconds-transition",m,d);
+                m.launcher.transition=0; d.timeValid=false; check("seconds-unknown",m,d);
+                d=sampleData(); d.charging=true;
+                renderer.handle(hold); check("minutes-again",m,d);
+                const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+                for(int i=0;i<16;++i) { renderer.handle(hold); renderer.draw(m,d); vTaskDelay(1); }
+                std::printf("[Verify] variants internal_free_before=%u after=%u\n",unsigned(before),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+            }
             display.fillScreen(0x1234); renderer.invalidate(); check("wake-invalidate",m,d);
             renderer.selectFace("digital",true); check("cache-disabled",m,d);
             m.launcher.transition=0.45f; check("cache-disabled-transition",m,d);

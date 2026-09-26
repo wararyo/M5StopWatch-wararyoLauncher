@@ -43,6 +43,8 @@ public:
     HostApplication(const HostApplication&)=delete;
     HostApplication& operator=(const HostApplication&)=delete;
     void bindSettings(SettingsStore& store,TimeService& time) { screens_.bind(&store,&time); }
+    // The clock layer's input (the renderer, which owns the faces).
+    void bindHome(HomeControlPort& home) { screens_.bindHome(&home); }
     // Registers the application's shutdown with the slot service, since the
     // measurement it ends is owned here.
     void bindSlots(SlotService& slots) {

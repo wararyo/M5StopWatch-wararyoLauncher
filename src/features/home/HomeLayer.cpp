@@ -25,8 +25,15 @@ bool HomeLayer::selectFace(Gfx& g,const char* id,bool disableCache) {
     return false;
 }
 void HomeLayer::plan(FramePlan& frame,Gfx& g) {
-    if(switched_) { frame.forceFull(); switched_=false; }
-    if(face_) face_->plan(frame,g,region_,data_);
+    WatchChanges changes=watchChanges(previous_,data_);
+    if(progress_!=previousProgress_) changes|=WatchProgress;
+    if(resumed_) changes|=WatchResumed;
+    if(switched_) { frame.forceFull(); changes|=WatchSelected|WatchResumed; switched_=false; }
+    resumed_=false; previous_=data_; previousProgress_=progress_;
+    if(face_) {
+        face_->update(data_,{region_.viewport,region_.clip,progress_},changes);
+        face_->plan(frame,g,region_,data_);
+    }
 }
 void HomeLayer::paint(Gfx& g,const FramePlan& frame) {
     if(face_) face_->paint(g,frame);

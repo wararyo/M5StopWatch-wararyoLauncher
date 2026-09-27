@@ -55,6 +55,8 @@ public:
     int forestCachedParts() const { return home_.forest().cachedParts(); }
 #endif
 private:
+    // Rows of the panel a transfer may reach (HostRenderer::begin).
+    static constexpr int PanelRows=466;
     RenderLayer* layer(FrameLayer id);
     M5GFX& display_;
     Renderer renderer_;

@@ -3,7 +3,8 @@
 namespace launcher {
 bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay) {
     ++layouts_;
-    frame_.begin(full_,{0,0,int(display_.width()),int(display_.height())},capacity_);
+    const Rect screen{0,0,int(display_.width()),int(display_.height())};
+    frame_.begin(full_,limit_.empty() ? screen : intersect(limit_,screen),capacity_);
     for(int i=0;i<count;++i) layers[i]->plan(frame_,display_);
     frame_.resolve();
     const bool painted=frame_.anyPaint();

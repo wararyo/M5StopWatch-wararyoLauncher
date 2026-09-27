@@ -44,6 +44,10 @@ public:
     // The next frame repaints everything: after a wake, or when the owner's
     // composition changed so that layers have no history to compare with.
     void invalidate() { full_=true; }
+    // The part of the display frames are drawn in, when the panel cannot take
+    // all of it (HostRenderer::begin). Nothing outside it is ever written, so
+    // no transfer reaches it; a full repaint covers this area.
+    void limitTo(Rect area) { limit_=area; invalidate(); }
     // True when anything reached the panel. Returns after endWrite, where this
     // panel flushes, so a time taken right after covers the transfer too.
     bool draw(RenderLayer* const* layers,int count,FrameOverlay* overlay=nullptr);
@@ -61,6 +65,6 @@ private:
     bool full_=true,overflowReported_=false;
     int capacity_=FramePlan::Capacity;
     uint32_t layouts_=0,paints_=0;
-    Rect lastDirty_{};
+    Rect lastDirty_{},limit_{};
 };
 }

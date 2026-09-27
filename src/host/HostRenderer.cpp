@@ -10,6 +10,12 @@ bool HostRenderer::begin(bool disableCache,WatchPreferences* store) {
     if(const auto* embedded=vlwFont()) nameFont_=embedded;
     appList_.begin(nameFont_); settings_.begin(nameFont_); external_.begin(nameFont_);
     stopwatch_.begin(nameFont_); toast_.begin(nameFont_);
+    // M5GFX addresses this panel as 468 rows, but a transfer whose window
+    // reaches rows 466 and 467 has its first two rows spoiled on the panel
+    // (black lines left by the list's edge, docs/task10/10-5-validation.md).
+    // Those rows are outside the round glass, so frames never draw them and
+    // no transfer reaches them.
+    renderer_.limitTo({0,0,int(display_.width()),std::min(int(display_.height()),PanelRows)});
     return display_.width()>0 && display_.height()>0 && home_.begin(display_,disableCache,store);
 }
 RenderLayer* HostRenderer::layer(FrameLayer id) {

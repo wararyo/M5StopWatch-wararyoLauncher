@@ -14,6 +14,7 @@
 #include "ui/graphics/VlwFont.h"
 #include "ui/graphics/WatchFonts.h"
 #include "ui/graphics/Shapes.h"
+#include "features/launcher/LauncherController.h"
 #include "host/LaunchRegistry.h"
 #include <cstring>
 #endif
@@ -884,7 +885,53 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 fm.launcher.transition=0.5f; fd.background.count=0; fd.batteryPercent=82;
                 check("forest-info-gone-under-list",fm,fd);
                 items(1); check("forest-info-under-list",fm,fd);
-                fm.launcher.transition=0; fm.screen=ScreenId::Home;
+                // A slow drag back to the clock: the edge a pixel or two at a
+                // time with no full repaint in between, the seconds ticking
+                // now and then, and the finger wavering back up. Only the
+                // last frame is compared, so anything a step left behind shows.
+                {
+                    fd.background.count=0; fd.batteryPercent=82;
+                    renderer.handle(hold);
+                    auto edge=[&](int top) { fm.launcher.transition=1.0f-(float(top)+0.5f)/float(h); };
+                    edge(0); check("forest-slow-start",fm,fd);
+                    int top=0,step=0;
+                    while (top<h-20) {
+                        top+=1+step%2;
+                        if (step%7==6) top-=3;          // wavering back up
+                        edge(top);
+                        if (step%29==0) ++fd.localTime.tm_sec;
+                        renderer.draw(fm,fd);
+                        if (++step%16==0) vTaskDelay(1);
+                    }
+                    check("forest-slow-return",fm,fd);
+                    // The same through the launcher's own controller: the list
+                    // opened, then pulled back down by a slow finger.
+                    LauncherController launcher({w,h});
+                    TimeUs now=1000000;
+                    launcher.openList(now);
+                    for (int i=0;i<40;++i) { now+=16000; launcher.update(now); }
+                    auto frameAt=[&]() {
+                        const auto lm=launcher.model();
+                        fm.launcher.transition=lm.transition; fm.launcher.list=lm.list;
+                        renderer.draw(fm,fd);
+                    };
+                    frameAt();
+                    Events e{}; e.gesture=Gesture::TouchStart; launcher.handle(e,now);
+                    int total=10;
+                    e={}; e.gesture=Gesture::DragStart; e.totalY=total; launcher.handle(e,now); frameAt();
+                    for (int i=0;i<150;++i) {
+                        now+=10000;
+                        total+=(i%5==4) ? -1 : 1;
+                        e={}; e.gesture=Gesture::DragMove; e.totalY=total; launcher.handle(e,now);
+                        if (i%31==0) ++fd.localTime.tm_sec;
+                        frameAt();
+                        if (i%16==15) vTaskDelay(1);
+                    }
+                    fm.launcher.transition=launcher.model().transition;
+                    check("forest-slow-drag",fm,fd);
+                    std::printf("[Verify] forest slow drag ends at transition=%.3f\n",double(fm.launcher.transition));
+                    renderer.handle(hold);
+                }
                 renderer.handle(hold); check("forest-minutes-again",fm,fd);
                 vTaskDelay(1);
                 auto faceDirect=[&](const char* name) {

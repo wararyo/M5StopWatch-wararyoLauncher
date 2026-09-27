@@ -47,6 +47,13 @@ void HostRuntime::step() {
     }
     if (now >= nextUsb_) {
         const auto usb = hal_.sampleUsb();
+        // Charging follows USB power, and the battery is otherwise read every
+        // 30s: a change here reads it again (docs/task10/plan.md 3.1). The
+        // clock is drawn for it only while it is on screen.
+        if (usb.powered() != power_.usb.powered()) {
+            data_.refreshBattery();
+            if (!power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
+        }
         power_.usb = usb;
         nextUsb_ = now + 1000000;
     }

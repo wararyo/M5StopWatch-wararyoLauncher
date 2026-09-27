@@ -12,6 +12,7 @@ WatchData HomeDataSource::sample(TimeUs now) {
     data.timeValid = time_.now(data.localTime, data.subsecondUs);
     data.batteryPercent = battery_.percent;
     data.charging = battery_.charging;
+    data.chargingKnown = battery_.chargingKnown;
     return data;
 }
 TimeUs HomeDataSource::nextUpdate(TimeUs) const { return batteryDue_; }

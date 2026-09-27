@@ -815,6 +815,100 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 bm.launcher.transition=0; bm.screen=ScreenId::Home; check("digital-after-backdrop",bm,d);
                 backdrop.listBackgroundForTest(0x18c9);
             }
+            // Work 10-5: Forest in its combinations against full repaints,
+            // then its caches against drawing directly (docs/task10/plan-10-5.md 7).
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData fd;
+                auto items=[&](int count) {
+                    for(int i=0;i<count && i<BackgroundCapacity;++i) {
+                        auto& item=fd.background.items[i];
+                        item=BackgroundInfo{};
+                        item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
+                        std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
+                        item.icon=appIcon(IconId::Stopwatch);
+                        item.suggestedColor=StopwatchAccent;
+                    }
+                    fd.background.count=uint8_t(std::min(count,BackgroundCapacity));
+                };
+                FrameModel fm; fm.viewport={w,h};
+                if(!renderer.selectFace("forest")) { ++failures; std::printf("[Verify] FAIL forest did not begin\n"); }
+                fd=sampleData();                                   // 82%, not charging: no row
+                check("forest",fm,fd);
+                ++fd.localTime.tm_min; check("forest-minute",fm,fd);
+                fd.localTime.tm_hour=11; fd.localTime.tm_min=11; check("forest-narrow",fm,fd);
+                // 31 and 30 hide it, 29 shows it; unknown after showing keeps it.
+                for(int percent:{31,30,29,5,0,100,-1,30}) { fd.batteryPercent=percent; check("forest-battery",fm,fd); }
+                fd.charging=true; check("forest-charging",fm,fd);
+                fd.batteryPercent=-1; check("forest-charging-unknown",fm,fd);
+                fd.charging=false; fd.batteryPercent=82; check("forest-discharging",fm,fd);
+                fd.chargingKnown=false; fd.batteryPercent=12; check("forest-charging-unreadable",fm,fd);
+                fd.chargingKnown=true; fd.batteryPercent=82; check("forest-battery-gone",fm,fd);
+                items(1); check("forest-item",fm,fd);
+                items(2); check("forest-items",fm,fd);
+                fd.batteryPercent=18; check("forest-battery-items",fm,fd);
+                std::snprintf(fd.background.items[0].label,BackgroundLabelBytes,"02:41"); check("forest-item-label",fm,fd);
+                // Forest ignores the suggested colour: a change of it alone draws nothing.
+                fd.background.items[1].suggestedColor=uint16_t(0xf800);
+                renderer.draw(fm,fd); ++checks;
+                if(!renderer.lastDirty().empty()) {
+                    ++failures; const Rect r=renderer.lastDirty();
+                    std::printf("[Verify] FAIL forest-colour-only repainted %d,%d %dx%d\n",r.x,r.y,r.w,r.h);
+                }
+                check("forest-colour-only",fm,fd);
+                fd.background.items[1].icon=appIcon(IconId::Settings); check("forest-item-icon",fm,fd);
+                fd.background.items[1].appId=static_cast<LaunchTargetId>(77); check("forest-unknown-app",fm,fd);
+                fd.background.items[1].icon=nullptr; check("forest-item-generic",fm,fd);
+                std::snprintf(fd.background.items[0].label,BackgroundLabelBytes,"A long label the row has to shorten, 999:59");
+                check("forest-item-long",fm,fd);
+                std::snprintf(fd.background.items[1].label,BackgroundLabelBytes,"計測中"); check("forest-item-japanese",fm,fd);
+                fm.toast="保存しました"; check("forest-toast-on",fm,fd);
+                fm.toast=nullptr; check("forest-toast-off",fm,fd);
+                items(1); check("forest-item-removed",fm,fd);
+                fd.background.count=0; fd.batteryPercent=82; check("forest-plain-again",fm,fd);
+                vTaskDelay(1);
+                renderer.handle(hold); check("forest-seconds",fm,fd);
+                for(int s=0;s<3;++s) { ++fd.localTime.tm_sec; check("forest-second-tick",fm,fd); }
+                fd.localTime.tm_min=59; fd.localTime.tm_sec=59; check("forest-minute-edge",fm,fd);
+                fd.localTime.tm_hour=23; check("forest-hour-edge",fm,fd);
+                items(2); fd.batteryPercent=5; check("forest-seconds-info",fm,fd);
+                fd.timeValid=false; check("forest-seconds-unknown",fm,fd);
+                fd.timeValid=true;
+                // The list over Forest, which stays still: a hair, half, nearly
+                // and fully up, turning back, and down to rest.
+                fm.screen=ScreenId::AppList;
+                for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
+                    fm.launcher.transition=p; check("forest-transition",fm,fd);
+                }
+                // The scenery moving under a half raised list.
+                fm.launcher.transition=0.5f; fd.background.count=0; fd.batteryPercent=82;
+                check("forest-info-gone-under-list",fm,fd);
+                items(1); check("forest-info-under-list",fm,fd);
+                fm.launcher.transition=0; fm.screen=ScreenId::Home;
+                renderer.handle(hold); check("forest-minutes-again",fm,fd);
+                vTaskDelay(1);
+                auto faceDirect=[&](const char* name) {
+                    renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
+                    renderer.selectFace("forest",true); renderer.draw(fm,fd); display.readRect(0,0,w,h,reference);
+                    renderer.selectFace("forest");
+                    compare(name);
+                };
+                fd=sampleData(); faceDirect("forest-direct");
+                items(2); fd.batteryPercent=18; faceDirect("forest-direct-info");
+                renderer.handle(hold); faceDirect("forest-direct-seconds"); renderer.handle(hold);
+                renderer.capacityForTest(2); check("forest-overflow",fm,fd);
+                renderer.capacityForTest(FramePlan::Capacity); check("forest-overflow-recovery",fm,fd);
+                // Choosing faces and variants over and over leaks nothing.
+                const auto free=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+                for(int i=0;i<16;++i) {
+                    renderer.selectFace("digital"); renderer.draw(fm,fd);
+                    renderer.selectFace("forest"); renderer.handle(hold); renderer.draw(fm,fd);
+                    vTaskDelay(1);
+                }
+                std::printf("[Verify] faces internal_free_before=%u after=%u\n",unsigned(free),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+                renderer.selectFace("digital"); check("forest-to-digital",fm,d);
+            }
             // Repeated cache release/recreation gives before/after heap evidence.
             const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }
@@ -895,6 +989,25 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     renderer.invalidate(); renderer.draw(pm,frame);
                     std::printf("[Perf] base-fill px=%d us=%lld (no transfer)\n",w*h,(long long)spent);
                 }
+                // Work 10-5: Forest's updates, and full repaints of both faces.
+                renderer.selectFace("forest");
+                frame=sampleData();
+                run("forest-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
+                stopwatchItem(0);
+                run("forest-item-second",pm,60,[&](int i) { stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData();
+                run("forest-second",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; });
+                stopwatchItem(0);
+                run("forest-second-item",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData(); stopwatchItem(160);
+                run("forest-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                pm.launcher.transition=0;
+                run("forest-full",pm,20,[&](int) { renderer.invalidate(); });
+                std::printf("[Perf] forest caches=%d/3\n",renderer.forestCachedParts());
+                renderer.selectFace("digital");
+                run("digital-full",pm,20,[&](int) { renderer.invalidate(); });
                 std::printf("[Perf] digital caches=%d/5 internal_free=%u largest=%u\n",renderer.digitalCachedParts(),
                     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),
                     unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
@@ -955,6 +1068,27 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 backdrop.listBackgroundForTest(0x18c9); slide("backdrop-transition-colour",0.6f);
                 item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0; shoot("backdrop-info",sm,scene);
+                // Work 10-5: Forest, like the reference pictures and around them.
+                renderer.selectFace("forest");
+                scene=sampleData(); shoot("forest",sm,scene);
+                scene.batteryPercent=18;
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                shoot("forest-info",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); shoot("forest-seconds",sm,scene);
+                scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("forest-seconds-info",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
+                shoot("forest-unknown",sm,scene);
+                scene=sampleData(); scene.batteryPercent=100; scene.charging=true;
+                item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
+                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+                shoot("forest-mixed",sm,scene);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                slide("forest-transition",0.45f);
+                sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 renderer.selectFace("digital");
             }
 #endif

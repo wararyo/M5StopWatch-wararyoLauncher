@@ -16,6 +16,11 @@ public:
     virtual ~RenderLayer()=default;
     virtual void plan(FramePlan& frame,Gfx& g)=0;
     virtual void paint(Gfx& g,const PaintContext& context)=0;
+    // Where this frame's paint covers every pixel with opaque colour of its
+    // own, whatever lay there (a face's scenery). Asked of the back-most
+    // layer after plan: the Renderer does not restore its base there, since
+    // nothing of it would show.
+    virtual Rect opaqueArea() const { return {}; }
 };
 // Painted after every layer and before the transfer, outside the plan: it
 // restores its own pixels instead of taking part in the damage.

@@ -109,14 +109,14 @@ void menuAndEditors() {
     TimeUs now=0;
     openSettings(screens,now);
     CHECK(screens.model().settings.view==SettingsView::Menu);
-    // A cycles the five rows and wraps.
-    for (int i=0;i<4;++i) screens.handle(press(true),now);
-    CHECK(screens.model().settings.menu.selection==4);
+    // A cycles the six rows and wraps.
+    for (int i=0;i<5;++i) screens.handle(press(true),now);
+    CHECK(screens.model().settings.menu.selection==5);
     screens.handle(press(true),now);
     CHECK(screens.model().settings.menu.selection==0);
     // The last row leaves back to the list, keeping its selection.
     const int listRow=screens.model().launcher.list.selection;
-    for (int i=0;i<4;++i) screens.handle(press(true),now);
+    for (int i=0;i<5;++i) screens.handle(press(true),now);
     screens.handle(press(false),now);
     CHECK(screens.model().screen==ScreenId::AppList && screens.model().launcher.list.selection==listRow);
     openSettings(screens,now);
@@ -255,7 +255,7 @@ void statisticsAction() {
     CHECK(settingsSlotCount(SettingsView::Info)==2);
     openSettings(screens,now);
     CHECK(!screens.model().stats);
-    for (int i=0;i<3;++i) screens.handle(press(true),now);  // menu row 3: 情報
+    for (int i=0;i<4;++i) screens.handle(press(true),now);  // menu row 4: 情報
     screens.handle(press(false),now);
     CHECK(screens.model().settings.view==SettingsView::Info);
     CHECK(screens.model().settings.cursor==0);
@@ -280,7 +280,7 @@ void statisticsAction() {
     tapped.setInfo("wararyoLauncher","0.1.0","5.5.0");
     TimeUs t2=0;
     openSettings(tapped,t2);
-    for (int i=0;i<3;++i) tapped.handle(press(true),t2);
+    for (int i=0;i<4;++i) tapped.handle(press(true),t2);
     tapped.handle(press(false),t2);
     CHECK(tapped.model().settings.view==SettingsView::Info && !tapped.model().stats);
     const auto tappedFrame=tapped.model();
@@ -301,7 +301,7 @@ void statisticsRequest() {
     StubHal hal; TimeService time; time.begin(hal);
     SettingsScreen screen; screen.resize(468,468); screen.bind(&store,&time);
     screen.enter(0);
-    for (int i=0;i<3;++i) screen.handle(press(true),0);   // menu row 3: 情報
+    for (int i=0;i<4;++i) screen.handle(press(true),0);   // menu row 4: 情報
     screen.handle(press(false),0);
     CHECK(screen.model().view==SettingsView::Info);
     auto out=screen.handle(press(false),0);
@@ -316,7 +316,7 @@ void statisticsRequest() {
     TestScreens screens; screens.bind(&store,&time);
     TimeUs now=0;
     openSettings(screens,now);
-    for (int i=0;i<3;++i) screens.handle(press(true),now);
+    for (int i=0;i<4;++i) screens.handle(press(true),now);
     screens.handle(press(false),now);
     CHECK(!screens.runtime.stats);
     CHECK(screens.handle(press(false),now));
@@ -343,25 +343,30 @@ Events tapRow(const ScreenManager& s,int index) {
 void menuRows() {
     std::array<ListRow,SettingsMenuCount> rows{};
     SettingsModel model; model.savedBrightness=105; model.savedScreenOffSec=60;
+    model.faceCount=2; model.faceNames[0]="Digital"; model.faceNames[1]="Forest"; model.currentFace=1;
     SettingsMenuLabels labels;
     const ListRows built=buildSettingsMenuRows(rows,&model,&labels);
-    CHECK(built.count==5);
-    const char* expected[]={"日時","輝度  105","消灯時間  60秒","情報","戻る"};
+    CHECK(built.count==6);
+    // The watch face row names the face that shows (docs/task10/plan-10-5.md 5).
+    const char* expected[]={"日時","輝度  105","消灯時間  60秒","文字盤  Forest","情報","戻る"};
     const SettingsView views[]={SettingsView::DateTime,SettingsView::Brightness,
-                                SettingsView::ScreenOff,SettingsView::Info};
-    for (int i=0;i<5;++i) {
+                                SettingsView::ScreenOff,SettingsView::WatchFace,SettingsView::Info};
+    for (int i=0;i<6;++i) {
         CHECK(std::strcmp(built[i].label,expected[i])==0);
         CHECK(!built[i].icon && built[i].enabled && !built[i].dimmed);
         for (int j=0;j<i;++j) CHECK(built[j].id!=built[i].id);
         // Each row opens its view by id; only the last one leaves instead.
         SettingsView view=SettingsView::Menu;
-        CHECK(settingsItemView(built[i].id,view)==(i<4));
-        if (i<4) CHECK(view==views[i]);
+        CHECK(settingsItemView(built[i].id,view)==(i<5));
+        if (i<5) CHECK(view==views[i]);
     }
+    // Without a face shown the row is just its name.
+    model.currentFace=-1; buildSettingsMenuRows(rows,&model,&labels);
+    CHECK(std::strcmp(rows[3].label,"文字盤")==0);
     // Input builds the same ids without labels.
     std::array<ListRow,SettingsMenuCount> ids{};
     buildSettingsMenuRows(ids);
-    for (int i=0;i<5;++i) CHECK(ids[i].id==rows[i].id && ids[i].label[0]==0);
+    for (int i=0;i<6;++i) CHECK(ids[i].id==rows[i].id && ids[i].label[0]==0);
 }
 // The menu as the shared list: A, B and taps, scrolling, inertia, and the
 // round trip through an editor (docs/task9/plan-9-3.md).
@@ -395,7 +400,8 @@ void menuList() {
     // From the last row A wraps to the first.
     screens.handle(press(true),now); settle(now);
     screens.handle(press(true),now); settle(now);
-    CHECK(menu().selection==4 && near(menu().scroll,4*spacing));
+    screens.handle(press(true),now); settle(now);
+    CHECK(menu().selection==5 && near(menu().scroll,5*spacing));
     screens.handle(press(true),now); settle(now);
     CHECK(menu().selection==0 && near(menu().scroll,0));
     // At the top a pull down only springs back: settings has no edge gesture.
@@ -418,19 +424,19 @@ void menuList() {
     CHECK(!screens.handle(sideways,now) && !menu().dragging);
     screens.handle(gesture(Gesture::DragEnd,5),now);
     // A tap hits the row where it is drawn while the list is moving: A starts
-    // a scroll, and a tap part way hits row 4 at its current place.
+    // a scroll, and a tap part way hits row 5 at its current place.
     screens.handle(press(true),now);
     now+=3*ListController::FrameUs; screens.update(now);
     CHECK(menu().animating && menu().scroll>2*spacing && menu().scroll<3*spacing);
     {
-        const auto target=menuRow(screens,4),neighbour=menuRow(screens,3);
+        const auto target=menuRow(screens,5),neighbour=menuRow(screens,4);
         CHECK(!target.box.empty() && !neighbour.box.empty());
         CHECK(!target.box.contains(neighbour.box.x+neighbour.box.w/2,neighbour.centerY));
     }
     screens.handle(gesture(Gesture::TouchStart),now);
     CHECK(menu().animating); // A retarget, not inertia: the touch does not stop it.
-    screens.handle(tapRow(screens,4),now);
-    CHECK(screens.model().screen==ScreenId::AppList); // Row 4 is 戻る.
+    screens.handle(tapRow(screens,5),now);
+    CHECK(screens.model().screen==ScreenId::AppList); // Row 5 is 戻る.
     // A new visit is back at the top, however the last one ended.
     openSettings(screens,now);
     CHECK(menu().selection==0 && menu().scroll==0 && !screens.active());
@@ -480,16 +486,16 @@ void menuList() {
     CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==2);
     CHECK(m.settings.menu.scroll==kept && !screens.active());
     // So does information, from a row picked by A mid-scroll.
-    screens.handle(press(true),now);
+    screens.handle(press(true),now); screens.handle(press(true),now);
     now+=2*ListController::FrameUs; screens.update(now);
     screens.handle(press(false),now);
     m=screens.model();
-    CHECK(m.settings.view==SettingsView::Info && m.settings.menu.selection==3);
-    CHECK(near(m.settings.menu.scroll,3*spacing) && screens.nextUpdate()==INT64_MAX);
+    CHECK(m.settings.view==SettingsView::Info && m.settings.menu.selection==4);
+    CHECK(near(m.settings.menu.scroll,4*spacing) && screens.nextUpdate()==INT64_MAX);
     screens.handle(press(true),now); screens.handle(press(false),now); // -> 戻る
     m=screens.model();
-    CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==3);
-    CHECK(near(m.settings.menu.scroll,3*spacing));
+    CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==4);
+    CHECK(near(m.settings.menu.scroll,4*spacing));
     // Home in the middle of a scroll leaves nothing of settings running.
     screens.handle(press(true),now);
     CHECK(screens.active());
@@ -501,7 +507,7 @@ void menuList() {
     openSettings(screens,now);
     const int launcherRow=screens.model().launcher.list.selection;
     const float launcherScroll=screens.model().launcher.list.scroll;
-    for (int i=0;i<4;++i) screens.handle(press(true),now);
+    for (int i=0;i<5;++i) screens.handle(press(true),now);
     CHECK(screens.active());
     screens.handle(press(false),now);
     m=screens.model();

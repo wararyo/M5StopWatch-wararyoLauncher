@@ -97,6 +97,8 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         event.x=e.x; event.y=e.y; event.at=now;
         const auto face=home_->handle(event);
         homeChanged=face.changed;
+        // The face keeps showing its change; only the saving failed.
+        if (face.saveFailed) { notify("保存に失敗しました",now); homeChanged=true; }
         if (face.request==HomeRequest::OpenAppList) homeChanged=launcher_.openList(now) || homeChanged;
     }
     return out.changed || changed || homeChanged;

@@ -5,12 +5,12 @@
 #include "host/RenderDiagnostics.h"
 #endif
 namespace launcher {
-bool HostRenderer::begin(bool disableCache) {
+bool HostRenderer::begin(bool disableCache,WatchPreferences* store) {
     // The list keeps working on the built-in font if the embedded subset fails.
     if(const auto* embedded=vlwFont()) nameFont_=embedded;
     appList_.begin(nameFont_); settings_.begin(nameFont_); external_.begin(nameFont_);
     stopwatch_.begin(nameFont_); toast_.begin(nameFont_);
-    return display_.width()>0 && display_.height()>0 && home_.begin(display_,disableCache);
+    return display_.width()>0 && display_.height()>0 && home_.begin(display_,disableCache,store);
 }
 RenderLayer* HostRenderer::layer(FrameLayer id) {
     switch(id) {

@@ -1,9 +1,11 @@
 #pragma once
 #include "features/home/HomeInteraction.h"
+#include "features/home/faces/TimeGroups.h"
+#include "features/home/VariantRecord.h"
 #include <algorithm>
 #include <cmath>
 namespace launcher {
-enum class DigitalVariant : uint8_t { HourMinute,HourMinuteSecond };
+using DigitalVariant=TimeVariant;
 // Digital's layout, as pure arithmetic over the viewport, the variant, how
 // many background items it shows and what the fonts measure. The painter
 // measures the fonts it actually loaded (or its fallbacks) and draws at these
@@ -68,25 +70,11 @@ inline DigitalLayout digitalLayout(const Viewport& v,DigitalVariant variant,int 
     l.batteryY=row(v,79,61,items);
     l.dateBaseline=row(v,126,108,items);
     l.timeBaseline=row(v,270,242,items);
-    // A little room above and below the ink for the edges' coverage.
-    const int margin=2,top=l.timeBaseline-m.timeAscent-margin,height=m.timeAscent+m.timeDescent+2*margin;
-    const bool seconds=variant==DigitalVariant::HourMinuteSecond;
-    const int width=m.hourWidth+m.colonWidth+m.minuteWidth+(seconds ? m.colonWidth+m.minuteWidth : 0);
-    const int left=l.cx-width/2;
-    l.hourRight=left+m.hourWidth;
-    l.colon1X=l.hourRight;
-    const int minuteLeft=l.colon1X+m.colonWidth;
-    l.hour={left-margin,top,l.colon1X+m.colonWidth-(left-margin),height};
-    if (seconds) {
-        l.minuteX=minuteLeft+m.minuteWidth/2;
-        l.colon2X=minuteLeft+m.minuteWidth;
-        l.secondX=l.colon2X+m.colonWidth;
-        l.minute={minuteLeft,top,m.minuteWidth+m.colonWidth,height};
-        l.second={l.secondX,top,m.minuteWidth+margin,height};
-    } else {
-        l.minuteX=minuteLeft;
-        l.minute={minuteLeft,top,m.minuteWidth+margin,height};
-    }
+    const auto t=placeTimeGroups(l.cx,l.timeBaseline,variant,
+        {m.timeAscent,m.timeDescent,m.hourWidth,m.minuteWidth,m.colonWidth});
+    l.hour=t.hour; l.minute=t.minute; l.second=t.second;
+    l.hourRight=t.hourRight; l.colon1X=t.colon1X; l.colon2X=t.colon2X;
+    l.minuteX=t.minuteX; l.secondX=t.secondX;
     l.chipHeight=px(v,48); l.chipGap=px(v,16);
     l.chipY=row(v,312,312,items);
     // The widest the row of items may be where its far edge meets the circle,
@@ -117,10 +105,14 @@ inline int placeDigitalChips(const DigitalLayout& l,const int* widths,int count,
 }
 // Digital's behaviour without its drawing: the variant, what a tap or a long
 // press means, and when the face has to be drawn again. The variant outlives
-// the face's caches (begin/end), so it survives leaving and coming back.
+// the face's caches (begin/end), so it survives leaving and coming back, and
+// it is kept in Digital's own record across restarts (docs/task10/plan-10-5.md 4).
 class DigitalControl {
 public:
     DigitalVariant variant() const { return variant_; }
+    // Once, when the face is registered: the stored variant, or hours and
+    // minutes for anything else.
+    void bindPreferences(FacePreferences* prefs) { record_.bind(prefs); variant_=record_.restore(DigitalVariant::HourMinute); }
     // The frame about to be drawn; taps then hit what it shows.
     void update(const WatchData& d) { items_=std::min<int>(d.background.count,DigitalMaxItems); }
     int items() const { return items_; }
@@ -130,6 +122,7 @@ public:
             // Anywhere, APPS included: the press was not a tap.
             variant_=variant_==DigitalVariant::HourMinute ? DigitalVariant::HourMinuteSecond : DigitalVariant::HourMinute;
             out.changed=true;
+            out.saveFailed=!record_.save(variant_);
         } else if (digitalAppsTarget(v,items_).contains(e.x,e.y)) out.request=HomeRequest::OpenAppList;
         return out;
     }
@@ -140,6 +133,7 @@ public:
     BackgroundInterest backgroundInterest(const BackgroundSnapshot& s) const { return leadingItems(s,DigitalMaxItems); }
 private:
     DigitalVariant variant_=DigitalVariant::HourMinute;
+    VariantRecord record_;
     int items_=0;
 };
 }

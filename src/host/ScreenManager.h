@@ -27,9 +27,10 @@ public:
     // as the unimplemented entries do. Nothing else in the launcher changes.
     void bind(SettingsStore* store,TimeService* time) { settings_.bind(store,time); }
     void bindSlots(SlotService* slots) { external_.bind(slots,&slots_); }
-    // The clock layer's input. Without it a tap on the clock does nothing and
-    // the list is still reached by A/B and the swipe up.
-    void bindHome(HomeControlPort* home) { home_=home; }
+    // The clock layer's input, and the faces settings chooses from. Without it
+    // a tap on the clock does nothing, the list is still reached by A/B and
+    // the swipe up, and settings offers no face to choose.
+    void bindHome(HomeControlPort* home) { home_=home; settings_.bindFaces(home); }
     // Whether a touch starting now may become a long press on the clock.
     bool homeAtRest() const { return !active_ && launcher_.atRest(); }
     void setInfo(const char* name,const char* version,const char* idf) {

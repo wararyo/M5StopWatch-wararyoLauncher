@@ -9,6 +9,8 @@ struct WatchData {
     bool timeValid=false;
     int batteryPercent=-1;
     bool charging=false;
+    // Whether `charging` was actually read; false is not "discharging".
+    bool chargingKnown=true;
     TimeUs subsecondUs=0;
     // Owned copies of the applications' labels, fixed for the frame. Only
     // collected while the clock is on screen (host/HostRuntime.cpp).

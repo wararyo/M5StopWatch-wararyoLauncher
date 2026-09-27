@@ -23,13 +23,36 @@ enum class HomeRequest : uint8_t { None,OpenAppList };
 struct HomeOutcome {
     bool changed=false;       // The face's own state changed: draw again.
     HomeRequest request=HomeRequest::None;
+    // The face kept a change it could not store (docs/task10/plan-10-5.md 4).
+    // It still shows it; the system says the save failed.
+    bool saveFailed=false;
+};
+// A face as settings lists it: no display types, no face class.
+struct WatchFaceChoice {
+    const char* id=nullptr;    // stable: what is stored, never a position
+    const char* name=nullptr;  // what the list shows
+};
+enum class FaceChoiceResult : uint8_t {
+    Selected,    // Shown now and stored.
+    Unchanged,   // Already shown and stored: nothing was done.
+    SaveFailed,  // Shown now, but the next start will show the last stored face.
+    Failed,      // Could not be shown; the previous face is back.
+    Unknown,     // No such face.
 };
 // The boundary between screen control and the clock layer. The renderer
-// implements it by handing the event to the selected face.
+// implements it by handing the event to the selected face; settings chooses
+// the face through it (docs/task10/plan-10-5.md 5).
 class HomeControlPort {
 public:
     virtual ~HomeControlPort()=default;
     virtual HomeOutcome handle(const HomeEvent& event)=0;
+    virtual int faceCount() const { return 0; }
+    virtual WatchFaceChoice faceAt(int) const { return {}; }
+    // Index of the face shown, -1 without one.
+    virtual int currentFace() const { return -1; }
+    // Begins the face and stores the choice. Only a confirmed choice comes
+    // here: moving the cursor over a face does not.
+    virtual FaceChoiceResult chooseFace(const char*) { return FaceChoiceResult::Unknown; }
 };
 // Where the face is shown this frame. `listProgress` is the app list's slide
 // over it, 0 (clock) to 1 (list); the clip is what the system leaves uncovered.
@@ -65,7 +88,8 @@ inline WatchChanges watchChanges(const WatchData& before,const WatchData& after)
     if (before.timeValid!=after.timeValid || x.tm_sec!=y.tm_sec || x.tm_min!=y.tm_min ||
         x.tm_hour!=y.tm_hour || x.tm_mday!=y.tm_mday || x.tm_mon!=y.tm_mon || x.tm_year!=y.tm_year)
         c|=WatchTime;
-    if (before.batteryPercent!=after.batteryPercent || before.charging!=after.charging) c|=WatchBattery;
+    if (before.batteryPercent!=after.batteryPercent || before.charging!=after.charging ||
+        before.chargingKnown!=after.chargingKnown) c|=WatchBattery;
     if (!sameBackground(before.background,after.background)) c|=WatchBackground;
     return c;
 }

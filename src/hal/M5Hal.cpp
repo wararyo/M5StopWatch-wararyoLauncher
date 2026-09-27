@@ -70,7 +70,9 @@ BatteryState M5Hal::sampleBattery() {
     const auto level = M5.Power.getBatteryLevel();
     // Out of range means the PMIC did not answer; leave it unknown.
     if (level >= 0 && level <= 100) battery.percent = int(level);
-    battery.charging = M5.Power.isCharging() == m5::Power_Class::is_charging;
+    const auto charging = M5.Power.isCharging();
+    battery.charging = charging == m5::Power_Class::is_charging;
+    battery.chargingKnown = charging != m5::Power_Class::charge_unknown;
     return battery;
 }
 void M5Hal::setBrightness(int level) {

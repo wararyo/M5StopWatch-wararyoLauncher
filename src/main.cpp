@@ -119,7 +119,17 @@ extern "C" void app_main() {
     static launcher::M5Hal hal;
     // Keep framebuffer metadata / font cache objects off the 8KiB UI stack.
     static launcher::HostRenderer renderer(M5.Display);
-    if (!renderer.begin()) { std::printf("[Renderer] initialization failed\n"); return; }
+    // Storage first: the clock layer reads the stored face and the faces
+    // their own records when it begins (docs/task10/plan-10-5.md 5).
+    static launcher::NvsBackend nvs;
+    nvs.begin();
+    static launcher::WatchPreferences watchPreferences;
+#ifndef LAUNCHER_RENDER_DIAGNOSTICS
+    // The render check switches faces and variants on its own; it must not
+    // leave its choices in the device's storage.
+    watchPreferences.bind(&nvs);
+#endif
+    if (!renderer.begin(false, &watchPreferences)) { std::printf("[Renderer] initialization failed\n"); return; }
     // Declared for both builds so the settings screen exists either way. The
     // diagnostics build never begins it, so it touches no RTC and reports the
     // clock as unset instead of writing one.
@@ -140,8 +150,6 @@ extern "C" void app_main() {
     static launcher::MultiFirmAdapter slots;
     slots.begin();
 #endif
-    static launcher::NvsBackend nvs;
-    nvs.begin();
     static launcher::SettingsStore settingsStore;
     settingsStore.begin(nvs);
     hal.setBrightness(settingsStore.get().brightness);

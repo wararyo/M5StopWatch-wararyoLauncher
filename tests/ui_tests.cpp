@@ -483,8 +483,11 @@ void deadlines() {
     for(int i=0;i<5999;++i) { p.time+=10000; r.step(); }
     CHECK(p.draws==1 && p.samples==1);
     p.time=60000000; r.step(); CHECK(p.draws==2);
-    p.usb={true,5000,true}; p.time+=1000000; r.step(); CHECK(p.draws==2);
-    r.dataChanged(); r.step(); CHECK(p.draws==3);
+    // USB power arriving reads the battery again and redraws the clock
+    // (docs/task10/plan.md 3.1); staying powered does not.
+    p.usb={true,5000,true}; p.time+=1000000; r.step(); CHECK(p.draws==3);
+    p.time+=1000000; r.step(); CHECK(p.draws==3);
+    r.dataChanged(); r.step(); CHECK(p.draws==4);
     p.input={}; p.time+=10000; r.step(); // release opens list
     p.time+=180000; r.step();
     const int count=p.draws;

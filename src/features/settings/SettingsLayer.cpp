@@ -6,7 +6,7 @@
 namespace launcher {
 namespace {
 constexpr uint16_t White=0xf7be,Muted=0xad75,Lime=0xb7e0,Panel=0x2104,Ink=0x0000;
-constexpr const char* Titles[]={"","日時","輝度","消灯時間","情報"};
+constexpr const char* Titles[]={"","日時","輝度","消灯時間","情報",""};
 // Information's one action. Taking it cannot be undone before a restart, so
 // the label says what it does rather than naming a state to toggle.
 constexpr const char* ActionNames[]={"統計情報を表示"};
@@ -56,7 +56,8 @@ void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
 void SettingsLayer::plan(FramePlan& frame,Gfx& g) {
     const SettingsModel& s=model_;
     count_=0;
-    const Shown shown=!visible_ ? Shown::None : s.view==SettingsView::Menu ? Shown::Menu : Shown::Items;
+    const Shown shown=!visible_ ? Shown::None : s.view==SettingsView::Menu ? Shown::Menu :
+                      s.view==SettingsView::WatchFace ? Shown::Faces : Shown::Items;
     if (shown!=shown_) {
         // Another set of elements takes over these pixels, and neither the
         // list's slots nor the items know what the other painted: repaint
@@ -76,6 +77,12 @@ void SettingsLayer::plan(FramePlan& frame,Gfx& g) {
         menu_.plan(frame,g,settingsMenuPlacement(viewport_,s.menu.scroll),rows,s.menu,true);
         return;
     }
+    if (shown==Shown::Faces) {
+        // The same view as the menu, forgotten on the switch above.
+        const ListRows rows=buildSettingsFaceRows(faceRows_,s.faceCount,&s,&faceLabels_);
+        menu_.plan(frame,g,settingsMenuPlacement(viewport_,s.faces.scroll),rows,s.faces,true);
+        return;
+    }
     build(viewport_,s,stats_);
     for (int i=0;i<Capacity;++i) {
         const bool used=i<count_;
@@ -93,7 +100,7 @@ void SettingsLayer::plan(FramePlan& frame,Gfx& g) {
 }
 void SettingsLayer::paint(Gfx& g,const PaintContext& context) {
     if (!visible_ || shown_==Shown::None) return;
-    if (shown_==Shown::Menu) { menu_.paint(g,context); return; }
+    if (shown_==Shown::Menu || shown_==Shown::Faces) { menu_.paint(g,context); return; }
     const SettingsModel& s=model_;
     const lgfx::IFont* font=font_;
     SettingsGeometry m{{viewport_.width,viewport_.height},s.view,s.cursor};

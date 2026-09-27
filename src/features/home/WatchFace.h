@@ -3,11 +3,24 @@
 #include "ui/graphics/Gfx.h"
 #include "ui/rendering/Viewport.h"
 #include "ui/rendering/PaintContext.h"
+#include "storage/WatchPreferences.h"
 namespace launcher {
 class WatchFace {
 public:
     virtual ~WatchFace()=default;
+    // Stable: stored as the selection, never a position (docs/task10/plan-10-5.md 5).
     virtual const char* id() const=0;
+    // What settings lists.
+    virtual const char* name() const { return id(); }
+    // The key of the face's own record, or nullptr to keep nothing across
+    // restarts. Checked when the face is registered (FaceSelection).
+    virtual const char* storageKey() const { return nullptr; }
+    // Once, at registration: the face's record, or nullptr without storage.
+    // The face reads what it keeps here and saves from events that confirm a
+    // change (handle), never from plan, paint or a clock tick.
+    virtual void bindPreferences(FacePreferences*) {}
+    // Drawing resources only (caches, fonts). The face's state (its variant,
+    // what it read from its record) lives across end and begin.
     virtual bool begin(Gfx&,bool disableCache=false)=0;
     virtual void end()=0;
     // The environment is the one update() received. The face places itself:
@@ -20,6 +33,9 @@ public:
     // Draws what reaches the context, its background first. The context is
     // already narrowed to the uncovered clip.
     virtual void paint(Gfx&,const PaintContext&)=0;
+    // Where paint covers every pixel with its own opaque background, after
+    // plan: the black base is not restored there. Empty for a face on black.
+    virtual Rect opaqueArea() const { return {}; }
     // The face's own deadline (clock ticks and the like). Background labels
     // have their own deadlines; the runtime combines them with backgroundInterest.
     virtual TimeUs nextUpdate(TimeUs now,const WatchData& data) const=0;

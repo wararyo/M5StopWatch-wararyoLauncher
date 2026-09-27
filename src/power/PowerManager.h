@@ -5,7 +5,9 @@ namespace launcher {
 enum class DisplayState { Active, WatchIdle, ScreenOff };
 // A failed read is unknown, never 0%, for the same reason a failed VBUS read is
 // not zero volts. The watch face shows `--%` rather than an empty battery.
-struct BatteryState { int percent = -1; bool charging = false; };
+// `chargingKnown` is false when the PMIC could not say whether it charges:
+// that is not the same as "not charging" (docs/task10/plan-10-5.md 3).
+struct BatteryState { int percent = -1; bool charging = false; bool chargingKnown = false; };
 struct UsbState {
     bool vbusValid = false;
     int vbusMv = 0;

@@ -21,7 +21,9 @@ namespace launcher {
 class HostRenderer final : public RenderPort, public HomeControlPort {
 public:
     explicit HostRenderer(M5GFX& display):display_(display),renderer_(display) {}
-    bool begin(bool disableCache=false);
+    // `store` holds the face selection and the faces' records; null keeps
+    // everything in RAM (the render check).
+    bool begin(bool disableCache=false,WatchPreferences* store=nullptr);
     bool registerFace(WatchFace& face) { return home_.registerFace(face); }
     bool selectFace(const char* id,bool disableCache=false) { return home_.selectFace(display_,id,disableCache); }
     void invalidate() override { renderer_.invalidate(); home_.resume(); }
@@ -29,6 +31,12 @@ public:
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return home_.nextUpdate(now,data); }
     BackgroundInterest backgroundInterest(const WatchData& data) const override { return home_.backgroundInterest(data); }
     HomeOutcome handle(const HomeEvent& event) override { return home_.handle(event); }
+    int faceCount() const override { return home_.faceCount(); }
+    WatchFaceChoice faceAt(int i) const override { return home_.faceAt(i); }
+    int currentFace() const override { return home_.currentFace(); }
+    // Settings' confirmed choice. The face begins now even behind settings;
+    // its first frame is a full repaint whenever it next shows.
+    FaceChoiceResult chooseFace(const char* id) override { return home_.chooseFace(display_,id); }
     uint16_t listBackground() const { return home_.listBackground(); }
     const lgfx::IFont* listFont() const { return nameFont_; }
     const ListView& listView() const { return appList_.view(); }
@@ -44,6 +52,7 @@ public:
     ListView& listViewForTest() { return appList_.view(); }
     SettingsLayer& settingsForTest() { return settings_; }
     int digitalCachedParts() const { return home_.digital().cachedParts(); }
+    int forestCachedParts() const { return home_.forest().cachedParts(); }
 #endif
 private:
     RenderLayer* layer(FrameLayer id);

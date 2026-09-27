@@ -128,7 +128,7 @@ python tools/build_font.py --source <GenShin>          # 日本語資産（引�
 | `DDinProExpBold28.vlw` | 95 | 25,562 | `41556fa3b3b8eb3e07cf8da2cdc9067014031b356978f9f43d0dab15dc53226e` |
 | `DDinProExpBold22.vlw` | 95 | 17,205 | `6da732877d4b9ea4bbb1a24a3b74d6e97b33bd33652c4ad0e01ac1f1f6475853` |
 | `DDinProCondensedSemiBold120.vlw` | 12 | 33,663 | `fdbf09203d4ee3985c6462320dbff2506127e826f37130355a7700d76aa9b389` |
-| `GenShinGothicMedium28.vlw` | 347 | 175,599 | `f7687e8a5214eeea3d8b90b85c90aab4a41e5639e494c85756bb0fd9c3b63d2d` |
+| `GenShinGothicMedium28.vlw` | 350 | 177,738 | `0382dcd9227283a19a6011454ccefdf1c097f8f42ca3a4db600c6a513694da29`（10-5で「盤・使・用」を追加。10-3時点は347字・175,599 bytes） |
 
 bytesは4節の実測と一致する。日本語資産は[10-0の所見1](baseline.md)を「未収録の字を収録して再生成」で解消した。
 引数省略時の従来動作のまま作り直すと、既存の340字は寸法・画素とも差0で、増えたのは`src/`にだけある7字

@@ -12,13 +12,13 @@ def main():
         raise SystemExit("g++ is required (on Windows: MSYS2 UCRT64 GCC).")
     with tempfile.TemporaryDirectory(prefix="launcher-runtime-") as directory:
         for suite in ("runtime_tests", "ui_tests", "time_tests", "settings_tests",
-                      "multifirm_tests", "stopwatch_tests", "background_tests"):
+                      "multifirm_tests", "stopwatch_tests", "background_tests", "watchface_tests"):
             binary = Path(directory) / (suite + ".exe")
             sources = [f"tests/{suite}.cpp", "src/input/InputController.cpp",
                        "src/host/ScreenManager.cpp", "src/host/HostRuntime.cpp", "src/ui/rendering/Element.cpp",
                        "src/ui/list/ListController.cpp", "src/features/launcher/LauncherController.cpp",
                        "src/services/TimeService.cpp", "src/features/home/HomeDataSource.cpp",
-                       "src/storage/SettingsStore.cpp", "src/features/settings/SettingsScreen.cpp",
+                       "src/storage/SettingsStore.cpp", "src/storage/WatchPreferences.cpp", "src/features/settings/SettingsScreen.cpp",
                        "src/features/external/ExternalAppScreen.cpp",
                        "src/services/StopwatchService.cpp",
                        "src/features/stopwatch/StopwatchFormat.cpp", "src/features/stopwatch/StopwatchScreen.cpp",

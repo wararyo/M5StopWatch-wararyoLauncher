@@ -37,33 +37,22 @@ void DigitalWatchFace::measure(Gfx& g) {
             f.ascent=int(m.baseline*f.size); f.descent=int((m.height-m.baseline)*f.size);
         }
     };
-    timeGlyphs_=digitalTimeGlyphs();
-    pick(time_,nullptr,&fonts::FreeSansBold24pt7b,2);
     pick(text_,watchTextFont(),&fonts::FreeSans18pt7b,1);
     pick(small_,watchSmallFont(),&fonts::FreeSans12pt7b,1);
     pick(wide_,vlwFont(),&fonts::lgfxJapanGothic_24,1);
-    // The widest value each group can show, so the colons stay put.
-    useFont(g,time_);
-    auto width=[&](const char* s) { return timeGlyphs_ ? timeGlyphs_->width(s) : int(g.textWidth(s)); };
-    char two[3];
-    int hour=width("--"),minute=hour;
-    for (int i=0;i<60;++i) {
-        std::snprintf(two,sizeof(two),"%02d",i);
-        const int w=width(two);
-        if (i<24) hour=std::max(hour,w);
-        minute=std::max(minute,w);
-    }
-    metrics_.timeAscent=timeGlyphs_ ? timeGlyphs_->ascent() : time_.ascent;
-    metrics_.timeDescent=timeGlyphs_ ? timeGlyphs_->descent() : time_.descent;
-    metrics_.hourWidth=hour; metrics_.minuteWidth=minute; metrics_.colonWidth=width(":");
     // The lift belongs to the embedded digits; a fallback font keeps its own colon.
-    metrics_.colonLift=timeGlyphs_ ? DigitalMetrics{}.colonLift : 0;
+    digits_.measure(g,digitalTimeGlyphs(),&fonts::FreeSansBold24pt7b,2,DigitalMetrics{}.colonLift);
+    const auto& t=digits_.metrics();
+    metrics_.timeAscent=t.ascent; metrics_.timeDescent=t.descent;
+    metrics_.hourWidth=t.hourWidth; metrics_.minuteWidth=t.minuteWidth; metrics_.colonWidth=t.colonWidth;
+    metrics_.colonLift=digits_.colonLift();
     metrics_.textAscent=text_.ascent; metrics_.textDescent=text_.descent;
     metrics_.smallAscent=small_.ascent; metrics_.smallDescent=small_.descent;
     g.setTextSize(1);
     auto source=[](const lgfx::IFont* f) { return f && f->getType()==lgfx::IFont::ft_vlw ? "vlw" : "builtin"; };
     std::printf("[WatchFace] digital fonts time=%s text=%s small=%s wide=%s hour=%d minute=%d colon=%d\n",
-        timeGlyphs_ ? "vlw" : "builtin",source(text_.font),source(small_.font),source(wide_.font),hour,minute,metrics_.colonWidth);
+        digits_.embedded() ? "vlw" : "builtin",source(text_.font),source(small_.font),source(wide_.font),
+        metrics_.hourWidth,metrics_.minuteWidth,metrics_.colonWidth);
 }
 // Sized for the widest the part can be in either variant, once per begin, so
 // switching variants reallocates nothing. The time groups live in internal
@@ -72,29 +61,23 @@ void DigitalWatchFace::measure(Gfx& g) {
 void DigitalWatchFace::makeCaches() {
     const auto hms=digitalLayout(viewport_,DigitalVariant::HourMinuteSecond,0,metrics_);
     const auto hm=digitalLayout(viewport_,DigitalVariant::HourMinute,0,metrics_);
-    int bytes=0;
-    auto make=[&](M5Canvas& sprite,int w,int h,bool psram) {
-        if (!cacheAllowed_) return false;
-        sprite.setPsram(psram); sprite.setColorDepth(16);
-        if (!sprite.createSprite(w,h)) return false;
-        if (!psram) bytes+=w*h*2;
-        return true;
+    const auto groups=[](const DigitalLayout& l) {
+        TimeGroups t; t.hour=l.hour; t.minute=l.minute; t.second=l.second; return t;
     };
-    hourCache_.ready=make(hourCache_.sprite,hms.hour.w,hms.hour.h,false);
-    minuteCache_.ready=make(minuteCache_.sprite,std::max(hms.minute.w,hm.minute.w),hms.minute.h,false);
-    secondCache_.ready=make(secondCache_.sprite,hms.second.w,hms.second.h,false);
+    const int bytes=digits_.makeCaches(groups(hm),groups(hms),cacheAllowed_);
     int psram=0;
     for (auto& p:chips_) {
-        p.cacheReady=make(p.sprite,std::max(1,hms.chipsWidth),std::max(1,hms.chipHeight),true);
+        p.cacheReady=false;
+        if (!cacheAllowed_) continue;
+        p.sprite.setPsram(true); p.sprite.setColorDepth(16);
+        p.cacheReady=p.sprite.createSprite(std::max(1,hms.chipsWidth),std::max(1,hms.chipHeight))!=nullptr;
         if (p.cacheReady) psram+=p.sprite.width()*p.sprite.height()*2;
     }
     std::printf("[WatchFace] digital cache time=%d/3 internal_bytes=%d items=%d/2 psram_bytes=%d\n",
-        int(hourCache_.ready)+int(minuteCache_.ready)+int(secondCache_.ready),bytes,
-        int(chips_[0].cacheReady)+int(chips_[1].cacheReady),psram);
+        digits_.cached(),bytes,int(chips_[0].cacheReady)+int(chips_[1].cacheReady),psram);
 }
 int DigitalWatchFace::cachedParts() const {
-    return int(hourCache_.ready)+int(minuteCache_.ready)+int(secondCache_.ready)+
-           int(chips_[0].cacheReady)+int(chips_[1].cacheReady);
+    return digits_.cached()+int(chips_[0].cacheReady)+int(chips_[1].cacheReady);
 }
 bool DigitalWatchFace::begin(Gfx& g,bool disableCache) {
     end();
@@ -106,7 +89,7 @@ bool DigitalWatchFace::begin(Gfx& g,bool disableCache) {
 }
 void DigitalWatchFace::end() {
     // The variant is the face's setting, not part of its caches: it stays.
-    for (auto* c:{&hourCache_,&minuteCache_,&secondCache_}) { c->sprite.deleteSprite(); c->ready=false; c->drawn[0]=0; }
+    digits_.release();
     for (auto& p:chips_) {
         p.sprite.deleteSprite(); p.cacheReady=false; p.drawnKey=0; p.scaled=nullptr; p.maskReady=false;
     }
@@ -117,22 +100,13 @@ void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const WatchEnvironment& env,
     viewport_=env.viewport; clip_=env.clip;
     offset_=-static_cast<int>(env.listProgress*viewport_.height);
     variant_=control_.variant();
-    const bool seconds=variant_==DigitalVariant::HourMinuteSecond;
     const auto& t=d.localTime;
     const bool valid=d.timeValid && t.tm_hour>=0 && t.tm_hour<24 && t.tm_min>=0 && t.tm_min<60 &&
         t.tm_sec>=0 && t.tm_sec<=60 && t.tm_wday>=0 && t.tm_wday<7 && t.tm_mon>=0 && t.tm_mon<12 &&
         t.tm_mday>=1 && t.tm_mday<=31;
-    if (valid) {
-        std::snprintf(hour_,sizeof(hour_),"%02d",t.tm_hour);
-        std::snprintf(minute_,sizeof(minute_),"%02d",t.tm_min);
-        // A leap second shows as :59 rather than widening the digits.
-        std::snprintf(second_,sizeof(second_),"%02d",std::min(t.tm_sec,59));
-        std::snprintf(date_,sizeof(date_),"%s, %s %02d",Days[t.tm_wday],Months[t.tm_mon],t.tm_mday);
-    } else {
-        std::strcpy(hour_,"--"); std::strcpy(minute_,"--"); std::strcpy(second_,"--");
-        std::strcpy(date_,"SET TIME");
-    }
-    if (!seconds) second_[0]=0;
+    digits_.set(t,valid,variant_);
+    if (valid) std::snprintf(date_,sizeof(date_),"%s, %s %02d",Days[t.tm_wday],Months[t.tm_mon],t.tm_mday);
+    else std::strcpy(date_,"SET TIME");
     batteryPercent_=d.batteryPercent>=0 && d.batteryPercent<=100 ? d.batteryPercent : -1;
     charging_=d.charging;
     if (batteryPercent_<0) std::strcpy(battery_,"--%");
@@ -189,7 +163,9 @@ void DigitalWatchFace::plan(FramePlan& frame,Gfx& g,const WatchEnvironment& env,
 
     const uint32_t hashes[PartCount]={
         hashValue(uint32_t(batteryPercent_+1)|uint32_t(charging_)<<8,hashString(battery_)),
-        hashString(date_),hashString(hour_),hashValue(uint32_t(variant_),hashString(minute_)),hashString(second_),
+        hashString(date_),hashString(digits_.text(TimeDigits::Hour)),
+        hashValue(uint32_t(variant_),hashString(digits_.text(TimeDigits::Minute))),
+        hashString(digits_.text(TimeDigits::Second)),
         chips_[0].key,chips_[1].key,0xa995};
     for (int i=0;i<PartCount;++i) {
         boxes_[i]=boxes_[i].empty() ? Rect{} : shifted(boxes_[i]);
@@ -225,29 +201,6 @@ void DigitalWatchFace::paintDate(Gfx& g,int dx,int dy) {
     g.setTextColor(DateGrey,Black); g.setTextDatum(baseline_center);
     g.drawString(date_,layout_.cx-dx,layout_.dateBaseline+offset_-dy);
 }
-void DigitalWatchFace::drawTime(Gfx& g,const char* text,int x,int y,textdatum_t datum) {
-    if (!timeGlyphs_) {
-        useFont(g,time_); g.setTextColor(White,Black); g.setTextDatum(datum); g.drawString(text,x,y);
-        return;
-    }
-    const int w=timeGlyphs_->width(text);
-    drawGlyphs(g,*timeGlyphs_,text,datum==baseline_right ? x-w : datum==baseline_center ? x-w/2 : x,y,White,Black);
-}
-void DigitalWatchFace::paintHour(Gfx& g,int dx,int dy) {
-    const int y=layout_.timeBaseline+offset_-dy;
-    drawTime(g,hour_,layout_.hourRight-dx,y,baseline_right);
-    drawTime(g,":",layout_.colon1X-dx,y-metrics_.colonLift,baseline_left);
-}
-void DigitalWatchFace::paintMinute(Gfx& g,int dx,int dy) {
-    const int y=layout_.timeBaseline+offset_-dy;
-    if (variant_==DigitalVariant::HourMinuteSecond) {
-        drawTime(g,minute_,layout_.minuteX-dx,y,baseline_center);
-        drawTime(g,":",layout_.colon2X-dx,y-metrics_.colonLift,baseline_left);
-    } else drawTime(g,minute_,layout_.minuteX-dx,y,baseline_left);
-}
-void DigitalWatchFace::paintSecond(Gfx& g,int dx,int dy) {
-    drawTime(g,second_,layout_.secondX-dx,layout_.timeBaseline+offset_-dy,baseline_left);
-}
 void DigitalWatchFace::paintChip(Gfx& g,const Chip& p,int dx,int dy) {
     const Rect b=shifted(p.box);
     const int x=b.x-dx,y=b.y-dy,h=b.h;
@@ -280,26 +233,19 @@ void DigitalWatchFace::paintApps(Gfx& g,int dx,int dy) {
     g.setTextColor(AppsGrey,Black); g.setTextDatum(baseline_center);
     g.drawString("APPS",layout_.cx-dx,layout_.appsBaseline+offset_-dy);
 }
-void DigitalWatchFace::paintTime(Gfx& g,TimeCache& cache,const char* text,const Rect& box,
-                                 void (DigitalWatchFace::*draw)(Gfx&,int,int)) {
-    if (!cache.ready) { (this->*draw)(g,0,0); return; }
-    if (std::strcmp(cache.drawn,text)!=0 || cache.variant!=variant_) {
-        cache.sprite.fillScreen(Black);
-        (this->*draw)(cache.sprite,box.x,box.y);
-        std::snprintf(cache.drawn,sizeof(cache.drawn),"%s",text);
-        cache.variant=variant_;
-    }
-    cache.sprite.pushSprite(&g,box.x,box.y);
-}
 void DigitalWatchFace::paint(Gfx& g,const PaintContext& context) {
+    TimeGroups time;
+    time.hourRight=layout_.hourRight; time.colon1X=layout_.colon1X; time.colon2X=layout_.colon2X;
+    time.minuteX=layout_.minuteX; time.secondX=layout_.secondX;
+    const int baseline=layout_.timeBaseline+offset_;
     for (int i=0;i<PartCount;++i) {
         if (!context.clip(g,boxes_[i])) continue;
         switch (i) {
         case Battery: paintBattery(g,0,0); break;
         case Date: paintDate(g,0,0); break;
-        case Hour: paintTime(g,hourCache_,hour_,boxes_[Hour],&DigitalWatchFace::paintHour); break;
-        case Minute: paintTime(g,minuteCache_,minute_,boxes_[Minute],&DigitalWatchFace::paintMinute); break;
-        case Second: paintTime(g,secondCache_,second_,boxes_[Second],&DigitalWatchFace::paintSecond); break;
+        case Hour: digits_.paint(g,TimeDigits::Hour,time,baseline,boxes_[Hour],White,Black); break;
+        case Minute: digits_.paint(g,TimeDigits::Minute,time,baseline,boxes_[Minute],White,Black); break;
+        case Second: digits_.paint(g,TimeDigits::Second,time,baseline,boxes_[Second],White,Black); break;
         case Item0: case Item1: {
             auto& p=chips_[i-Item0];
             if (!p.cacheReady) { paintChip(g,p,0,0); break; }

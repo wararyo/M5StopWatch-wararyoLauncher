@@ -407,9 +407,30 @@ void homeGestures() {
     h.time += 200000; r.step();
     CHECK(framesOver(5) == 0);              // The second period is gone.
 }
+// Same-sample button release and long press are both intentional actions
+// (task 10-6, agreed 2026-09-27). Home still takes priority over both.
+void simultaneousHomeInputs() {
+    for (bool buttonB : {false, true}) {
+        TestScreens s;
+        InputController input;
+        auto step = [&](TimeUs now, InputSnapshot raw) {
+            const auto e = input.update(now, raw, false, s.homeAtRest());
+            s.handle(e, now);
+            return e;
+        };
+        step(0, {false, false, true, 234, 200});
+        step(590000, {!buttonB, buttonB, true, 234, 200});
+        const auto e = step(600000, {false, false, true, 234, 200});
+        CHECK(e.gesture == Gesture::LongPress && (buttonB ? e.decide : e.next));
+        CHECK(s.model().screen == ScreenId::AppList);
+        CHECK(s.home.events == 1 && s.home.digital.variant() == DigitalVariant::HourMinuteSecond);
+        step(610000, {});
+        CHECK(s.home.events == 1); // The touch is spent, with no trailing tap.
+    }
+}
 int main() {
     buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep();
-    overload(); longPress(); homeGestures();
+    overload(); longPress(); homeGestures(); simultaneousHomeInputs();
     std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, overload/early-wake, "
                  "long press, home gestures\n";
 }

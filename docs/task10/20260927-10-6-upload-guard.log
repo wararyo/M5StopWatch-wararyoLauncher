@@ -1,0 +1,13 @@
+test_blocked_targets_alone_and_combined (test_upload_guard.HostGuardTest.test_blocked_targets_alone_and_combined) ... ok
+test_cached_image_has_always_run_size_check (test_upload_guard.HostGuardTest.test_cached_image_has_always_run_size_check) ... ok
+test_guard_runs_before_build_hooks (test_upload_guard.HostGuardTest.test_guard_runs_before_build_hooks) ... ok
+test_missing_image_fails (test_upload_guard.HostGuardTest.test_missing_image_fails) ... ok
+test_non_writing_targets (test_upload_guard.HostGuardTest.test_non_writing_targets) ... ok
+test_size_boundary (test_upload_guard.HostGuardTest.test_size_boundary) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.026s
+
+OK
+[MultiFirm] host size: 4194303/4194304 bytes
+[MultiFirm] host size: 4194304/4194304 bytes

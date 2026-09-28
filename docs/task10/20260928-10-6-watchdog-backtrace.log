@@ -1,0 +1,15 @@
+0x420460bb: task_wdt_timeout_handling at C:\Users\wararyo\.platformio\packages\framework-espidf\components\esp_system\task_wdt/task_wdt.c:436
+ (inlined by) task_wdt_isr at C:\Users\wararyo\.platformio\packages\framework-espidf\components\esp_system\task_wdt/task_wdt.c:509
+0x40379fde: _xt_lowint1 at C:\Users\wararyo\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+0x4202201e: lgfx::v1::LGFXBase::writeFastHLine(long, long, long) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/.pio/libdeps/m5stopwatch-render-check/M5GFX@0.2.28/src/lgfx/v1/LGFXBase.cpp:188
+ (inlined by) lgfx::v1::LGFXBase::fillSmoothRoundRect(long, long, long, long, long) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/.pio/libdeps/m5stopwatch-render-check/M5GFX@0.2.28/src/lgfx/v1/LGFXBase.cpp:1193
+0x42009981: void lgfx::v1::LGFXBase::fillSmoothRoundRect<unsigned short>(long, long, long, long, long, unsigned short const&) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/.pio/libdeps/m5stopwatch-render-check/M5GFX@0.2.28/src/lgfx/v1/LGFXBase.hpp:301 (discriminator 1)
+ (inlined by) launcher::ListView::paintRow(lgfx::v1::LovyanGFX&, launcher::RowLayout const&, launcher::ListRow const&, bool, char const*, launcher::ListView::Slot*) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/ui/list/ListView.cpp:128 (discriminator 1)
+0x42009d7a: launcher::ListView::paint(lgfx::v1::LovyanGFX&, launcher::PaintContext const&) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/ui/list/ListView.cpp:174 (discriminator 1)
+0x42016f6e: launcher::AppListLayer::paint(lgfx::v1::LovyanGFX&, launcher::PaintContext const&) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/features/launcher/AppListLayer.cpp:11 (discriminator 2)
+0x42004b67: launcher::Renderer::draw(launcher::RenderLayer* const*, int, launcher::FrameOverlay*) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/ui/rendering/Renderer.cpp:31 (discriminator 3)
+0x4200b6e5: launcher::HostRenderer::draw(launcher::FrameModel const&, launcher::WatchData const&) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/host/HostRenderer.cpp:52 (discriminator 4)
+0x4200cde5: launcher::runRepaintCheck(launcher::HostRenderer&, m5gfx::M5GFX&, launcher::SlotCatalog const&)::{lambda(char const*, launcher::FrameModel const&, launcher::WatchData const&)#1}::operator()(char const*, launcher::FrameModel const&, launcher::WatchData const&) const at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/host/RenderDiagnostics.cpp:380 (discriminator 1)
+0x4200f9ca: launcher::runRepaintCheck(launcher::HostRenderer&, m5gfx::M5GFX&, launcher::SlotCatalog const&) at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/host/RenderDiagnostics.cpp:777
+0x42003fc7: app_main at C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher/src/main.cpp:144
+0x4206c753: main_task at C:\Users\wararyo\.platformio\packages\framework-espidf\components\freertos/app_startup.c:208

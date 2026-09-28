@@ -10,9 +10,9 @@ namespace launcher {
 // The settings layer. It plans nothing at all on the clock and the app list, so
 // the frame cost is only paid while settings is open.
 //
-// The top menu is the shared list, drawn by a ListView of its own; editors and
-// information are the elements below. Only one of the two is planned in a
-// frame. Switching between them keeps the screen id, so the app's screen
+// The top menu and the watch face choice are the shared list, drawn by a
+// ListView of their own; editors and information are the elements below. Only
+// one of them is planned in a frame. Switching between them keeps the screen id, so the app's screen
 // change never sees it: the layer itself turns that frame into a full repaint
 // and forgets both histories.
 class SettingsLayer final : public RenderLayer {
@@ -24,7 +24,7 @@ public:
         viewport_=viewport; model_=model; visible_=visible; stats_=stats;
     }
     void plan(FramePlan& frame,Gfx& g) override;
-    void paint(Gfx& g,const FramePlan& frame) override;
+    void paint(Gfx& g,const PaintContext& context) override;
     const ListView& menuView() const { return menu_; }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
     ListView& menuViewForTest() { return menu_; }
@@ -48,11 +48,10 @@ private:
         bool done=false;
         char text[40]{};
     };
-    enum class Shown : uint8_t { None,Menu,Items };
+    enum class Shown : uint8_t { None,Menu,Faces,Items };
     void build(Viewport viewport,const SettingsModel& model,bool stats);
     Item items_[Capacity]{};
     Element elements_[Capacity]{};
-    int handles_[Capacity]{};
     int count_=0;
     Shown shown_=Shown::None;
     const lgfx::IFont* font_=nullptr;
@@ -63,6 +62,8 @@ private:
     // Members, not locals: the view reads the rows and labels again at paint.
     std::array<ListRow,SettingsMenuCount> rows_{};
     SettingsMenuLabels labels_{};
+    std::array<ListRow,SettingsFaceRows> faceRows_{};
+    SettingsFaceLabels faceLabels_{};
     const char* labelForTest_=nullptr;
 };
 }

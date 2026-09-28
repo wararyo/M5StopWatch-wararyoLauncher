@@ -1,0 +1,13 @@
+﻿python : ......
+At line:2 char:1
++ python -m unittest discover -s tests -p test_upload_guard.py *> docs/ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (......:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+----------------------------------------------------------------------
+Ran 6 tests in 0.023s
+
+OK
+[MultiFirm] host size: 4194303/4194304 bytes
+[MultiFirm] host size: 4194304/4194304 bytes

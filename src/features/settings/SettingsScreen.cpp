@@ -36,6 +36,10 @@ void SettingsScreen::openView(SettingsView view) {
         model_.fields[0]=store_->get().brightness;
     } else if (view==SettingsView::ScreenOff) {
         model_.fields[0]=screenOffIndex(store_->get().screenOffSec);
+    } else if (view==SettingsView::WatchFace) {
+        // A new visit starts at the top: the faces, then back.
+        faceList_.setRows(buildSettingsFaceRows(faceRows_,faceCount()));
+        faceList_.reset();
     }
 }
 void SettingsScreen::step(int delta) {
@@ -102,40 +106,61 @@ void SettingsScreen::openItem(RowId id,ScreenOutcome& out) {
     menu_.finish();
     openView(view);
 }
+const char* SettingsScreen::chooseFace(RowId id) {
+    const int index=settingsFaceIndex(id);
+    if (id==SettingsFaceBack || !faces_ || index<0 || index>=faceCount()) {
+        faceList_.finish(); openView(SettingsView::Menu); return nullptr;
+    }
+    // The view stays open: the mark moves to the face now shown.
+    switch (faces_->chooseFace(faces_->faceAt(index).id)) {
+    case FaceChoiceResult::SaveFailed: return "保存に失敗しました";
+    case FaceChoiceResult::Failed: return "文字盤を表示できません";
+    default: return nullptr;
+    }
+}
 // The same order as the launcher's list (ScreenManager::handle), without its
-// pull back to the clock: at the top a downward drag only scrolls back.
-ScreenOutcome SettingsScreen::handleMenu(const Events& e,TimeUs now) {
+// pull back to the clock: at the top a downward drag only scrolls back. Both
+// lists fill the panel at rest.
+ScreenOutcome SettingsScreen::handleList(ListController& list,const Events& e,TimeUs now,ListDecision& decision) {
     ScreenOutcome out{};
-    if (e.gesture==Gesture::TouchStart) { out.changed=menu_.touchStart(); return out; }
-    if ((e.gesture==Gesture::Tap || e.gesture==Gesture::DragEnd) && menu_.releaseAfterStop(now)) {
+    if (e.gesture==Gesture::TouchStart) { out.changed=list.touchStart(); return out; }
+    if ((e.gesture==Gesture::Tap || e.gesture==Gesture::DragEnd) && list.releaseAfterStop(now)) {
         out.changed=true; return out;
     }
-    if (e.gesture==Gesture::Cancel) { menu_.cancel(now); out.changed=true; return out; }
+    if (e.gesture==Gesture::Cancel) { list.cancel(now); out.changed=true; return out; }
     if (e.gesture==Gesture::DragStart) {
         if (std::abs(e.totalX)>std::abs(e.totalY)) return out;
-        menu_.dragStart();
+        list.dragStart();
     }
     if (e.gesture==Gesture::DragStart || e.gesture==Gesture::DragMove) {
-        out.changed=menu_.dragMove(float(e.totalY)); return out;
+        out.changed=list.dragMove(float(e.totalY)); return out;
     }
     if (e.gesture==Gesture::DragEnd) {
-        if (menu_.state().dragging) { menu_.dragEnd(-e.velocityY,now); out.changed=true; }
+        if (list.state().dragging) { list.dragEnd(-e.velocityY,now); out.changed=true; }
         return out;
     }
-    if (e.next) { out.changed=menu_.next(now); return out; }
-    ListDecision decision;
+    if (e.next) { out.changed=list.next(now); return out; }
     if (e.gesture==Gesture::Tap)
-        decision=menu_.tap(settingsMenuPlacement({width_,height_},menu_.scroll()),e.x,e.y,now);
-    else if (e.decide) decision=menu_.decide(now);
-    if (!decision.changed) return out;
-    out.changed=true;
-    if (decision.decided) openItem(decision.id,out);
+        decision=list.tap(settingsMenuPlacement({width_,height_},list.scroll()),e.x,e.y,now);
+    else if (e.decide) decision=list.decide(now);
+    out.changed=decision.changed;
     return out;
 }
 ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs now) {
     ScreenOutcome out{};
     if (!available()) return out;
-    if (model_.view==SettingsView::Menu) return handleMenu(e,now);
+    if (model_.view==SettingsView::Menu) {
+        ListDecision decision;
+        out=handleList(menu_,e,now,decision);
+        if (decision.decided) openItem(decision.id,out);
+        return out;
+    }
+    if (model_.view==SettingsView::WatchFace) {
+        ListDecision decision;
+        out=handleList(faceList_,e,now,decision);
+        if (decision.decided) out.notice=chooseFace(decision.id);
+        return out;
+    }
     const int fields=settingsFieldCount(model_.view);
     if (e.gesture==Gesture::Tap) {
         const auto hit=hitSettings({{width_,height_},model_.view,model_.cursor},e.x,e.y);

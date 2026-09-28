@@ -1,0 +1,10 @@
+﻿[OK] generated SDK configuration
+[OK] MultiFirm f5a8fd88f50dfb50c6e6e1e82bccc491a936bd47
+python : Build verification failed: [Errno 2] No such file or directory: 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoL
+auncher\\.pio\\build\\m5stopwatch\\project_description.json'
+At line:1 char:462
++ ... STEXITCODE; python tools/verify_build.py --environment $e *> "docs/ta ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Build verificat...scription.json':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

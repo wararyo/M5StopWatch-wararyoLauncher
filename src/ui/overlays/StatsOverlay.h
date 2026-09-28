@@ -8,7 +8,7 @@ namespace launcher {
 // normal build without a serial console.
 //
 // Deliberately OUTSIDE the FramePlan. A value that changes every window would
-// drag every element it overlaps into a repaint through FramePlan::resolve, so
+// add its box to the frame's damage and repaint whatever lies under it, so
 // the act of measuring would move the number being measured. Instead the chip
 // is opaque and pushes itself whole at the end of every painted frame, after
 // every layer, so nothing below it can leave it half erased.

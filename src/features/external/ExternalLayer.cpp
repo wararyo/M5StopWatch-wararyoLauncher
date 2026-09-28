@@ -81,18 +81,17 @@ void ExternalLayer::plan(FramePlan& frame,Gfx& g) {
             hash=hashValue(uint32_t(item.selected)|(uint32_t(item.alert)<<1),hash);
             hash=hashValue(uint32_t(item.index),hash);
         }
-        handles_[i]=frame.add(elements_[i],used ? items_[i].box : Rect{},hash);
+        frame.add(elements_[i],used ? items_[i].box : Rect{},hash);
     }
 }
-void ExternalLayer::paint(Gfx& g,const FramePlan& frame) {
+void ExternalLayer::paint(Gfx& g,const PaintContext& context) {
     if (!visible_) return;
     const Viewport& m=viewport_;
     const lgfx::IFont* font=font_;
     const float scale=float(std::min(m.width,m.height))/468;
     for (int i=0;i<count_;++i) {
         const auto& item=items_[i];
-        if (item.box.empty() || !frame.shouldPaint(handles_[i])) continue;
-        g.setClipRect(item.box.x,item.box.y,item.box.w,item.box.h);
+        if (!context.clip(g,item.box)) continue;
         g.setFont(font); g.setTextSize(scale);
         g.setTextDatum(middle_center);
         switch (item.kind) {
@@ -113,6 +112,6 @@ void ExternalLayer::paint(Gfx& g,const FramePlan& frame) {
         }
         }
     }
-    g.clearClipRect(); g.setTextSize(1);
+    g.setTextSize(1);
 }
 }

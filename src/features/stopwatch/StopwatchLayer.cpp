@@ -63,26 +63,27 @@ void StopwatchLayer::plan(FramePlan& frame,Gfx& g) {
         const auto& item=items_[i];
         uint32_t hash=hashString(item.text,hashValue(uint32_t(item.kind),0x9e3779b9u));
         hash=hashString(item.trailing,hashValue(uint32_t(item.fill),hash));
-        handles_[i]=frame.add(elements_[i],item.box,hash);
+        frame.add(elements_[i],item.box,hash);
     }
 }
-void StopwatchLayer::paint(Gfx& g,const FramePlan& frame) {
+void StopwatchLayer::paint(Gfx& g,const PaintContext& context) {
     if (!visible_) return;
     const Viewport& m=viewport_;
     const lgfx::IFont* font=font_;
     const float scale=float(std::min(m.width,m.height))/468;
-    if (frame.full()) {
-        const auto panel=stopwatchPanelBox(m);
+    // The background, wherever the frame restored it: the whole of it on a
+    // full repaint, the damage of a notice or a digit otherwise.
+    const auto panel=stopwatchPanelBox(m);
+    if (context.clip(g,panel))
         g.fillSmoothRoundRect(panel.x,panel.y,panel.w,panel.h,stopwatchPanelRadius(m),Panel);
-        const auto divider=stopwatchDividerBox(m);
+    const auto divider=stopwatchDividerBox(m);
+    if (context.clip(g,divider))
         g.fillRoundRect(divider.x,divider.y,divider.w,divider.h,divider.h/2,Divider);
-    }
     const int pad=stopwatchLapPadding(m);
     for (int i=0;i<count_;++i) {
         const auto& item=items_[i];
-        if (item.box.empty() || !frame.shouldPaint(handles_[i])) continue;
+        if (!context.clip(g,item.box)) continue;
         const auto& b=item.box;
-        g.setClipRect(b.x,b.y,b.w,b.h);
         switch (item.kind) {
         case Button:
             g.fillSmoothRoundRect(b.x,b.y,b.w,b.h,stopwatchButtonRadius(m),item.fill);
@@ -91,8 +92,7 @@ void StopwatchLayer::paint(Gfx& g,const FramePlan& frame) {
             g.drawString(item.text,b.x+b.w/2,b.y+b.h/2);
             break;
         case Clock:
-            // The panel colour is repainted across the whole box first: the
-            // erase before this left it black (see the header).
+            // The panel colour across the whole box, as the text's background.
             g.fillRect(b.x,b.y,b.w,b.h,Panel);
             g.setFont(&fonts::FreeSansBold24pt7b); g.setTextSize(timeSize_);
             g.setTextDatum(middle_right); g.setTextColor(item.ink,Panel);
@@ -125,6 +125,6 @@ void StopwatchLayer::paint(Gfx& g,const FramePlan& frame) {
             break;
         }
     }
-    g.clearClipRect(); g.setTextSize(1);
+    g.setTextSize(1);
 }
 }

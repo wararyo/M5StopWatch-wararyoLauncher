@@ -1,0 +1,4 @@
+[Font] GenShinGothic-Medium.ttf at 28px: 346 glyphs
+[Compare] shared=340 only_in_output=6 only_in_reference=0
+[Compare] metric mismatches=0
+[Compare] differing pixels=0 of 161246 (0.000%) max difference=0/255

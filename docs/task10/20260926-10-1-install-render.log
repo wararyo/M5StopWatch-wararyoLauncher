@@ -1,0 +1,32 @@
+﻿入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch-render-check\firmware.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 1,081,280 bytes
+  file: 1,081,280 bytes, SHA-256 048a5a452be6246cbb79b8e9e62f528e53432fcf3c1ab0fd2912d8e0e8bc1796
+  appended digest: 14920b89d94c0c056ddaffb6e1205ba1c1cf41a172795256f24d9264fca3670b [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 26 2026 13:59:13
+  elf_sha256: c6285f7c1b4612b06462e4694a21b0f14ea3da292fb2d7cb8a5c02fb4b8ba913
+書き込み計画:
+  1. 全体バックアップを確認 (現状と一致しなければ新規取得)
+  2. ota_0 全域消去 0x020000-0x420000 (4,194,304 bytes)
+  3. ホスト書き込み・読み戻し検証 0x020000-0x127fc0 (1,081,280 bytes)
+  4. ブートローダ・表・メタデータ・ゲスト3スロットがバックアップと一致することを確認
+  書き込まない: ブートローダ / NVS / multifirm_nvs / otadata / ゲスト
+MultiFirm 0.1.0 / Python 3.11.7
+ログ: C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\libdeps\m5stopwatch\M5StopWatch-MultiFirm\.multifirm\logs\20260926-140205-install-host.log
+リセット方針: 接続時は default_reset でダウンロードモードへ入り、各操作の間は no_reset でダウンロードモードのまま続ける。成功時だけ hard_reset でアプリへ戻す
+接続: COM11 ESP32-S3 (QFN56) (revision v0.2) MAC 28:84:85:43:a7:c0 flash 16MB esptool 4.12.0
+パーティション表: multifirm-v1 (SHA-256 6c92c0cb61094b26574e11fd087c959531a3ddb270259f0aed069d7cbcae0079)
+バックアップ C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\libdeps\m5stopwatch\M5StopWatch-MultiFirm\.multifirm\backups\backup-28848543a7c0-20260923-004238.bin: 現状と一致
+実行:
+  消去 ota_0: 0x020000-0x420000 (4,194,304 bytes)
+    消去済みを確認
+  書き込み ota_0: 0x020000-0x127fc0 (1,081,280 bytes) SHA-256 048a5a452be6246cbb79b8e9e62f528e53432fcf3c1ab0fd2912d8e0e8bc1796
+    読み戻し一致
+    イメージ検証 OK (digest 14920b89d94c0c056ddaffb6e1205ba1c1cf41a172795256f24d9264fca3670b)
+  ブートローダ・表・メタデータ・ゲストがバックアップと一致
+  不変を確認: nvs, otadata, phy_init, multifirm_nvs
+hard reset でアプリへ戻しました
+install-host 完了

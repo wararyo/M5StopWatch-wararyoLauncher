@@ -1,13 +1,14 @@
 #pragma once
 #include "host/FrameModel.h"
+#include "features/home/HomeInteraction.h"
 #include "features/launcher/AppListLayout.h"
 #include <cstdint>
 namespace launcher {
 // The layers of a frame, back to front. The statistics chip is not among them:
 // it is painted after all of them, outside the plan (ui/overlays/StatsOverlay.h).
-enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Toast };
+enum class FrameLayer : uint8_t { Home, AppListBackground, AppList, Settings, External, Stopwatch, Toast };
 inline constexpr FrameLayer FrameOrder[]={
-    FrameLayer::Home,FrameLayer::AppList,FrameLayer::Settings,
+    FrameLayer::Home,FrameLayer::AppListBackground,FrameLayer::AppList,FrameLayer::Settings,
     FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Toast};
 inline constexpr int FrameLayerCount=int(sizeof(FrameOrder)/sizeof(FrameOrder[0]));
 // Where each part of a frame goes, derived from the frame model alone. The
@@ -15,10 +16,14 @@ inline constexpr int FrameLayerCount=int(sizeof(FrameOrder)/sizeof(FrameOrder[0]
 // so the clock that is kept up to date is the clock that is drawn.
 struct FrameComposition {
     Viewport viewport{};
-    // The clock. Its clip is empty whenever none of it is on screen.
-    DrawRegion home{};
+    // The clock: the list's progress over it and the part left uncovered.
+    // The system no longer moves it; a face slides or stays as it likes
+    // (docs/task10/plan-10-4.md 5). The clip is empty whenever none of the
+    // clock is on screen.
+    WatchEnvironment home{};
     // Which layers show. A hidden list still registers its slots empty, so it
-    // erases what it drew; a closed screen registers nothing at all.
+    // erases what it drew; a closed screen registers nothing at all. The
+    // list's background shows with the list.
     bool list=false,settings=false,external=false,stopwatch=false;
     // A different screen than the frame before, set by FrameComposer. Layers
     // that planned nothing then have no history to erase with, and layers that
@@ -26,15 +31,15 @@ struct FrameComposition {
     // full. A change inside one screen (settings' menu and editors) is that
     // layer's own to repaint.
     bool changed=false;
-    bool clockVisible() const { return !home.clip.empty(); }
+    bool clockVisible() const { return home.visible(); }
 };
 inline FrameComposition composeFrame(const FrameModel& m) {
     FrameComposition c;
     c.viewport=m.viewport;
     const bool launcher=m.screen==ScreenId::Home || m.screen==ScreenId::AppList;
-    c.home=launcherHomeRegion(m.viewport,m.launcher.transition);
+    const float progress=m.launcher.transition;
     // An open screen covers the clock, wherever the slide was left.
-    if (!launcher) c.home.clip={};
+    c.home={m.viewport,launcher ? appListUncovered(m.viewport,progress) : Rect{},progress};
     c.list=launcher;
     c.settings=m.screen==ScreenId::Settings;
     c.external=m.screen==ScreenId::External;

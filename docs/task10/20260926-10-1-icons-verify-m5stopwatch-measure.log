@@ -1,0 +1,39 @@
+﻿C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch-measure\firmware.bin (host, 上限 4,194,304 bytes)
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 1,087,584 bytes
+  file: 1,087,584 bytes, SHA-256 467c4ee985e34e29e1a080b0ff24bd3ef87a7290fba6069a610e0d050c49d4bf
+  appended digest: 58c060830e434d46826f174f6421df6b9361e3b495aa3d6e31b03b982fa5906e [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 26 2026 17:39:06
+  elf_sha256: 81944ea07d3eacac631f9dfd9776d05acd11653bf2e33e9b17fab3c3523c656f
+  ゲスト上限 0x1f0000: 可 / ホスト上限 0x400000: 可
+  表示名候補: wararyoLauncher (project_name)
+結果: 受け付け可能
+入力 (ホスト): C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch-measure\firmware.bin
+  kind: app  chip_id: 9  segments: 6
+  flash header: DIO/80m/16MB
+  chip rev: v0.0 .. v655.35
+  image size: 1,087,584 bytes
+  file: 1,087,584 bytes, SHA-256 467c4ee985e34e29e1a080b0ff24bd3ef87a7290fba6069a610e0d050c49d4bf
+  appended digest: 58c060830e434d46826f174f6421df6b9361e3b495aa3d6e31b03b982fa5906e [valid]
+  project_name: 'wararyoLauncher'  version: '0.1.0-dev'
+  idf_ver: 5.5.0  built: Sep 26 2026 17:39:06
+  elf_sha256: 81944ea07d3eacac631f9dfd9776d05acd11653bf2e33e9b17fab3c3523c656f
+書き込み計画:
+  1. 全体バックアップを確認 (現状と一致しなければ新規取得)
+  2. ota_0 全域消去 0x020000-0x420000 (4,194,304 bytes)
+  3. ホスト書き込み・読み戻し検証 0x020000-0x129860 (1,087,584 bytes)
+  4. ブートローダ・表・メタデータ・ゲスト3スロットがバックアップと一致することを確認
+  書き込まない: ブートローダ / NVS / multifirm_nvs / otadata / ゲスト
+DRY RUN: 実機には接続していません。実機のレイアウトは未検証です。
+  --check-device で実機を読み取り検証、--execute で実行します。
+[OK] generated SDK configuration
+[OK] MultiFirm f5a8fd88f50dfb50c6e6e1e82bccc491a936bd47
+[OK] all partition entries and generated binary match MultiFirm
+[MultiFirm] host size: 1087584/4194304 bytes
+[OK] overload diagnostics / synthetic clock / pixel checks / frame metrics / drain record / USB history isolated by environment
+[OK] firmware SHA-256=467c4ee985e34e29e1a080b0ff24bd3ef87a7290fba6069a610e0d050c49d4bf
+[Build] project=wararyoLauncher version=0.1.0-dev IDF=5.5.0
+[OK] host image inspection and install-host preview (no device access)

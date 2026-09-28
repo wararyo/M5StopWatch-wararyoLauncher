@@ -14,6 +14,8 @@ public:
     HomeDataSource(Hal& hal, TimeService& time) : hal_(hal), time_(time) {}
     WatchData sample(TimeUs now) override;
     TimeUs nextUpdate(TimeUs now) const override;
+    // Still read only on the draw path: a dark panel costs no I2C for it.
+    void refreshBattery() override { batteryDue_ = INT64_MIN; }
 private:
     Hal& hal_;
     TimeService& time_;

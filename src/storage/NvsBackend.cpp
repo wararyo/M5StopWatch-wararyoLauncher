@@ -34,4 +34,28 @@ bool NvsBackend::save(const void* data, size_t size) {
     if (err != ESP_OK) std::printf("[Nvs] write failed: %s\n", esp_err_to_name(err));
     return err == ESP_OK;
 }
+PrefResult NvsBackend::read(const char* key, uint8_t* data, size_t& size) {
+    if (!ready_) return PrefResult::Unavailable;
+    nvs_handle_t handle = 0;
+    auto err = nvs_open(Namespace, NVS_READONLY, &handle);
+    // A namespace nobody has written yet reads as "not found".
+    if (err == ESP_ERR_NVS_NOT_FOUND) return PrefResult::Missing;
+    if (err != ESP_OK) return PrefResult::Unavailable;
+    err = nvs_get_blob(handle, key, data, &size);
+    nvs_close(handle);
+    if (err == ESP_ERR_NVS_NOT_FOUND) return PrefResult::Missing;
+    // Longer than any record this firmware writes.
+    if (err == ESP_ERR_NVS_INVALID_LENGTH) return PrefResult::Invalid;
+    return err == ESP_OK ? PrefResult::Ok : PrefResult::Unavailable;
+}
+PrefResult NvsBackend::write(const char* key, const uint8_t* data, size_t size) {
+    if (!ready_) return PrefResult::Unavailable;
+    nvs_handle_t handle = 0;
+    if (nvs_open(Namespace, NVS_READWRITE, &handle) != ESP_OK) return PrefResult::WriteFailed;
+    auto err = nvs_set_blob(handle, key, data, size);
+    if (err == ESP_OK) err = nvs_commit(handle);
+    nvs_close(handle);
+    if (err != ESP_OK) std::printf("[Nvs] write %s failed: %s\n", key, esp_err_to_name(err));
+    return err == ESP_OK ? PrefResult::Ok : PrefResult::WriteFailed;
+}
 }

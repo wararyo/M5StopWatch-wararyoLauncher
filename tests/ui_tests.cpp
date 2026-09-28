@@ -3,8 +3,14 @@
 #include "host/FrameComposer.h"
 #include "features/launcher/AppListLayout.h"
 #include "ui/rendering/Element.h"
+#include "ui/rendering/PaintContext.h"
 #include "ui/list/ListController.h"
 #include "ui/list/ListLayout.h"
+#include "ui/graphics/MaskImage.h"
+#include "ui/graphics/VlwGlyphs.h"
+#include <fstream>
+#include <iterator>
+#include <vector>
 #include <array>
 #include <cstdlib>
 #include <iostream>
@@ -25,10 +31,10 @@ void navigation() {
         now+=180000; s.update(now);
     };
     drag(-50); CHECK(s.model().screen==ScreenId::Home && s.model().launcher.transition==0);
-    CHECK((composeFrame(s.model()).home.offsetY==0 &&
+    CHECK((composeFrame(s.model()).home.listProgress==0 &&
            composeFrame(s.model()).home.clip==Rect{0,0,468,468}));
     drag(-51); CHECK(s.model().screen==ScreenId::AppList && s.model().launcher.transition==1);
-    CHECK(composeFrame(s.model()).home.offsetY==-468 && composeFrame(s.model()).home.clip.empty());
+    CHECK(composeFrame(s.model()).home.listProgress==1 && composeFrame(s.model()).home.clip.empty());
     for(int i=1;i<=5;++i) {
         e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
         CHECK(s.model().launcher.list.selection==i%5);
@@ -204,12 +210,15 @@ void launcherController() {
     LauncherController clock(v);
     CHECK(!clock.listShown() && !clock.active() && clock.nextUpdate()==INT64_MAX);
     CHECK(clock.model().transition==0 && clock.model().list.selection==0);
-    // A tap outside the apps target does nothing; on it, the list comes up.
-    e={}; e.gesture=Gesture::Tap; e.x=234; e.y=100;
-    CHECK(!clock.handle(e,0).changed && !clock.listShown());
-    const Rect apps=appsTarget(v);
-    e.x=apps.x+apps.w/2; e.y=apps.y+apps.h/2;
-    CHECK(clock.handle(e,0).changed && clock.listShown() && clock.nextUpdate()==ListController::FrameUs);
+    // A tap on the clock is the watch face's, even on APPS: the launcher only
+    // opens the list when the face asks, and a repeated request is not a
+    // second slide.
+    CHECK(clock.atRest());
+    const Rect apps=digitalAppsTarget(v,0);
+    e={}; e.gesture=Gesture::Tap; e.x=apps.x+apps.w/2; e.y=apps.y+apps.h/2;
+    CHECK(!clock.handle(e,0).changed && !clock.listShown() && clock.atRest());
+    CHECK(clock.openList(0) && clock.listShown() && clock.nextUpdate()==ListController::FrameUs);
+    CHECK(!clock.atRest() && !clock.openList(10000));
     // A horizontal drag belongs to nobody.
     LauncherController sideways(v);
     e={}; e.gesture=Gesture::DragStart; e.totalX=100; e.totalY=10;
@@ -264,14 +273,25 @@ void launcherController() {
 void composition() {
     FrameModel m; m.viewport={468,468};
     auto c=composeFrame(m);
-    CHECK(c.clockVisible() && c.home.offsetY==0 && (c.home.clip==Rect{0,0,468,468}));
+    CHECK(c.clockVisible() && c.home.listProgress==0 && (c.home.clip==Rect{0,0,468,468}));
     CHECK(c.list && !c.settings && !c.external && !c.stopwatch);
-    // Sliding up with the list: the clock's clip ends where the list begins.
-    m.screen=ScreenId::AppList; m.launcher.transition=0.5f;
+    // The list rising: the clock is told the progress and the part left
+    // uncovered, and is not moved by the system (docs/task10/plan-10-4.md 5).
+    // The clock's clip ends where the list, its background and rows, begin.
+    m.screen=ScreenId::AppList;
+    for (int step=0;step<=40;++step) {
+        m.launcher.transition=float(step)/40;
+        c=composeFrame(m);
+        const auto list=appListPlacement(m.viewport,m.launcher.transition,0);
+        const Rect cover=appListCover(m.viewport,m.launcher.transition);
+        CHECK(c.home.listProgress==m.launcher.transition && c.home.viewport.height==468);
+        CHECK(c.home.clip.y==0 && c.home.clip.w==468 && cover.y==c.home.clip.h);
+        CHECK(list.region.clip==cover && cover.y+cover.h==468 && cover.w==468);
+        CHECK(c.clockVisible()==(step<40));
+    }
+    m.launcher.transition=0.5f;
     c=composeFrame(m);
-    CHECK(c.clockVisible() && c.home.offsetY==-234 && (c.home.clip==Rect{0,0,468,234}));
-    const auto list=appListPlacement(m.viewport,m.launcher.transition,0);
-    CHECK(list.region.clip.y==c.home.clip.y+c.home.clip.h);
+    CHECK(c.clockVisible() && (c.home.clip==Rect{0,0,468,234}));
     m.launcher.transition=1;
     CHECK(!clockVisible(m) && composeFrame(m).list);
     // An open screen covers the clock and the list whatever the slide says,
@@ -283,10 +303,11 @@ void composition() {
         CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)==1);
         CHECK(c.settings==(screen==ScreenId::Settings) && c.external==(screen==ScreenId::External));
     }
-    // Back to front: the clock, the list, the screens that cover it, and the
-    // notice over everything. Each layer exactly once.
-    CHECK(FrameLayerCount==6);
-    CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppList);
+    // Back to front: the clock, the list's background and rows, the screens
+    // that cover it, and the notice over everything. Each layer exactly once.
+    CHECK(FrameLayerCount==7);
+    CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppListBackground &&
+          FrameOrder[2]==FrameLayer::AppList);
     CHECK(FrameOrder[FrameLayerCount-1]==FrameLayer::Toast);
     for (int i=0;i<FrameLayerCount;++i) for (int j=0;j<i;++j) CHECK(FrameOrder[i]!=FrameOrder[j]);
     // Another screen is a full repaint; anything within the same screen is
@@ -310,7 +331,7 @@ void composition() {
     e={}; e.decide=true; s.handle(e,200000);
     CHECK(s.model().screen==ScreenId::Stopwatch && !clockVisible(s.model()) && !composeFrame(s.model()).list);
     e={}; e.home=true; s.handle(e,300000);
-    CHECK(clockVisible(s.model()) && composeFrame(s.model()).home.offsetY==0);
+    CHECK(clockVisible(s.model()) && composeFrame(s.model()).home.listProgress==0);
 }
 // The shared list at counts other than the launcher's five, including none.
 void listLayout() {
@@ -462,8 +483,11 @@ void deadlines() {
     for(int i=0;i<5999;++i) { p.time+=10000; r.step(); }
     CHECK(p.draws==1 && p.samples==1);
     p.time=60000000; r.step(); CHECK(p.draws==2);
-    p.usb={true,5000,true}; p.time+=1000000; r.step(); CHECK(p.draws==2);
-    r.dataChanged(); r.step(); CHECK(p.draws==3);
+    // USB power arriving reads the battery again and redraws the clock
+    // (docs/task10/plan.md 3.1); staying powered does not.
+    p.usb={true,5000,true}; p.time+=1000000; r.step(); CHECK(p.draws==3);
+    p.time+=1000000; r.step(); CHECK(p.draws==3);
+    r.dataChanged(); r.step(); CHECK(p.draws==4);
     p.input={}; p.time+=10000; r.step(); // release opens list
     p.time+=180000; r.step();
     const int count=p.draws;
@@ -484,8 +508,13 @@ void deadlines() {
     d.timeValid=true; d.localTime.tm_sec=59; d.subsecondUs=999999;
     CHECK(nextMinute(999,d)==1000);
 }
+// The differential frame against a full repaint (docs/task10/plan-10-4.md 1):
+// a multicoloured background with a band that moves and changes colour, as
+// a face's scenery does, and elements over it that move, change, vanish and
+// overlap. Each frame restores the damage and repaints inside it only.
 void repaint() {
     constexpr int W=48,H=48,N=8;
+    const Rect screen{0,0,W,H};
     using Pixels=std::array<uint16_t,W*H>;
     Pixels partial{},full{};
     std::array<Element,N> elements{};
@@ -495,57 +524,403 @@ void repaint() {
         rect=intersect(rect,{0,0,W,H});
         for(int y=rect.y;y<rect.y+rect.h;++y) for(int x=rect.x;x<rect.x+rect.w;++x) pixels[y*W+x]=color;
     };
+    Rect band{0,20,W,8},shownBand=band;
+    uint16_t bandColor=0x07e0,shownBandColor=bandColor;
+    // The base the Renderer restores, then the background layer: stripes
+    // everywhere, the band over them. `area` clips it as the context does.
+    auto background=[&](Pixels& pixels,Rect area) {
+        area=intersect(area,screen);
+        for(int y=area.y;y<area.y+area.h;++y) for(int x=area.x;x<area.x+area.w;++x)
+            pixels[y*W+x]=uint16_t(0x1000+((x/5+y/3)%4)*0x0421);
+        fill(pixels,intersect(band,area),bandColor);
+    };
     bool invalidate=true;
-    std::array<Rect,N> boxes{};
-    std::array<uint16_t,N> colors{};
+    std::array<Rect,N> boxes{},shown{};
+    std::array<uint16_t,N> colors{},shownColors{};
+    bool seen=false;
     for(int step=0;step<3000;++step) {
         // Most objects remain unchanged, while moving/deleting a lower layer
-        // can invalidate an unchanged upper layer.
+        // must restore an unchanged upper layer.
         int index=random()%N;
         boxes[index]={int(random()%60)-12,int(random()%60)-12,int(random()%25),int(random()%25)};
         if(step%11==0) boxes[index]={};
         colors[index]=1+random()%65000;
+        if(step%13==0) band.y=int(random()%40);
+        if(step%29==0) bandColor=uint16_t(random());
         const bool overflow=step%71==0;
-        plan.begin(invalidate,overflow ? 2 : FramePlan::Capacity);
+        plan.begin(invalidate,screen,overflow ? 2 : FramePlan::Capacity);
+        // The background declares what it changed, as a face does.
+        const bool scenery=band!=shownBand || bandColor!=shownBandColor;
+        if(scenery) plan.damage(unite(band,shownBand));
         std::array<int,N> handles{};
-        for(int i=0;i<N;++i) handles[i]=plan.add(elements[i],intersect(boxes[i],{0,0,W,H}),colors[i]);
+        for(int i=0;i<N;++i) handles[i]=plan.add(elements[i],intersect(boxes[i],screen),colors[i]);
         plan.resolve();
         CHECK(plan.overflow()==overflow);
-        if(plan.full()) partial.fill(0);
-        else for(int i=0;i<plan.count();++i) fill(partial,plan.eraseBox(i),0);
-        for(int i=0;i<N;++i) if(plan.shouldPaint(handles[i])) fill(partial,boxes[i],colors[i]);
-        full.fill(0); for(int i=0;i<N;++i) fill(full,boxes[i],colors[i]);
-        CHECK(partial==full);
-        // The statistics overlay skips its push when it sits outside this box,
-        // so every pixel the differential pass touched has to be inside it.
-        if(!plan.full()) {
-            const Rect dirty=plan.dirtyBounds();
-            auto inside=[&](Rect r) {
-                r=intersect(r,{0,0,W,H});
-                return r.empty() || (!dirty.empty() && r.x>=dirty.x && r.y>=dirty.y &&
-                    r.x+r.w<=dirty.x+dirty.w && r.y+r.h<=dirty.y+dirty.h);
-            };
-            for(int i=0;i<plan.count();++i) CHECK(inside(plan.eraseBox(i)));
-            for(int i=0;i<N;++i) if(plan.shouldPaint(handles[i])) CHECK(inside(boxes[i]));
+        const Rect area=plan.area();
+        if(plan.full()) CHECK(area==screen);
+        else {
+            // Exactly the changes: nothing an unchanged element overlaps.
+            Rect expected=scenery ? unite(band,shownBand) : Rect{};
+            for(int i=0;i<N;++i) {
+                const Rect now=intersect(boxes[i],screen),before=seen ? intersect(shown[i],screen) : Rect{};
+                if(!seen || now!=before || colors[i]!=shownColors[i]) expected=unite(expected,unite(now,before));
+            }
+            expected=intersect(expected,screen);
+            CHECK(area==expected || (area.empty() && expected.empty()));
         }
+        background(partial,area);
+        for(int i=0;i<N;++i) {
+            CHECK(plan.shouldPaint(handles[i])==(plan.full() || intersect(boxes[i],screen).intersects(area)));
+            fill(partial,intersect(boxes[i],area),colors[i]);
+        }
+        background(full,screen); for(int i=0;i<N;++i) fill(full,boxes[i],colors[i]);
+        CHECK(partial==full);
+        shown=boxes; shownColors=colors; seen=true; shownBand=band; shownBandColor=bandColor;
         invalidate=plan.overflow();
     }
-    plan.begin(false);
-    for(int i=0;i<N;++i) plan.add(elements[i],intersect(boxes[i],{0,0,W,H}),colors[i]);
-    plan.resolve(); CHECK(!plan.anyPaint());
-    // A part registered last (a notice, a list out of slots) can still turn
-    // the whole frame into a full repaint of everything already registered.
-    plan.begin(false);
+    plan.begin(false,screen);
+    for(int i=0;i<N;++i) plan.add(elements[i],intersect(boxes[i],screen),colors[i]);
+    plan.resolve(); CHECK(!plan.anyPaint() && plan.area().empty());
+    // A part registered last (a list out of slots, a face just selected) can
+    // still turn the whole frame into a full repaint of everything already
+    // registered.
+    plan.begin(false,screen);
     std::array<int,N> handles{};
-    for(int i=0;i<N;++i) handles[i]=plan.add(elements[i],intersect(boxes[i],{0,0,W,H}),colors[i]);
+    for(int i=0;i<N;++i) handles[i]=plan.add(elements[i],intersect(boxes[i],screen),colors[i]);
     plan.forceFull(); plan.resolve();
-    CHECK(plan.full() && plan.anyPaint());
+    CHECK(plan.full() && plan.anyPaint() && plan.area()==screen);
     for(int i=0;i<N;++i) CHECK(plan.shouldPaint(handles[i]));
+}
+// The damage rectangle case by case, the context's clip, and the list's
+// background (docs/task10/plan-10-4.md 7).
+struct ClipProbe {
+    Rect clip{}; int calls=0;
+    void setClipRect(int x,int y,int w,int h) { clip={x,y,w,h}; ++calls; }
+};
+void damage() {
+    const Rect screen{0,0,468,468};
+    FramePlan plan;
+    Element scenery,digit,chip,apps;
+    const Rect digitBox{300,200,60,70},chipBox{100,290,120,48},appsBox{200,360,68,50};
+    auto frame=[&](Rect d,Rect c,Rect a,uint32_t value,bool invalidate=false) {
+        plan.begin(invalidate,screen);
+        // A foreground as large as the panel that never changes, registered
+        // first: under the old overlap closure it pulled every change into a
+        // full repaint.
+        const int s=plan.add(scenery,screen,1);
+        plan.add(digit,d,value); plan.add(chip,c,7); plan.add(apps,a,9);
+        plan.resolve();
+        return s;
+    };
+    frame(digitBox,chipBox,appsBox,0,true);
+    CHECK(plan.full() && plan.area()==screen);
+    // A small change over it: the damage is the digit, not the panel, and the
+    // large element repaints inside it.
+    int s=frame(digitBox,chipBox,appsBox,1);
+    CHECK(!plan.full() && plan.area()==digitBox && plan.shouldPaint(s));
+    frame(digitBox,chipBox,appsBox,1); CHECK(!plan.anyPaint());
+    // Only the new box (an element growing or appearing), only the old one
+    // (vanishing), the new one again (coming back).
+    const Rect wider{digitBox.x-10,digitBox.y,digitBox.w+10,digitBox.h};
+    frame(wider,chipBox,appsBox,1); CHECK(plan.area()==wider);
+    frame(wider,{},appsBox,1); CHECK(plan.area()==chipBox);
+    frame(wider,chipBox,appsBox,1); CHECK(plan.area()==chipBox);
+    // Two changes far apart: one rectangle around both, and whatever lies
+    // between them repaints too.
+    const Rect lowered{appsBox.x,appsBox.y+4,appsBox.w,appsBox.h};
+    frame(digitBox,chipBox,lowered,1);
+    CHECK(plan.area()==unite(wider,unite(appsBox,lowered)));
+    // The edge of antialiasing is part of the box a part registers, so it is
+    // restored with it: the damage is never narrower than the box.
+    const Rect padded{digitBox.x-2,digitBox.y-2,digitBox.w+4,digitBox.h+4};
+    frame(padded,chipBox,lowered,1);
+    CHECK(plan.area()==padded);
+    // Damage off the screen is cut at its edge; a background change alone
+    // makes a frame.
+    plan.begin(false,screen); plan.damage({-20,440,60,60}); plan.resolve();
+    CHECK((plan.area()==Rect{0,440,40,28}));
+    plan.begin(false,screen); plan.damage({500,500,10,10}); plan.resolve();
+    CHECK(!plan.anyPaint());
+    // Overflow: the whole screen, every element, including a refused one.
+    plan.begin(false,screen,2);
+    plan.add(scenery,screen,1); plan.add(digit,digitBox,1);
+    CHECK(plan.add(chip,chipBox,7)==-1);
+    plan.resolve();
+    CHECK(plan.full() && plan.overflow() && plan.area()==screen && plan.shouldPaint(-1));
+    // The context: the three-way intersection, and nothing set when empty.
+    plan.begin(false,screen); plan.damage({100,100,100,100}); plan.resolve();
+    const PaintContext context(plan,plan.area());
+    ClipProbe probe;
+    CHECK(context.clip(probe,{150,150,100,20}) && (probe.clip==Rect{150,150,50,20}));
+    const auto narrowed=context.within({0,0,468,160});
+    CHECK(narrowed.clip(probe,{150,150,100,20}) && (probe.clip==Rect{150,150,50,10}));
+    CHECK(!narrowed.clip(probe,{0,300,468,20}) && probe.calls==2);
+    CHECK(!context.within({}).clip(probe,screen) && probe.calls==2);
+    narrowed.restore(probe); CHECK((probe.clip==Rect{100,100,100,60}));
+    // The list's background: the band its edge swept, all of it for a new
+    // colour, nothing when neither moved.
+    const Viewport v{468,468};
+    const Rect half=appListCover(v,0.5f),more=appListCover(v,0.75f);
+    CHECK((appListCoverChange(half,0,more,0)==Rect{0,more.y,468,half.y-more.y}));
+    CHECK((appListCoverChange(more,0,half,0)==Rect{0,more.y,468,half.y-more.y}));
+    CHECK(appListCoverChange(half,0,half,0).empty());
+    CHECK(appListCoverChange(half,0,half,0x1234)==half);
+    CHECK(appListCoverChange(half,0,more,0x1234)==more);
+    CHECK(appListCoverChange({},0,half,0)==half && appListCoverChange(half,0,{},0)==half);
+    CHECK(appListCover(v,0).empty() && appListCover(v,1)==screen && appListUncovered(v,1).empty());
+}
+// Work 10-2: the clock's taps and long presses belong to the watch face.
+Events gesture(Gesture g,int x,int y) { Events e{}; e.gesture=g; e.x=x; e.y=y; return e; }
+void homeInput() {
+    const Viewport v{468,468};
+    const auto layout=digitalLayout(v,DigitalVariant::HourMinute,0);
+    // The target covers what Digital draws for APPS, and nothing of the time.
+    CHECK(layout.apps.contains(layout.appsIcon.x,layout.appsIcon.y));
+    CHECK(layout.apps.contains(layout.cx,layout.appsBaseline-5));
+    CHECK(!layout.apps.contains(layout.cx,layout.timeBaseline));
+    TestScreens s; TimeUs now=0;
+    const int ax=layout.apps.x+layout.apps.w/2,ay=layout.apps.y+layout.apps.h/2;
+    // Outside APPS: the face hears it and asks for nothing.
+    CHECK(s.homeAtRest());
+    CHECK(!s.handle(gesture(Gesture::Tap,234,100),now));
+    CHECK(s.home.events==1 && s.home.last.kind==HomeEventKind::Tap && s.home.last.x==234 && s.home.last.y==100);
+    CHECK(s.model().screen==ScreenId::Home);
+    // A long press anywhere, APPS too, is the variant; the list stays shut.
+    CHECK(s.handle(gesture(Gesture::LongPress,ax,ay),now));
+    CHECK(s.home.last.kind==HomeEventKind::LongPress && s.home.digital.variant()==DigitalVariant::HourMinuteSecond);
+    CHECK(s.model().screen==ScreenId::Home && s.homeAtRest());
+    // On APPS: the list opens with the buttons' slide.
+    CHECK(s.handle(gesture(Gesture::Tap,ax,ay),now));
+    CHECK(s.model().screen==ScreenId::AppList && !s.homeAtRest() && s.active());
+    // Not at rest: the list's gestures stay the list's.
+    const int heard=s.home.events;
+    s.handle(gesture(Gesture::LongPress,ax,ay),now);
+    CHECK(s.home.events==heard);
+    now+=400000; s.update(now);
+    // On the way back to the clock nothing reaches the face until it settles.
+    Events e{}; e.home=true; s.handle(e,now);
+    CHECK(s.homeAtRest());
+    e={}; e.next=true; s.handle(e,now);
+    now+=50000; s.update(now);
+    e={}; e.gesture=Gesture::DragStart; e.totalY=60; s.handle(e,now);
+    e.gesture=Gesture::DragEnd; s.handle(e,now);           // back down: returning
+    CHECK(s.model().screen==ScreenId::Home && s.model().launcher.transition>0 && !s.homeAtRest());
+    s.handle(gesture(Gesture::Tap,ax,ay),now);
+    CHECK(s.home.events==heard && s.model().screen==ScreenId::Home);
+    now+=400000; s.update(now);
+    CHECK(s.homeAtRest());
+    // An open screen is never the clock at rest, and gets its own taps.
+    e={}; e.next=true; s.handle(e,now); now+=400000; s.update(now);
+    e={}; e.decide=true; s.handle(e,now);
+    CHECK(s.model().screen==ScreenId::Stopwatch && !s.homeAtRest());
+    s.handle(gesture(Gesture::Tap,ax,ay),now);
+    CHECK(s.home.events==heard);
+    // Without a face bound, a tap on the clock does nothing; A still opens the list.
+    AppState state; ScreenManager bare(state.stopwatch,state.runtime,468,468);
+    CHECK(!bare.handle(gesture(Gesture::Tap,ax,ay),0) && bare.model().screen==ScreenId::Home);
+    e={}; e.next=true; CHECK(bare.handle(e,0) && bare.model().screen==ScreenId::AppList);
+}
+void digitalControl() {
+    const Viewport v{468,468};
+    DigitalControl d;
+    WatchData w; w.timeValid=true; w.localTime.tm_sec=58; w.subsecondUs=250000;
+    CHECK(d.variant()==DigitalVariant::HourMinute);
+    CHECK(d.nextUpdate(1000,w)==1000+1750000);           // 2s - 0.25s to the minute
+    HomeEvent press; press.kind=HomeEventKind::LongPress;
+    const auto out=d.handle(press,v);
+    CHECK(out.changed && out.request==HomeRequest::None && d.variant()==DigitalVariant::HourMinuteSecond);
+    CHECK(d.nextUpdate(1000,w)==1000+750000);            // the next second
+    w.localTime.tm_sec=0; w.subsecondUs=0;
+    CHECK(d.nextUpdate(1000,w)==1000+1000000);           // on a boundary: the next one
+    WatchData unset;                                     // an unset clock asks for nothing
+    CHECK(d.nextUpdate(1000,unset)==INT64_MAX);
+    d.handle(press,v);
+    CHECK(d.variant()==DigitalVariant::HourMinute && d.nextUpdate(1000,unset)==INT64_MAX);
+    // Taps change nothing of the face; only APPS asks for the list.
+    HomeEvent tap; tap.x=234; tap.y=100;
+    CHECK(!d.handle(tap,v).changed && d.handle(tap,v).request==HomeRequest::None);
+    tap.y=390;
+    CHECK(!d.handle(tap,v).changed && d.handle(tap,v).request==HomeRequest::OpenAppList);
+    // The first two items are drawn, in the providers' order, so only their
+    // deadlines wake the display.
+    WatchData three; three.background.count=3;
+    three.background.items[0].appId=LaunchTargetId::External2;
+    three.background.items[1].appId=LaunchTargetId::Stopwatch;
+    three.background.items[2].appId=LaunchTargetId::External1;
+    const auto shown=d.backgroundInterest(three.background);
+    CHECK(shown.count==2 && shown.ids[0]==LaunchTargetId::External2 && shown.ids[1]==LaunchTargetId::Stopwatch);
+    // With items the APPS target moves down with the drawing, and the hit
+    // test follows the frame the face was last given.
+    CHECK(digitalAppsTarget(v,0).y<digitalAppsTarget(v,1).y && digitalAppsTarget(v,1)==digitalAppsTarget(v,2));
+    tap.y=digitalAppsTarget(v,0).y+2;
+    CHECK(d.handle(tap,v).request==HomeRequest::OpenAppList);
+    d.update(three); CHECK(d.items()==2);
+    CHECK(d.handle(tap,v).request==HomeRequest::None);
+    tap.y=digitalAppsTarget(v,2).y+digitalAppsTarget(v,2).h-2;
+    CHECK(d.handle(tap,v).request==HomeRequest::OpenAppList);
+    d.update(WatchData{}); CHECK(d.items()==0 && d.handle(tap,v).request==HomeRequest::None);
+    // A smaller panel scales the target with the drawing.
+    CHECK(digitalAppsTarget({233,233},0)==(Rect{84,177,64,35}));
+}
+// Every part of Digital inside the round panel, the time in groups that tile
+// its row, and the chips in order (docs/task10/plan-10-3.md 3).
+bool insideCircle(const Viewport& v,const Rect& r) {
+    const float cx=v.width/2.0f,cy=v.height/2.0f,radius=std::min(v.width,v.height)/2.0f-1;
+    for (int x:{r.x,r.x+r.w}) for (int y:{r.y,r.y+r.h})
+        if ((x-cx)*(x-cx)+(y-cy)*(y-cy)>radius*radius) return false;
+    return true;
+}
+void digitalLayoutRules() {
+    const Viewport v{466,466};
+    for (auto variant:{DigitalVariant::HourMinute,DigitalVariant::HourMinuteSecond})
+        for (int items=0;items<=DigitalMaxItems;++items) {
+            const auto l=digitalLayout(v,variant,items);
+            const bool seconds=variant==DigitalVariant::HourMinuteSecond;
+            CHECK(insideCircle(v,l.hour) && insideCircle(v,l.minute) && insideCircle(v,l.appsIcon) && insideCircle(v,l.apps));
+            // The groups meet edge to edge: a digit changing in one never
+            // spills into the next, and the colons stay where they are.
+            CHECK(l.hour.x+l.hour.w==l.minute.x && l.hour.y==l.minute.y && l.hour.h==l.minute.h);
+            CHECK(l.colon1X==l.hourRight && l.minute.x==l.colon1X+22);
+            if (seconds) {
+                CHECK(l.minute.x+l.minute.w==l.second.x && l.second.x==l.secondX && insideCircle(v,l.second));
+                CHECK(l.secondX-(l.hourRight-114)==114+22+115+22);   // 388 wide in all
+                CHECK(l.colon2X==l.secondX-22 && l.minuteX==l.minute.x+115/2);
+            } else {
+                CHECK(l.second.empty() && l.minuteX==l.minute.x);
+                CHECK(l.minute.x+115-(l.hourRight-114)==251);
+            }
+            // The ink sits inside the boxes: 71 above the baseline, 1 below.
+            CHECK(l.hour.y<=l.timeBaseline-71 && l.hour.y+l.hour.h>=l.timeBaseline+1);
+            // The reference rows, and room made for the items.
+            CHECK(l.timeBaseline==(items ? 242 : 270) && l.batteryY==(items ? 61 : 79));
+            CHECK(l.apps==digitalAppsTarget(v,items) && l.apps.contains(l.appsIcon.x,l.appsIcon.y));
+            CHECK(l.hour.y+l.hour.h<l.chipY-l.chipHeight/2 || !items);
+            // Chips: the widest allowed, side by side, stay on the panel.
+            if (items) {
+                const int limit=digitalChipWidthLimit(l,items);
+                const int widths[DigitalMaxItems]={limit,limit};
+                Rect chips[DigitalMaxItems];
+                CHECK(placeDigitalChips(l,widths,items,chips)==items);
+                for (int i=0;i<items;++i) {
+                    CHECK(insideCircle(v,chips[i]) && chips[i].h==48 && chips[i].y+24==312);
+                    CHECK(!chips[i].intersects(l.hour) && !chips[i].intersects(l.apps));
+                }
+                if (items==2) CHECK(chips[1].x==chips[0].x+chips[0].w+16);
+            }
+        }
+    // The reference chips: 120 wide each, centred as a pair, left to right.
+    const auto l=digitalLayout(v,DigitalVariant::HourMinute,2);
+    const int widths[]={120,120};
+    Rect chips[2];
+    placeDigitalChips(l,widths,2,chips);
+    CHECK(chips[0]==(Rect{105,288,120,48}) && chips[1]==(Rect{241,288,120,48}));
+    // One chip is centred alone; more items than fit count as two.
+    placeDigitalChips(l,widths,1,chips);
+    CHECK(chips[0].x==173);
+    CHECK(digitalLayout(v,DigitalVariant::HourMinute,5).timeBaseline==242);
+    CHECK(placeDigitalChips(l,widths,5,chips)==2);
+    // Other metrics (a built-in fallback font) move the groups with them.
+    DigitalMetrics wide; wide.hourWidth=120; wide.minuteWidth=120; wide.colonWidth=26;
+    const auto f=digitalLayout(v,DigitalVariant::HourMinuteSecond,0,wide);
+    CHECK(f.minute.x==f.colon1X+26 && f.secondX-f.colon2X==26 && insideCircle(v,f.hour) && insideCircle(v,f.second));
+}
+// An app's icon fitted into a chip: scaled with its aspect, centred, averaged.
+void maskFitting() {
+    // 44x44 fully covered, into 36x36: all of it covered.
+    std::array<uint8_t,44*44> full{}; full.fill(255);
+    std::array<uint8_t,36*36> out{};
+    CHECK(fitMask({full.data(),44,44},36,36,out.data()));
+    for (auto a:out) CHECK(a==255);
+    // A 4x2 mask into 8x8 keeps its aspect: 8x4 in the middle rows.
+    const uint8_t wide[8]={255,255,255,255,255,255,255,255};
+    std::array<uint8_t,64> box{}; box.fill(7);
+    CHECK(fitMask({wide,4,2},8,8,box.data()));
+    for (int y=0;y<8;++y) for (int x=0;x<8;++x) CHECK(box[y*8+x]==(y>=2 && y<6 ? 255 : 0));
+    // Halving averages: a checkerboard becomes an even grey.
+    std::array<uint8_t,16> checker{};
+    for (int i=0;i<16;++i) checker[i]=((i%4)+(i/4))%2 ? 255 : 0;
+    std::array<uint8_t,4> half{};
+    CHECK(fitMask({checker.data(),4,4},2,2,half.data()));
+    for (auto a:half) CHECK(a==128);
+    // Nothing usable, nothing written.
+    std::array<uint8_t,4> untouched{{9,9,9,9}};
+    CHECK(!fitMask({nullptr,4,4},2,2,untouched.data()) && !fitMask({full.data(),0,4},2,2,untouched.data()));
+    CHECK(!fitMask({full.data(),4,4},0,2,untouched.data()) && untouched[0]==9);
+    // Blending in RGB565: the ends are exact, the middle rounds per channel.
+    CHECK(blend565(0xffff,0x0000,255)==0xffff && blend565(0xffff,0x0000,0)==0x0000);
+    CHECK(blend565(0xffff,0x0000,128)==((16<<11)|(32<<5)|16));
+    CHECK(blend565(0x349f,0x349f,77)==0x349f);
+}
+// The committed time digits, read the way the faces read them: their groups'
+// widest values are the fixed widths docs/task10/fonts.md records, and the
+// Digital layout's defaults.
+std::vector<uint8_t> asset(const char* name) {
+    std::ifstream in(std::string("src/ui/graphics/fonts/")+name,std::ios::binary);
+    return {std::istreambuf_iterator<char>(in),std::istreambuf_iterator<char>()};
+}
+void timeGlyphs() {
+    struct Expect { const char* name; int ascent,descent,hour,minute,colon; };
+    const DigitalMetrics digital;
+    for (const auto& e:{Expect{"DDinProExpSemiBold100.vlw",71,1,digital.hourWidth,digital.minuteWidth,digital.colonWidth},
+                        Expect{"DDinProCondensedSemiBold120.vlw",84,1,99,100,21}}) {
+        const auto bytes=asset(e.name);
+        VlwGlyphs glyphs;
+        CHECK(glyphs.load(bytes.data(),bytes.size()));
+        CHECK(glyphs.ascent()==e.ascent && glyphs.descent()==e.descent);
+        int hour=glyphs.width("--"),minute=hour;
+        for (int i=0;i<60;++i) {
+            char two[3]={char('0'+i/10),char('0'+i%10),0};
+            if (i<24) hour=std::max(hour,glyphs.width(two));
+            minute=std::max(minute,glyphs.width(two));
+        }
+        CHECK(hour==e.hour && minute==e.minute && glyphs.width(":")==e.colon);
+        // Every glyph's ink stays inside its advance, so the groups can tile.
+        for (const char* c="0123456789:-";*c;++c) {
+            const auto* g=glyphs.find(uint8_t(*c));
+            CHECK(g && g->dx>=0 && g->dx+g->width<=g->advance && g->bitmap>=bytes.data());
+            CHECK(g->bitmap+g->width*g->height<=bytes.data()+bytes.size());
+        }
+        CHECK(!glyphs.find('A') && glyphs.width("1A1")==2*glyphs.find('1')->advance);
+        // The raised colon still fits in the time's box.
+        CHECK(glyphs.find(':')->dy+digital.colonLift<=e.ascent);
+        // A cut asset loads nothing.
+        VlwGlyphs cut;
+        CHECK(!cut.load(bytes.data(),bytes.size()-1) && !cut.loaded() && !cut.find('0'));
+    }
+    const auto first=asset("DDinProExpSemiBold100.vlw");
+    VlwGlyphs zero; const auto* g=(zero.load(first.data(),first.size()),zero.find('0'));
+    CHECK(g && g->advance==56 && g->dx==6 && g->width==45 && g->dy==71 && g->height==72);
+    // The 95 character text fonts are too many for this reader, by design.
+    const auto text=asset("DDinProExpBold28.vlw");
+    VlwGlyphs many; CHECK(!many.load(text.data(),text.size()));
+}
+void watchChangeBits() {
+    WatchData a,b;
+    CHECK(watchChanges(a,b)==0);
+    b.timeValid=true; CHECK(watchChanges(a,b)==WatchTime);
+    a=b; b.localTime.tm_sec=1; CHECK(watchChanges(a,b)==WatchTime);
+    a=b; b.subsecondUs=5; CHECK(watchChanges(a,b)==0);          // not a reading of its own
+    a=b; b.batteryPercent=80; CHECK(watchChanges(a,b)==WatchBattery);
+    a=b; b.charging=true; CHECK(watchChanges(a,b)==WatchBattery);
+    a=b; b.background.count=1; b.background.items[0].label[0]='x';
+    CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].nextChangeAt=99;                 // a deadline alone
+    CHECK(watchChanges(a,b)==0);
+    a=b; b.background.items[0].label[0]='y'; CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].appId=LaunchTargetId::External1; CHECK(watchChanges(a,b)==WatchBackground);
+    static const uint8_t mask[1]={255}; static const IconBitmap icon{mask,1,1};
+    a=b; b.background.items[0].icon=&icon; CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].suggestedColor=uint16_t(0); CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.items[0].suggestedColor.reset(); CHECK(watchChanges(a,b)==WatchBackground);
+    a=b; b.background.count=0; b.localTime.tm_min=3;
+    CHECK(watchChanges(a,b)==(WatchBackground|WatchTime));
 }
 int main() {
     navigation(); flick(); launcherList(); launcherController(); composition();
-    listLayout(); listController(); deadlines(); repaint();
+    listLayout(); listController(); deadlines(); repaint(); damage();
+    homeInput(); digitalControl(); digitalLayoutRules(); maskFitting(); timeGlyphs(); watchChangeBits();
     std::cout<<"PASS: navigation/geometry, launcher controller, frame composition, "
                "shared list layout/controller, display deadlines, "
-               "3000 differential framebuffer cases with dirty bounds\n";
+               "3000 differential framebuffer cases over a changing background, damage rectangle, "
+               "home input, digital control, digital layout, mask fitting, time glyphs, watch changes\n";
 }

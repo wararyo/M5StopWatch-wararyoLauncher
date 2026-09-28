@@ -47,6 +47,26 @@ void logHeap(const char* name, uint32_t caps) {
                 unsigned(heap_caps_get_free_size(caps)),
                 unsigned(heap_caps_get_largest_free_block(caps)));
 }
+// The panel draws into a PSRAM framebuffer that reads back, but M5GFX copies
+// the direct panel's readable=false onto it, so LovyanGFX blends transparent
+// text with black instead of what lies under it (docs/task10/plan-10-4.md).
+// Declared readable only when two known pixels actually come back, so the
+// direct fallback without PSRAM keeps its setting.
+void declareReadableFramebuffer(M5GFX& display) {
+    bool readable = true;
+    for (const uint16_t colour : {uint16_t(0x1234), uint16_t(0xedcb)}) {
+        display.drawPixel(0, 0, colour);
+        readable = readable && display.readPixel(0, 0) == colour;
+    }
+    display.drawPixel(0, 0, 0);
+    auto* panel = static_cast<lgfx::Panel_Device*>(display.getPanel());
+    if (readable && panel) {
+        auto config = panel->config();
+        config.readable = true;
+        panel->config(config);
+    }
+    std::printf("[Display] framebuffer readback=%s\n", readable ? "yes" : "no");
+}
 }
 
 extern "C" void app_main() {
@@ -58,6 +78,7 @@ extern "C" void app_main() {
     cfg.output_power = false;
     cfg.clear_display = true;
     M5.begin(cfg);
+    declareReadableFramebuffer(M5.Display);
     launcher::beginPowerManagement(240, LAUNCHER_CPU_MIN_MHZ);
     // The stored level is applied once NVS has been read; this only keeps the
     // boot screen visible until then.
@@ -98,7 +119,17 @@ extern "C" void app_main() {
     static launcher::M5Hal hal;
     // Keep framebuffer metadata / font cache objects off the 8KiB UI stack.
     static launcher::HostRenderer renderer(M5.Display);
-    if (!renderer.begin()) { std::printf("[Renderer] initialization failed\n"); return; }
+    // Storage first: the clock layer reads the stored face and the faces
+    // their own records when it begins (docs/task10/plan-10-5.md 5).
+    static launcher::NvsBackend nvs;
+    nvs.begin();
+    static launcher::WatchPreferences watchPreferences;
+#ifndef LAUNCHER_RENDER_DIAGNOSTICS
+    // The render check switches faces and variants on its own; it must not
+    // leave its choices in the device's storage.
+    watchPreferences.bind(&nvs);
+#endif
+    if (!renderer.begin(false, &watchPreferences)) { std::printf("[Renderer] initialization failed\n"); return; }
     // Declared for both builds so the settings screen exists either way. The
     // diagnostics build never begins it, so it touches no RTC and reports the
     // clock as unset instead of writing one.
@@ -119,8 +150,6 @@ extern "C" void app_main() {
     static launcher::MultiFirmAdapter slots;
     slots.begin();
 #endif
-    static launcher::NvsBackend nvs;
-    nvs.begin();
     static launcher::SettingsStore settingsStore;
     settingsStore.begin(nvs);
     hal.setBrightness(settingsStore.get().brightness);
@@ -129,6 +158,7 @@ extern "C" void app_main() {
     static launcher::HostApplication application(hal, renderer, data, M5.Display.width(), M5.Display.height());
     application.bindSettings(settingsStore, timeService);
     application.bindSlots(slots);
+    application.bindHome(renderer);
     application.setInfo(app->project_name, app->version, esp_get_idf_version());
     auto& runtime = application.runtime();
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);

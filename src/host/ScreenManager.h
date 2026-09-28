@@ -7,6 +7,7 @@
 #include "host/EffectiveSettings.h"
 #include "features/launcher/AppListRows.h"
 #include "features/launcher/LauncherController.h"
+#include "features/home/HomeInteraction.h"
 namespace launcher {
 // Which screen is shown, entering and leaving screens, home ahead of anything
 // else, opening what the launcher decided, and how long a notice stays. The
@@ -26,6 +27,12 @@ public:
     // as the unimplemented entries do. Nothing else in the launcher changes.
     void bind(SettingsStore* store,TimeService* time) { settings_.bind(store,time); }
     void bindSlots(SlotService* slots) { external_.bind(slots,&slots_); }
+    // The clock layer's input, and the faces settings chooses from. Without it
+    // a tap on the clock does nothing, the list is still reached by A/B and
+    // the swipe up, and settings offers no face to choose.
+    void bindHome(HomeControlPort* home) { home_=home; settings_.bindFaces(home); }
+    // Whether a touch starting now may become a long press on the clock.
+    bool homeAtRest() const { return !active_ && launcher_.atRest(); }
     void setInfo(const char* name,const char* version,const char* idf) {
         settings_.setInfo(name,version,idf);
     }
@@ -65,6 +72,7 @@ private:
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.
     LauncherController launcher_;
+    HomeControlPort* home_=nullptr;
     Screen* active_=nullptr;
     ScreenId activeId_=ScreenId::Home;
     uint32_t homeCount_=0;

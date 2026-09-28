@@ -5,16 +5,9 @@
 #include "ui/rendering/Renderer.h"
 namespace launcher {
 // The stopwatch layer. The rounded panel and its divider are NOT plan elements:
-// they are background, painted only on a full repaint. Registering the panel
-// would make every hundredth-of-a-second repaint spread through
-// FramePlan::resolve to the panel and from there to the whole screen, so the
-// 40 Hz update would cost a full frame.
-//
-// What makes that safe: every element below has a FIXED box and paints the
-// panel colour across the whole of it before drawing, so the black erase that
-// Renderer does on the old box is covered within the same frame. The only other
-// thing that can touch these pixels is the toast, and a toast appearing or
-// disappearing already forces a full repaint (ToastLayer).
+// they are background, repainted inside whatever the frame restores. They
+// never change on their own, so they declare no damage, and a hundredth of a
+// second repaints only its own box (docs/task10/plan-10-4.md 1).
 class StopwatchLayer final : public RenderLayer {
 public:
     void begin(const lgfx::IFont* font) { font_=font; }
@@ -22,7 +15,7 @@ public:
         viewport_=viewport; model_=model; visible_=visible;
     }
     void plan(FramePlan& frame,Gfx& g) override;
-    void paint(Gfx& g,const FramePlan& frame) override;
+    void paint(Gfx& g,const PaintContext& context) override;
 private:
     // Clock, hundredths, two buttons, three lap rows.
     static constexpr int Capacity=4+StopwatchLapRows;
@@ -37,7 +30,6 @@ private:
     void build(Viewport viewport,const StopwatchModel& model);
     Item items_[Capacity]{};
     Element elements_[Capacity]{};
-    int handles_[Capacity]{};
     int count_=0;
     float timeSize_=1;
     const lgfx::IFont* font_=nullptr;

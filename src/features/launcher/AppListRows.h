@@ -26,9 +26,9 @@ inline void applySlots(const SlotCatalog& slots,AppListModel& m) {
 }
 inline uint16_t appIconColor(const LaunchEntry& entry) {
     switch (entry.id) {
-    case LaunchTargetId::Stopwatch: return 0x349f;
-    case LaunchTargetId::Settings: return 0x632c;
-    default: return 0x2e17;
+    case LaunchTargetId::Stopwatch: return StopwatchAccent;
+    case LaunchTargetId::Settings: return SettingsAccent;
+    default: return ExternalAccent;
     }
 }
 using IconLookup=const IconBitmap* (*)(IconId);

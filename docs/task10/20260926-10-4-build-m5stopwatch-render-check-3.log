@@ -1,0 +1,82 @@
+﻿Processing m5stopwatch-render-check (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/m5stack-cores3.html
+PLATFORM: Espressif 32 (6.12.0) > M5Stack CoreS3
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-espidf @ 3.50500.0 (5.5.0) 
+ - tool-cmake @ 3.30.2 
+ - tool-esp-rom-elfs @ 0.0.1+20241011 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - tool-idf @ 1.0.1 
+ - tool-mconf @ 1.4060000.20190628 (406.0.0) 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-esp32ulp @ 1.23800.240113 (2.38.0) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20241119
+Reading CMake configuration...
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 4 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- M5Unified @ 0.2.16
+|-- M5GFX @ 0.2.28
+|-- M5StopWatch-MultiFirm @ 0.1.0+sha.f5a8fd8
+Building in release mode
+Compiling .pio\build\m5stopwatch-render-check\src\main.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\rendering\Renderer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\graphics\Text.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\graphics\VlwFont.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\graphics\WatchFonts.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\list\ListView.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\overlays\ToastLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\ui\overlays\StatsOverlay.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\host\HostRenderer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\host\RenderDiagnostics.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\home\HomeLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\home\faces\DigitalWatchFace.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\launcher\AppListLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\launcher\AppListBackgroundLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\settings\SettingsLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\external\ExternalLayer.cpp.o
+Compiling .pio\build\m5stopwatch-render-check\src\features\stopwatch\StopwatchLayer.cpp.o
+Generating LD script .pio\build\m5stopwatch-render-check\esp-idf\esp_system\ld\memory.ld.in
+Generating LD script .pio\build\m5stopwatch-render-check\esp-idf\esp_system\ld\sections.ld.in
+pio : src/host/RenderDiagnostics.cpp:895:33: warning: missing terminating " character
+At line:1 char:365
++ ... yoLauncher; pio run -e m5stopwatch-render-check *> docs/task10/202609 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (src/host/Render...ing " character:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  895 |                     std::printf("[Perf] base-fill px=%d us=%lld (no transfer)
+      |                                 ^
+src/host/RenderDiagnostics.cpp:895:33: error: missing terminating " character
+  895 |                     std::printf("[Perf] base-fill px=%d us=%lld (no transfer)
+      |                                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/host/RenderDiagnostics.cpp:896:1: warning: missing terminating " character
+  896 | ",w*h,(long long)spent);
+      | ^
+src/host/RenderDiagnostics.cpp:896:1: error: missing terminating " character
+  896 | ",w*h,(long long)spent);
+      | ^~~~~~~~~~~~~~~~~~~~~~~~
+src/host/RenderDiagnostics.cpp: In function 'void launcher::runRepaintCheck(HostRenderer&, M5GFX&, const SlotCatalog&)'
+:
+src/host/RenderDiagnostics.cpp:897:17: error: expected primary-expression before '}' token
+  897 |                 }
+      |                 ^
+src/host/RenderDiagnostics.cpp:892:34: warning: unused variable 'spent' [-Wunused-variable]
+  892 |                     const TimeUs spent=esp_timer_get_time()-start;
+      |                                  ^~~~~
+*** [.pio\build\m5stopwatch-render-check\src\host\RenderDiagnostics.cpp.o] Error 1
+========================= [FAILED] Took 15.18 seconds =========================
+
+Environment               Status    Duration
+------------------------  --------  ------------
+m5stopwatch-render-check  FAILED    00:00:15.175
+==================== 1 failed, 0 succeeded in 00:00:15.175 ====================

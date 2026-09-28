@@ -1,0 +1,8 @@
+﻿python : C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\src\ui\graphics\fonts\GenShinGothicMedium28.vlw is stale; run
+ python tools/build_font.py
+At line:3 char:1
++ python tools/build_font.py --source "C:\Users\wararyo\Downloads\gensh ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\warary...s/build_font.py:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

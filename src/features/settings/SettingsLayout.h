@@ -7,12 +7,15 @@ namespace launcher {
 // The editor and information views. The top menu is a shared list
 // (features/settings/SettingsMenu.h) and has no geometry here.
 struct SettingsGeometry : Viewport { SettingsView view=SettingsView::Menu; int cursor=0; };
+// The views drawn as the shared list: the top menu and the watch face choice.
+// They have no fields, buttons or cursor stops of their own here.
+inline bool settingsListView(SettingsView view) { return view==SettingsView::Menu || view==SettingsView::WatchFace; }
 inline int settingsFieldCount(SettingsView view) {
     return view==SettingsView::DateTime ? 5 :
         (view==SettingsView::Brightness || view==SettingsView::ScreenOff) ? 1 : 0;
 }
 // Info only confirms; the others save or cancel.
-inline int settingsButtonCount(SettingsView view) { return view==SettingsView::Info ? 1 : 2; }
+inline int settingsButtonCount(SettingsView view) { return settingsListView(view) ? 0 : view==SettingsView::Info ? 1 : 2; }
 // An action takes effect where it stands: it neither edits a value nor leaves
 // the view, so it sits between the fields and the buttons in the cursor order.
 // A view that has none keeps exactly the slots it had before.
@@ -20,7 +23,7 @@ inline int settingsActionCount(SettingsView view) { return view==SettingsView::I
 // The cursor stops of an editor or of information. The menu has none: its
 // selection belongs to its list controller.
 inline int settingsSlotCount(SettingsView view) {
-    return view==SettingsView::Menu ? 0
+    return settingsListView(view) ? 0
         : settingsFieldCount(view)+settingsActionCount(view)+settingsButtonCount(view);
 }
 inline void settingsFieldCentre(const SettingsGeometry& m,int index,int& cx,int& cy) {
@@ -84,7 +87,7 @@ inline Rect settingsActionBox(const SettingsGeometry& m,int index) {
 struct SettingsHit { enum Kind { None,Field,Up,Down,Action,Button } kind=None; int index=0; };
 inline SettingsHit hitSettings(const SettingsGeometry& m,int x,int y) {
     const auto view=m.view;
-    if (view==SettingsView::Menu) return {};
+    if (settingsListView(view)) return {};
     for (int i=0;i<settingsFieldCount(view);++i) {
         if (settingsArrowBox(m,i,true).contains(x,y)) return {SettingsHit::Up,i};
         if (settingsArrowBox(m,i,false).contains(x,y)) return {SettingsHit::Down,i};

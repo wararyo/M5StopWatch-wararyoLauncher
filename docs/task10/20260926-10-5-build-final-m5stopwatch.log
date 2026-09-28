@@ -1,0 +1,95 @@
+﻿Processing m5stopwatch (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/m5stack-cores3.html
+PLATFORM: Espressif 32 (6.12.0) > M5Stack CoreS3
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-espidf @ 3.50500.0 (5.5.0) 
+ - tool-cmake @ 3.30.2 
+ - tool-esp-rom-elfs @ 0.0.1+20241011 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - tool-idf @ 1.0.1 
+ - tool-mconf @ 1.4060000.20190628 (406.0.0) 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-esp32ulp @ 1.23800.240113 (2.38.0) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20241119
+Reading CMake configuration...
+pio : -- Found Git: C:/Program Files/Git/cmd/git.exe (found version "2.48.1.windows.1")
+At line:1 char:446
++ ... r-check') { pio run -e $e *> "docs/task10/20260926-10-5-build-final-$ ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (-- Found Git: C...8.1.windows.1"):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+-- git rev-parse returned 'fatal: not a git repository (or any of the parent directories): .git'
+-- Minimal build - OFF
+-- The C compiler identification is GNU 14.2.0
+-- The CXX compiler identification is GNU 14.2.0
+-- The ASM compiler identification is GNU
+-- Found assembler: C:/Users/wararyo/.platformio/packages/toolchain-xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc.exe
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Users/wararyo/.platformio/packages/toolchain-xtensa-esp-elf/bin/xtensa-esp32s3-elf-
+gcc.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Users/wararyo/.platformio/packages/toolchain-xtensa-esp-elf/bin/xtensa-esp32s3-el
+f-g++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Building ESP-IDF components for target esp32s3
+-- Configuring incomplete, errors occurred!
+
+fatal: not a git repository (or any of the parent directories): .git
+CMake Error at C:/Users/wararyo/.platformio/packages/framework-espidf/tools/cmake/component.cmake:255 (message):
+  Traceback (most recent call last):
+
+    File "<frozen runpy>", line 198, in _run_module_as_main
+    File "<frozen runpy>", line 88, in _run_code
+    File "C:\Users\wararyo\.platformio\penv\.espidf-5.5.0\Lib\site-packages\idf_component_manager\prepare_components\__
+main__.py", line 6, in <module>
+      main()
+    File "C:\Users\wararyo\.platformio\penv\.espidf-5.5.0\Lib\site-packages\idf_component_manager\prepare_components\pr
+epare.py", line 337, in main
+      args.func(args)
+    File "C:\Users\wararyo\.platformio\penv\.espidf-5.5.0\Lib\site-packages\idf_component_manager\prepare_components\pr
+epare.py", line 227, in inject_requirements
+      ).inject_requirements(
+        ^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\wararyo\.platformio\penv\.espidf-5.5.0\Lib\site-packages\idf_component_manager\core.py", line 115, i
+n wrapper
+      return func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\wararyo\.platformio\penv\.espidf-5.5.0\Lib\site-packages\idf_component_manager\core.py", line 865, i
+n inject_requirements
+      requirements = requirements_manager.load()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\wararyo\.platformio\penv\.espidf-5.5.0\Lib\site-packages\idf_component_manager\cmake_component_requi
+rements.py", line 95, in load
+      with open(self.path, encoding='utf-8') as f:
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  FileNotFoundError: [Errno 2] No such file or directory:
+  'C:/Users/wararyo/Git/M5StopWatch-wararyoLauncher/.pio/build/m5stopwatch/component_requires.temp.cmake'
+
+
+Call Stack (most recent call first):
+  C:/Users/wararyo/.platformio/packages/framework-espidf/tools/cmake/build.cmake:664 (__component_get_requirements)
+  C:/Users/wararyo/.platformio/packages/framework-espidf/tools/cmake/project.cmake:740 (idf_build_process)
+  CMakeLists.txt:4 (project)
+
+
+
+========================== [FAILED] Took 5.29 seconds ==========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+m5stopwatch    FAILED    00:00:05.285
+==================== 1 failed, 0 succeeded in 00:00:05.285 ====================

@@ -1,26 +1,77 @@
 #pragma once
 #include "features/home/WatchFace.h"
+#include "features/home/faces/DigitalLayout.h"
+#include "features/home/faces/TimeDigits.h"
 namespace launcher {
+// The default face: battery, date, the time in D-DIN-PRO (hours and minutes,
+// or with seconds after a long press), up to two background items as chips,
+// and APPS. Positions come from DigitalLayout; this class measures the fonts,
+// keeps the caches and paints on black (docs/task10/plan-10-3.md), which is
+// the Renderer's base, so it has no background of its own to restore. It
+// slides up with the list by itself (docs/task10/plan-10-4.md 5).
 class DigitalWatchFace final : public WatchFace {
 public:
     const char* id() const override { return "digital"; }
+    const char* name() const override { return "Digital"; }
+    const char* storageKey() const override { return "wf_digital"; }
+    void bindPreferences(FacePreferences* prefs) override { control_.bindPreferences(prefs); }
+    DigitalVariant variant() const { return control_.variant(); }
     bool begin(Gfx&,bool disableCache=false) override;
     void end() override;
-    void plan(FramePlan&,Gfx&,const DrawRegion&,const WatchData&) override;
-    void paint(Gfx&,const FramePlan&) override;
-    TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return nextMinute(now,data); }
+    void update(const WatchData& d,const WatchEnvironment&,WatchChanges) override { control_.update(d); }
+    void plan(FramePlan&,Gfx&,const WatchEnvironment&,const WatchData&) override;
+    void paint(Gfx&,const PaintContext&) override;
+    TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return control_.nextUpdate(now,data); }
+    HomeOutcome handle(const HomeEvent& e) override { return control_.handle(e,viewport_); }
+    BackgroundInterest backgroundInterest(const BackgroundSnapshot& s) const override { return control_.backgroundInterest(s); }
+    // Which caches exist, for the diagnostics.
+    int cachedParts() const;
 private:
-    void timeFont(Gfx& gfx);
-    void paintTime(Gfx& gfx);
-    M5Canvas cache_;
-    bool cacheReady_=false;
-    char cached_[8]{},time_[8]{},date_[32]{},battery_[24]{};
-    std::array<Element,5> elements_{};
-    std::array<Rect,5> boxes_{};
-    std::array<int,5> handles_{};
+    enum Part { Battery,Date,Hour,Minute,Second,Item0,Item1,Apps,PartCount };
+    // A font and the text size it is drawn at: 1 for the embedded subsets,
+    // more for a built-in fallback.
+    struct Font { const lgfx::IFont* font=nullptr; float size=1; int ascent=0,descent=0; };
+    static constexpr int IconSize=36;
+    struct Chip {
+        char label[BackgroundLabelBytes+4]{};  // fitted, possibly with "..."
+        const IconBitmap* icon=nullptr;
+        uint16_t fill=0,ink=0;
+        bool wide=false;                        // non-ASCII: the Japanese font
+        Rect box{};                             // clock coordinates, no slide
+        uint32_t key=0;
+        // The icon scaled for the chip, remade when another asset arrives.
+        const IconBitmap* scaled=nullptr;
+        bool maskReady=false;
+        uint8_t mask[IconSize*IconSize]{};
+        M5Canvas sprite;
+        bool cacheReady=false;
+        uint32_t drawnKey=0;
+    };
+    void useFont(Gfx& g,const Font& f) const;
+    void measure(Gfx& g);
+    void makeCaches();
+    void paintBattery(Gfx& g,int dx,int dy);
+    void paintDate(Gfx& g,int dx,int dy);
+    void paintChip(Gfx& g,const Chip& p,int dx,int dy);
+    void paintApps(Gfx& g,int dx,int dy);
+    Rect shifted(Rect r) const { r.y+=offset_; return r; }
+    DigitalControl control_;
+    // The time: its digits, caches and drawing are shared with Forest.
+    TimeDigits digits_;
+    Font text_,small_,wide_;
+    DigitalMetrics metrics_{};
+    DigitalLayout layout_{};
+    DigitalVariant variant_=DigitalVariant::HourMinute;
+    bool cacheAllowed_=false;
+    Chip chips_[DigitalMaxItems];
+    int chipCount_=0;
+    char date_[32]{},battery_[12]{};
+    int batteryPercent_=-1;
+    bool charging_=false;
+    std::array<Element,PartCount> elements_{};
+    std::array<Rect,PartCount> boxes_{};
     Viewport viewport_{};
-    Rect clip_{},timeBox_{};
-    int offset_=0,cx_=0;
-    float scale_=1;
+    Rect clip_{};
+    int offset_=0;
 };
 }

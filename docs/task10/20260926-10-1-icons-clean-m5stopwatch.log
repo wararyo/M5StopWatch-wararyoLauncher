@@ -1,0 +1,11 @@
+﻿Processing m5stopwatch (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+Removing .pio\build\m5stopwatch
+Done cleaning
+========================= [SUCCESS] Took 0.78 seconds =========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+m5stopwatch    SUCCESS   00:00:00.780
+========================= 1 succeeded in 00:00:00.780 =========================

@@ -14,6 +14,11 @@ void LauncherController::suspend() {
     list_.finish();
     if (transitionAnimating_) { transition_=toTransition_; stopTransition(); }
 }
+bool LauncherController::openList(TimeUs now) {
+    if (listShown_) return false;
+    listShown_=true; animateTransition(1,now);
+    return true;
+}
 void LauncherController::home() {
     listShown_=false; transition_=0; drag_=Drag::None;
     stopTransition();
@@ -85,10 +90,9 @@ LauncherOutcome LauncherController::handle(const Events& e,TimeUs now) {
     // animation from its current position, so quick presses are not dropped.
     if (drag_!=Drag::None) return out;
     const bool tap=e.gesture==Gesture::Tap;
+    // A tap on the clock is the watch face's (ScreenManager hands it over).
     if (!listShown_) {
-        if (e.next || e.decide || (tap && appsTarget(viewport_).contains(e.x,e.y))) {
-            listShown_=true; animateTransition(1,now); out.changed=true;
-        }
+        if (e.next || e.decide) out.changed=openList(now);
         return out;
     }
     if (e.next) {

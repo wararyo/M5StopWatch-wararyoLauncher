@@ -9,9 +9,12 @@
 #include <algorithm>
 #include <cstdio>
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
-#include "features/launcher/AppIcons.h"
+#include "assets/AppIcons.h"
 #include "ui/graphics/Text.h"
 #include "ui/graphics/VlwFont.h"
+#include "ui/graphics/WatchFonts.h"
+#include "ui/graphics/Shapes.h"
+#include "features/launcher/LauncherController.h"
 #include "host/LaunchRegistry.h"
 #include <cstring>
 #endif
@@ -70,19 +73,135 @@ WatchData sampleData() {
     d.localTime.tm_mon=8; d.localTime.tm_mday=19; d.localTime.tm_wday=6;
     d.batteryPercent=82; return d;
 }
+#ifdef LAUNCHER_RENDER_SHOTS
+// One frame as text: "[Shot] name w h", then base64 lines of run-length
+// pairs (run-1, then the pixel as read back, high byte first), then
+// "[ShotEnd]". The panel is mostly black, so runs keep it small.
+void dumpShot(const char* name,const uint16_t* pixels,int w,int h) {
+    static const char digits[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    uint8_t chunk[57]; int used=0; unsigned total=0;
+    auto flush=[&] {
+        if(!used) return;
+        char line[80]; int n=0;
+        for(int i=0;i<used;i+=3) {
+            const uint32_t v=uint32_t(chunk[i])<<16|(i+1<used ? uint32_t(chunk[i+1])<<8 : 0)|(i+2<used ? chunk[i+2] : 0);
+            line[n++]=digits[v>>18&63]; line[n++]=digits[v>>12&63];
+            line[n++]=i+1<used ? digits[v>>6&63] : '='; line[n++]=i+2<used ? digits[v&63] : '=';
+        }
+        line[n]=0; std::printf("[ShotData] %s\n",line); total+=used; used=0;
+    };
+    auto put=[&](uint8_t b) { chunk[used++]=b; if(used==57) flush(); };
+    std::printf("[Shot] %s %d %d\n",name,w,h);
+    const size_t count=size_t(w)*h;
+    for(size_t i=0,runs=0;i<count;++runs) {
+        size_t run=1;
+        while(run<256 && i+run<count && pixels[i+run]==pixels[i]) ++run;
+        put(uint8_t(run-1)); put(uint8_t(pixels[i]>>8)); put(uint8_t(pixels[i]));
+        i+=run;
+        if(runs%2048==2047) vTaskDelay(1);
+    }
+    flush();
+    std::printf("[ShotEnd] %s bytes=%u\n",name,total);
+}
+#endif
 class TestFace final : public WatchFace {
-    Element a_,b_; int ha_=-1,hb_=-1;
+    static constexpr Rect A{40,100,170,100},B{130,120,170,100};
+    Element a_,b_;
 public:
     const char* id() const override { return "test-overlap"; }
     bool begin(Gfx&,bool) override { a_={}; b_={}; return true; }
     void end() override {}
-    void plan(FramePlan& f,Gfx&,const DrawRegion&,const WatchData& d) override {
-        ha_=f.add(a_,{40,100,170,100},hashValue(d.localTime.tm_min));
-        hb_=f.add(b_,{130,120,170,100},1);
+    void plan(FramePlan& f,Gfx&,const WatchEnvironment& env,const WatchData& d) override {
+        f.add(a_,intersect(A,env.clip),hashValue(d.localTime.tm_min));
+        f.add(b_,intersect(B,env.clip),1);
     }
-    void paint(Gfx& g,const FramePlan& f) override {
-        if(f.shouldPaint(ha_)) g.fillRect(40,100,170,100,0x1234);
-        if(f.shouldPaint(hb_)) g.fillRect(130,120,170,100,0x5678);
+    void paint(Gfx& g,const PaintContext& c) override {
+        if(c.clip(g,A)) g.fillRect(A.x,A.y,A.w,A.h,0x1234);
+        if(c.clip(g,B)) g.fillRect(B.x,B.y,B.w,B.h,0x5678);
+    }
+    TimeUs nextUpdate(TimeUs,const WatchData&) const override { return INT64_MAX; }
+};
+// A face with scenery, for checking the damage against a full repaint on
+// something other than black (docs/task10/plan-10-4.md 6-7). Sky bands, a
+// sun and a tree with antialiased edges, and ground; with any background item
+// the scenery moves up to make room, as Forest will. Over it the time and an
+// item chip are drawn transparently, blending with the restored scenery, and
+// a ring overlaps the time without ever changing. It stays still while the
+// list covers it, and asks for a list background of any colour.
+class BackdropFace final : public WatchFace {
+    enum Part { Time,Ring,Chip,PartCount };
+    Element elements_[PartCount];
+    Rect boxes_[PartCount]{};
+    WatchEnvironment env_{};
+    Rect shownClip_{};
+    bool info_=false,shownInfo_=false,planned_=false;
+    char time_[8]{},label_[BackgroundLabelBytes]{};
+    uint16_t list_=0x0000;
+    const lgfx::IFont* font() const { return watchTextFont() ? watchTextFont() : &fonts::FreeSans18pt7b; }
+    // The ground's top edge: the scenery's one moving part.
+    int horizon() const { return info_ ? 250 : 300; }
+public:
+    const char* id() const override { return "test-backdrop"; }
+    void listBackgroundForTest(uint16_t color) { list_=color; }
+    uint16_t listBackground() const override { return list_; }
+    bool begin(Gfx&,bool) override { for(auto& e:elements_) e={}; planned_=false; return true; }
+    void end() override {}
+    void plan(FramePlan& f,Gfx& g,const WatchEnvironment& env,const WatchData& d) override {
+        env_=env;
+        info_=d.background.count>0;
+        // The scenery rearranged: everything of it that shows changes. The
+        // list's edge moved: the band between the two bottoms of the clip.
+        if(planned_ && info_!=shownInfo_) f.damage(unite(env.clip,shownClip_));
+        else if(planned_ && env.clip!=shownClip_) {
+            const int a=shownClip_.y+shownClip_.h,b=env.clip.y+env.clip.h;
+            f.damage({0,std::min(a,b),env.viewport.width,std::abs(a-b)});
+        }
+        shownInfo_=info_; shownClip_=env.clip; planned_=true;
+        if(d.timeValid) std::snprintf(time_,sizeof(time_),"%02d:%02d",d.localTime.tm_hour%100,d.localTime.tm_min%100);
+        else std::strcpy(time_,"--:--");
+        std::snprintf(label_,sizeof(label_),"%s",info_ ? d.background.items[0].label : "");
+        g.setFont(font()); g.setTextSize(2);
+        const int cx=env.viewport.width/2,tw=g.textWidth(time_),th=g.fontHeight();
+        boxes_[Time]={cx-tw/2-2,horizon()-40-th,tw+4,th+4};
+        boxes_[Ring]={cx+tw/2-30,horizon()-40-th-20,52,52};
+        g.setTextSize(1);
+        const int lw=info_ ? g.textWidth(label_) : 0;
+        boxes_[Chip]=info_ ? Rect{cx-lw/2-24,horizon()+40,lw+48,44} : Rect{};
+        g.setTextSize(1);
+        const uint32_t hashes[PartCount]={hashString(time_),1,hashString(label_)};
+        for(int i=0;i<PartCount;++i) f.add(elements_[i],intersect(boxes_[i],env.clip),hashes[i]);
+    }
+    void paint(Gfx& g,const PaintContext& c) override {
+        const Viewport v=env_.viewport;
+        const int h=horizon();
+        if(c.clip(g,env_.clip)) {
+            constexpr uint16_t Sky[]={0x1a6f,0x2b31,0x4c13,0x7d55};
+            const int band=(h+3)/4;
+            for(int i=0;i<4;++i) g.fillRect(0,i*band,v.width,band,Sky[i]);
+            g.fillSmoothCircle(340,h-150,46,0xfec8);
+            g.fillRect(0,h,v.width,v.height-h,0x3a84);
+            drawWideLineClipped(g,120,h-170,70,h+2,9.5f,0x1d05);
+            drawWideLineClipped(g,120,h-170,170,h+2,9.5f,0x1d05);
+            g.fillSmoothCircle(120,h-110,38,0x2ea6);
+        }
+        if(c.clip(g,boxes_[Time])) {
+            g.setFont(font()); g.setTextSize(2); g.setTextDatum(top_center);
+            g.setTextColor(0xffff);
+            g.drawString(time_,v.width/2,boxes_[Time].y+2);
+        }
+        if(c.clip(g,boxes_[Ring])) {
+            const Rect r=boxes_[Ring];
+            g.fillSmoothCircle(r.x+r.w/2,r.y+r.h/2,24,0xf800);
+            g.fillSmoothCircle(r.x+r.w/2,r.y+r.h/2,16,0xffe0);
+        }
+        if(c.clip(g,boxes_[Chip])) {
+            const Rect r=boxes_[Chip];
+            g.fillSmoothRoundRect(r.x,r.y,r.w,r.h,r.h/2,0x5d1f);
+            g.setFont(font()); g.setTextSize(1); g.setTextDatum(middle_center);
+            g.setTextColor(0x0000);
+            g.drawString(label_,r.x+r.w/2,r.y+r.h/2);
+        }
+        g.setTextSize(1);
     }
     TimeUs nextUpdate(TimeUs,const WatchData&) const override { return INT64_MAX; }
 };
@@ -531,6 +650,88 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             d.localTime.tm_mday=20; d.localTime.tm_wday=0; check("date",m,d);
             d.timeValid=false; d.batteryPercent=-1; check("unknown",m,d);
             d=sampleData(); d.charging=true; check("charging",m,d);
+            // Work 10-2: the seconds variant, with the cache remade for it,
+            // and the way back to minutes.
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                renderer.handle(hold); check("seconds",m,d);
+                ++d.localTime.tm_sec; check("second-tick",m,d);
+                d.localTime.tm_sec=11; check("second-narrow",m,d);
+                m.launcher.transition=0.45f; check("seconds-transition",m,d);
+                m.launcher.transition=0; d.timeValid=false; check("seconds-unknown",m,d);
+                d=sampleData(); d.charging=true;
+                renderer.handle(hold); check("minutes-again",m,d);
+                const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+                for(int i=0;i<16;++i) { renderer.handle(hold); renderer.draw(m,d); vTaskDelay(1); }
+                std::printf("[Verify] variants internal_free_before=%u after=%u\n",unsigned(before),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+            }
+            // Work 10-3: the battery row, the items and their chips, and the
+            // caches against drawing directly (docs/task10/plan-10-3.md 6).
+            // Frames are built in static storage: a WatchData is a few hundred
+            // bytes and this function already runs deep on the main stack.
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData shown;
+                auto withItems=[&](int count) -> const WatchData& {
+                    const char* labels[]={"02:40","12:34","00:07","100:00"};
+                    shown=d;
+                    for(int i=0;i<count && i<BackgroundCapacity;++i) {
+                        auto& item=shown.background.items[i];
+                        item=BackgroundInfo{};
+                        item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
+                        std::snprintf(item.label,sizeof(item.label),"%s",labels[i]);
+                        item.icon=i%2==0 ? appIcon(IconId::Stopwatch) : nullptr;
+                        if(i!=2) item.suggestedColor=i==0 ? StopwatchAccent : uint16_t(0xfd03);
+                    }
+                    shown.background.count=uint8_t(std::min(count,BackgroundCapacity));
+                    return shown;
+                };
+                m={}; m.viewport={w,h}; d=sampleData();
+                for(int percent:{0,30,100,-1}) { d.batteryPercent=percent; check("battery-level",m,d); }
+                d.batteryPercent=82;
+                d.charging=true; check("battery-charging",m,d);
+                d.charging=false; check("battery-discharging",m,d);
+                check("item-added",m,withItems(1));
+                check("item-second",m,withItems(2));
+                std::snprintf(shown.background.items[0].label,BackgroundLabelBytes,"02:41"); check("item-label",m,shown);
+                shown.background.items[1].suggestedColor=uint16_t(0x0000); check("item-colour",m,shown);
+                shown.background.items[1].icon=appIcon(IconId::Settings); check("item-icon",m,shown);
+                std::snprintf(shown.background.items[0].label,BackgroundLabelBytes,
+                    "A long label the chip has to shorten, 999:59");
+                check("item-long",m,shown);
+                std::snprintf(shown.background.items[1].label,BackgroundLabelBytes,"計測中");
+                check("item-japanese",m,shown);
+                check("item-four",m,withItems(4));           // two drawn
+                check("item-removed",m,withItems(1));
+                check("item-none",m,d);
+                withItems(2);
+                m.toast="保存しました"; check("item-toast-on",m,shown);
+                m.toast=nullptr; check("item-toast-off",m,shown);
+                m.launcher.transition=0.45f; check("item-transition",m,shown);
+                m.launcher.transition=0; check("item-transition-back",m,shown);
+                renderer.handle(hold);
+                for(int s=0;s<3;++s) { ++shown.localTime.tm_sec; check("item-second-tick",m,shown); }
+                shown.localTime.tm_min=59; shown.localTime.tm_sec=59; check("item-minute-edge",m,shown);
+                shown.localTime.tm_hour=23; check("item-hour-edge",m,shown);
+                shown.localTime.tm_hour=0; shown.localTime.tm_min=0; shown.localTime.tm_sec=0;
+                shown.localTime.tm_mday=20; shown.localTime.tm_wday=0; check("item-day-edge",m,shown);
+                shown.timeValid=false; check("item-unknown-time",m,shown);
+                renderer.handle(hold);
+                // The same frames from the caches and drawn directly.
+                auto faceDirect=[&](const char* name,const FrameModel& fm,const WatchData& fd) {
+                    renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
+                    renderer.selectFace("digital",true); renderer.draw(fm,fd); display.readRect(0,0,w,h,reference);
+                    renderer.selectFace("digital");
+                    compare(name);
+                };
+                m={}; m.viewport={w,h}; d=sampleData();
+                faceDirect("digital-direct",m,d);
+                faceDirect("digital-direct-items",m,withItems(2));
+                renderer.handle(hold);
+                faceDirect("digital-direct-seconds",m,withItems(1));
+                renderer.handle(hold);
+            }
             display.fillScreen(0x1234); renderer.invalidate(); check("wake-invalidate",m,d);
             renderer.selectFace("digital",true); check("cache-disabled",m,d);
             m.launcher.transition=0.45f; check("cache-disabled-transition",m,d);
@@ -540,6 +741,221 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             renderer.registerFace(alternate); renderer.selectFace(alternate.id());
             check("alternate-face",m,d); ++d.localTime.tm_min; check("overlap-foreground",m,d);
             renderer.selectFace("digital"); m.launcher.transition=0; check("digital-restored",m,d);
+            // Work 10-4: the damage over scenery, the list's own background
+            // over the face, and the list's names on that background, against
+            // full repaints (docs/task10/plan-10-4.md 7). Twice: on the black
+            // list background and on a coloured one.
+            static BackdropFace backdrop;
+            renderer.registerFace(backdrop);
+            {
+                static WatchData scene;
+                auto info=[&](const char* label) {
+                    auto& it=scene.background.items[0];
+                    it=BackgroundInfo{}; it.appId=LaunchTargetId::Stopwatch;
+                    std::snprintf(it.label,sizeof(it.label),"%s",label);
+                    scene.background.count=1;
+                };
+                FrameModel bm;
+                for(const uint16_t colour:{uint16_t(0x0000),uint16_t(0x18c9)}) {
+                    backdrop.listBackgroundForTest(colour);
+                    renderer.selectFace(backdrop.id());
+                    bm=FrameModel{}; bm.viewport={w,h}; scene=sampleData();
+                    check("backdrop",bm,scene);
+                    ++scene.localTime.tm_min; check("backdrop-minute",bm,scene);
+                    scene.localTime.tm_hour=11; scene.localTime.tm_min=11; check("backdrop-narrower",bm,scene);
+                    info("02:40"); check("backdrop-info-on",bm,scene);
+                    info("12:41"); check("backdrop-info-label",bm,scene);
+                    bm.toast="保存しました"; check("backdrop-toast-on",bm,scene);
+                    bm.toast=nullptr; check("backdrop-toast-off",bm,scene);
+                    scene.background.count=0; check("backdrop-info-off",bm,scene);
+                    scene.timeValid=false; check("backdrop-unknown",bm,scene);
+                    scene=sampleData(); check("backdrop-known",bm,scene);
+                    // The list rising over it: a hair, half, nearly and fully
+                    // up, turning back half way, and down to rest again.
+                    bm.screen=ScreenId::AppList;
+                    for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,0.998f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
+                        bm.launcher.transition=p; check("backdrop-transition",bm,scene);
+                    }
+                    vTaskDelay(1);
+                    // Rows over the background: selections, positions between
+                    // rows, the names' images against the glyphs, a notice.
+                    bm.launcher.transition=1;
+                    for(int i=0;i<5;++i) {
+                        bm.launcher.list.selection=i;
+                        bm.launcher.list.scroll=float(i*rowSpacing(bm.viewport)+(i%2)*29);
+                        check("backdrop-list",bm,scene);
+                    }
+                    direct("backdrop-list-image",bm,scene);
+                    bm.toast="準備中"; check("backdrop-list-toast-on",bm,scene);
+                    bm.toast=nullptr; check("backdrop-list-toast-off",bm,scene);
+                    // The scenery rearranging under a half raised list.
+                    bm.launcher.transition=0.5f; info("00:07"); check("backdrop-info-under-list",bm,scene);
+                    scene.background.count=0; check("backdrop-info-gone-under-list",bm,scene);
+                    vTaskDelay(1);
+                }
+                // The face asking for another colour under a shown list: the
+                // background, every row and every cached name follow.
+                bm.launcher.transition=1; bm.launcher.list.scroll=float(rowSpacing(bm.viewport));
+                backdrop.listBackgroundForTest(0x4208); check("backdrop-colour",bm,scene);
+                direct("backdrop-colour-image",bm,scene);
+                bm.launcher.transition=0.4f; check("backdrop-colour-mid",bm,scene);
+                backdrop.listBackgroundForTest(0x0000); check("backdrop-colour-black",bm,scene);
+                backdrop.listBackgroundForTest(0x18c9); check("backdrop-colour-again",bm,scene);
+                // Names that cannot be cached, drawn straight onto the colour.
+                bm.launcher.transition=1;
+                view.releaseCache(); view.failAllocationsForTest(true);
+                check("backdrop-alloc-fail",bm,scene); direct("backdrop-image-alloc-fail",bm,scene);
+                view.failAllocationsForTest(false); view.releaseCache();
+                check("backdrop-alloc-recovered",bm,scene);
+                // Over capacity mid-slide, and back.
+                bm.launcher.transition=0.5f;
+                renderer.capacityForTest(2); check("backdrop-overflow",bm,scene);
+                renderer.capacityForTest(FramePlan::Capacity); check("backdrop-overflow-recovery",bm,scene);
+                // Back to Digital mid-slide: black under the list again.
+                renderer.selectFace("digital"); check("backdrop-to-digital",bm,scene);
+                bm.launcher.transition=0; bm.screen=ScreenId::Home; check("digital-after-backdrop",bm,d);
+                backdrop.listBackgroundForTest(0x18c9);
+            }
+            // Work 10-5: Forest in its combinations against full repaints,
+            // then its caches against drawing directly (docs/task10/plan-10-5.md 7).
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData fd;
+                auto items=[&](int count) {
+                    for(int i=0;i<count && i<BackgroundCapacity;++i) {
+                        auto& item=fd.background.items[i];
+                        item=BackgroundInfo{};
+                        item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
+                        std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
+                        item.icon=appIcon(IconId::Stopwatch);
+                        item.suggestedColor=StopwatchAccent;
+                    }
+                    fd.background.count=uint8_t(std::min(count,BackgroundCapacity));
+                };
+                FrameModel fm; fm.viewport={w,h};
+                if(!renderer.selectFace("forest")) { ++failures; std::printf("[Verify] FAIL forest did not begin\n"); }
+                fd=sampleData();                                   // 82%, not charging: no row
+                check("forest",fm,fd);
+                ++fd.localTime.tm_min; check("forest-minute",fm,fd);
+                fd.localTime.tm_hour=11; fd.localTime.tm_min=11; check("forest-narrow",fm,fd);
+                // 31 and 30 hide it, 29 shows it; unknown after showing keeps it.
+                for(int percent:{31,30,29,5,0,100,-1,30}) { fd.batteryPercent=percent; check("forest-battery",fm,fd); }
+                fd.charging=true; check("forest-charging",fm,fd);
+                fd.batteryPercent=-1; check("forest-charging-unknown",fm,fd);
+                fd.charging=false; fd.batteryPercent=82; check("forest-discharging",fm,fd);
+                fd.chargingKnown=false; fd.batteryPercent=12; check("forest-charging-unreadable",fm,fd);
+                fd.chargingKnown=true; fd.batteryPercent=82; check("forest-battery-gone",fm,fd);
+                items(1); check("forest-item",fm,fd);
+                items(2); check("forest-items",fm,fd);
+                fd.batteryPercent=18; check("forest-battery-items",fm,fd);
+                std::snprintf(fd.background.items[0].label,BackgroundLabelBytes,"02:41"); check("forest-item-label",fm,fd);
+                // Forest ignores the suggested colour: a change of it alone draws nothing.
+                fd.background.items[1].suggestedColor=uint16_t(0xf800);
+                renderer.draw(fm,fd); ++checks;
+                if(!renderer.lastDirty().empty()) {
+                    ++failures; const Rect r=renderer.lastDirty();
+                    std::printf("[Verify] FAIL forest-colour-only repainted %d,%d %dx%d\n",r.x,r.y,r.w,r.h);
+                }
+                check("forest-colour-only",fm,fd);
+                fd.background.items[1].icon=appIcon(IconId::Settings); check("forest-item-icon",fm,fd);
+                fd.background.items[1].appId=static_cast<LaunchTargetId>(77); check("forest-unknown-app",fm,fd);
+                fd.background.items[1].icon=nullptr; check("forest-item-generic",fm,fd);
+                std::snprintf(fd.background.items[0].label,BackgroundLabelBytes,"A long label the row has to shorten, 999:59");
+                check("forest-item-long",fm,fd);
+                std::snprintf(fd.background.items[1].label,BackgroundLabelBytes,"計測中"); check("forest-item-japanese",fm,fd);
+                fm.toast="保存しました"; check("forest-toast-on",fm,fd);
+                fm.toast=nullptr; check("forest-toast-off",fm,fd);
+                items(1); check("forest-item-removed",fm,fd);
+                fd.background.count=0; fd.batteryPercent=82; check("forest-plain-again",fm,fd);
+                vTaskDelay(1);
+                renderer.handle(hold); check("forest-seconds",fm,fd);
+                for(int s=0;s<3;++s) { ++fd.localTime.tm_sec; check("forest-second-tick",fm,fd); }
+                fd.localTime.tm_min=59; fd.localTime.tm_sec=59; check("forest-minute-edge",fm,fd);
+                fd.localTime.tm_hour=23; check("forest-hour-edge",fm,fd);
+                items(2); fd.batteryPercent=5; check("forest-seconds-info",fm,fd);
+                fd.timeValid=false; check("forest-seconds-unknown",fm,fd);
+                fd.timeValid=true;
+                // The list over Forest, which stays still: a hair, half, nearly
+                // and fully up, turning back, and down to rest.
+                fm.screen=ScreenId::AppList;
+                for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
+                    fm.launcher.transition=p; check("forest-transition",fm,fd);
+                }
+                // The scenery moving under a half raised list.
+                fm.launcher.transition=0.5f; fd.background.count=0; fd.batteryPercent=82;
+                check("forest-info-gone-under-list",fm,fd);
+                items(1); check("forest-info-under-list",fm,fd);
+                // A slow drag back to the clock: the edge a pixel or two at a
+                // time with no full repaint in between, the seconds ticking
+                // now and then, and the finger wavering back up. Only the
+                // last frame is compared, so anything a step left behind shows.
+                {
+                    fd.background.count=0; fd.batteryPercent=82;
+                    renderer.handle(hold);
+                    auto edge=[&](int top) { fm.launcher.transition=1.0f-(float(top)+0.5f)/float(h); };
+                    edge(0); check("forest-slow-start",fm,fd);
+                    int top=0,step=0;
+                    while (top<h-20) {
+                        top+=1+step%2;
+                        if (step%7==6) top-=3;          // wavering back up
+                        edge(top);
+                        if (step%29==0) ++fd.localTime.tm_sec;
+                        renderer.draw(fm,fd);
+                        if (++step%16==0) vTaskDelay(1);
+                    }
+                    check("forest-slow-return",fm,fd);
+                    // The same through the launcher's own controller: the list
+                    // opened, then pulled back down by a slow finger.
+                    LauncherController launcher({w,h});
+                    TimeUs now=1000000;
+                    launcher.openList(now);
+                    for (int i=0;i<40;++i) { now+=16000; launcher.update(now); }
+                    auto frameAt=[&]() {
+                        const auto lm=launcher.model();
+                        fm.launcher.transition=lm.transition; fm.launcher.list=lm.list;
+                        renderer.draw(fm,fd);
+                    };
+                    frameAt();
+                    Events e{}; e.gesture=Gesture::TouchStart; launcher.handle(e,now);
+                    int total=10;
+                    e={}; e.gesture=Gesture::DragStart; e.totalY=total; launcher.handle(e,now); frameAt();
+                    for (int i=0;i<150;++i) {
+                        now+=10000;
+                        total+=(i%5==4) ? -1 : 1;
+                        e={}; e.gesture=Gesture::DragMove; e.totalY=total; launcher.handle(e,now);
+                        if (i%31==0) ++fd.localTime.tm_sec;
+                        frameAt();
+                        if (i%16==15) vTaskDelay(1);
+                    }
+                    fm.launcher.transition=launcher.model().transition;
+                    check("forest-slow-drag",fm,fd);
+                    std::printf("[Verify] forest slow drag ends at transition=%.3f\n",double(fm.launcher.transition));
+                    renderer.handle(hold);
+                }
+                renderer.handle(hold); check("forest-minutes-again",fm,fd);
+                vTaskDelay(1);
+                auto faceDirect=[&](const char* name) {
+                    renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
+                    renderer.selectFace("forest",true); renderer.draw(fm,fd); display.readRect(0,0,w,h,reference);
+                    renderer.selectFace("forest");
+                    compare(name);
+                };
+                fd=sampleData(); faceDirect("forest-direct");
+                items(2); fd.batteryPercent=18; faceDirect("forest-direct-info");
+                renderer.handle(hold); faceDirect("forest-direct-seconds"); renderer.handle(hold);
+                renderer.capacityForTest(2); check("forest-overflow",fm,fd);
+                renderer.capacityForTest(FramePlan::Capacity); check("forest-overflow-recovery",fm,fd);
+                // Choosing faces and variants over and over leaks nothing.
+                const auto free=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+                for(int i=0;i<16;++i) {
+                    renderer.selectFace("digital"); renderer.draw(fm,fd);
+                    renderer.selectFace("forest"); renderer.handle(hold); renderer.draw(fm,fd);
+                    vTaskDelay(1);
+                }
+                std::printf("[Verify] faces internal_free_before=%u after=%u\n",unsigned(free),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+                renderer.selectFace("digital"); check("forest-to-digital",fm,d);
+            }
             // Repeated cache release/recreation gives before/after heap evidence.
             const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }
@@ -551,6 +967,178 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     unsigned(c.bytes),unsigned(c.allocations),unsigned(c.failures),unsigned(c.fits),unsigned(c.renders));
             }
             std::printf("[Verify] checks=%u mismatches=%u result=%s\n",checks,failures,failures ? "FAIL" : "PASS");
+            // Work 10-3: how long Digital's frames take and how much of the
+            // panel they send, per kind of update, with no input involved.
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData frame;
+                auto run=[&](const char* name,const FrameModel& fm,int frames,auto&& step) {
+                    renderer.invalidate(); renderer.draw(fm,frame);
+                    TimeUs total=0,longest=0; uint64_t area=0; unsigned painted=0;
+                    for(int i=0;i<frames;++i) {
+                        step(i);
+                        const TimeUs start=esp_timer_get_time();
+                        renderer.draw(fm,frame);
+                        const TimeUs spent=esp_timer_get_time()-start;
+                        total+=spent; longest=std::max(longest,spent);
+                        const Rect dirty=renderer.lastDirty();
+                        if(!dirty.empty()) { ++painted; area+=uint64_t(dirty.w)*dirty.h; }
+                        if(i%8==7) vTaskDelay(1);
+                    }
+                    std::printf("[Perf] %s frames=%d painted=%u avg_us=%lld max_us=%lld avg_dirty_px=%llu\n",name,frames,painted,
+                        (long long)(total/frames),(long long)longest,(unsigned long long)(painted ? area/painted : 0));
+                };
+                auto stopwatchItem=[&](int seconds) {
+                    auto& item=frame.background.items[0];
+                    item=BackgroundInfo{}; item.appId=LaunchTargetId::Stopwatch;
+                    std::snprintf(item.label,sizeof(item.label),"%02d:%02d",seconds/60%60,seconds%60);
+                    item.icon=appIcon(IconId::Stopwatch); item.suggestedColor=StopwatchAccent;
+                    frame.background.count=1;
+                };
+                FrameModel pm; pm.viewport={w,h};
+                frame=sampleData();
+                run("digital-static",pm,30,[&](int) {});
+                run("digital-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
+                stopwatchItem(0);
+                run("digital-item-second",pm,60,[&](int i) { stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData();
+                run("digital-second",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; });
+                stopwatchItem(0);
+                run("digital-second-item",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData(); stopwatchItem(160);
+                run("digital-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                pm.launcher.transition=0;
+                // Work 10-4: the list scrolling on black and on a colour, and
+                // a small number changing over scenery (docs/task10/plan-10-4.md 7).
+                frame=sampleData();
+                auto scroll=[&](int i) { pm.launcher.list.scroll=float((i*7)%(4*rowSpacing(pm.viewport)+1)); };
+                pm.screen=ScreenId::AppList; pm.launcher.transition=1;
+                run("list-scroll",pm,60,scroll);
+                renderer.selectFace(backdrop.id());
+                run("backdrop-list-scroll",pm,60,scroll);
+                pm.screen=ScreenId::Home; pm.launcher.transition=0; pm.launcher.list.scroll=0;
+                run("backdrop-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
+                run("backdrop-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                backdrop.listBackgroundForTest(0x0000);
+                run("backdrop-transition-black",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                backdrop.listBackgroundForTest(0x18c9);
+                pm.launcher.transition=0;
+                renderer.selectFace("digital");
+                // What restoring the black base costs, without the transfer.
+                {
+                    display.startWrite();
+                    const TimeUs start=esp_timer_get_time();
+                    display.fillRect(0,0,w,h,0);
+                    const TimeUs spent=esp_timer_get_time()-start;
+                    display.endWrite();
+                    renderer.invalidate(); renderer.draw(pm,frame);
+                    std::printf("[Perf] base-fill px=%d us=%lld (no transfer)\n",w*h,(long long)spent);
+                }
+                // Work 10-5: Forest's updates, and full repaints of both faces.
+                renderer.selectFace("forest");
+                frame=sampleData();
+                run("forest-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
+                stopwatchItem(0);
+                run("forest-item-second",pm,60,[&](int i) { stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData();
+                run("forest-second",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; });
+                stopwatchItem(0);
+                run("forest-second-item",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData(); stopwatchItem(160);
+                run("forest-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                pm.launcher.transition=0;
+                run("forest-full",pm,20,[&](int) { renderer.invalidate(); });
+                std::printf("[Perf] forest caches=%d/3\n",renderer.forestCachedParts());
+                renderer.selectFace("digital");
+                run("digital-full",pm,20,[&](int) { renderer.invalidate(); });
+                std::printf("[Perf] digital caches=%d/5 internal_free=%u largest=%u\n",renderer.digitalCachedParts(),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)),
+                    unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+            }
+#ifdef LAUNCHER_RENDER_SHOTS
+            // Pictures of the faces for looking at on the PC
+            // (tools/render_shots.py), after the check so they change nothing.
+            {
+                auto shoot=[&](const char* name,const FrameModel& fm,const WatchData& fd) {
+                    renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
+                    dumpShot(name,incremental,w,h);
+                };
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData scene;
+                auto item=[](int i,const char* label,const IconBitmap* icon,std::optional<uint16_t> colour) {
+                    auto& it=scene.background.items[i];
+                    it=BackgroundInfo{}; it.appId=static_cast<LaunchTargetId>(i==0 ? 0 : 41);
+                    std::snprintf(it.label,sizeof(it.label),"%s",label);
+                    it.icon=icon; it.suggestedColor=colour;
+                    scene.background.count=uint8_t(std::max<int>(scene.background.count,i+1));
+                };
+                display.fillScreen(0xf800); display.readRect(0,0,1,1,incremental);
+                std::printf("[ShotProbe] red=%04x\n",unsigned(incremental[0]));
+                FrameModel sm; sm.viewport={w,h};
+                scene=sampleData(); shoot("digital",sm,scene);
+                item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("digital-items",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); shoot("digital-seconds",sm,scene);
+                item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("digital-seconds-item",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1;
+                shoot("digital-unknown",sm,scene);
+                scene=sampleData(); scene.charging=true; scene.batteryPercent=5;
+                item(0,"A very long label the chip has to shorten",nullptr,std::nullopt);
+                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+                shoot("digital-mixed",sm,scene);
+                scene=sampleData(); scene.batteryPercent=100;
+                item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("digital-full",sm,scene);
+                scene=sampleData();
+                item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                sm.launcher.transition=0.45f; shoot("digital-transition",sm,scene);
+                // Work 10-4: the list laid over scenery, on black and on a
+                // colour, drawn differentially after a slide from rest.
+                auto slide=[&](const char* name,float to) {
+                    sm.screen=ScreenId::AppList; sm.launcher.transition=0;
+                    renderer.invalidate(); renderer.draw(sm,scene);
+                    for(int i=1;i<=10;++i) { sm.launcher.transition=to*float(i)/10; renderer.draw(sm,scene); }
+                    display.readRect(0,0,w,h,incremental); dumpShot(name,incremental,w,h);
+                };
+                renderer.selectFace(backdrop.id());
+                scene=sampleData();
+                backdrop.listBackgroundForTest(0x0000); slide("backdrop-transition",0.45f);
+                backdrop.listBackgroundForTest(0x18c9); slide("backdrop-transition-colour",0.6f);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                sm.screen=ScreenId::Home; sm.launcher.transition=0; shoot("backdrop-info",sm,scene);
+                // Work 10-5: Forest, like the reference pictures and around them.
+                renderer.selectFace("forest");
+                scene=sampleData(); shoot("forest",sm,scene);
+                scene.batteryPercent=18;
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                shoot("forest-info",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); shoot("forest-seconds",sm,scene);
+                scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("forest-seconds-info",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
+                shoot("forest-unknown",sm,scene);
+                scene=sampleData(); scene.batteryPercent=100; scene.charging=true;
+                item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
+                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+                shoot("forest-mixed",sm,scene);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                slide("forest-transition",0.45f);
+                sm.screen=ScreenId::Home; sm.launcher.transition=0;
+                renderer.selectFace("digital");
+            }
+#endif
         }
     }
     heap_caps_free(incremental); heap_caps_free(reference);

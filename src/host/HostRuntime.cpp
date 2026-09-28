@@ -67,10 +67,12 @@ void HostRuntime::step() {
 #ifdef LAUNCHER_RENDER_METRICS
         if (wasOff) recordWake(now);
 #endif
-        // The panel comes back at zero brightness, so the level is re-applied
-        // on the first frame after the wake rather than inside the HAL.
+        // The panel comes back at zero brightness: the first frame is drawn
+        // dark and the level fades in behind it, rather than inside the HAL.
+        // Going off ends a fade that is still running.
         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
         appliedBrightness_ = -1;
+        fadeEnd_ = power_.screenOff() ? 0 : now + FadeUs;
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
     if (!power_.screenOff()) {
@@ -83,9 +85,7 @@ void HostRuntime::step() {
     if (!power_.screenOff() && (dirty_ || now >= nextDisplay_)) {
         const auto model = screens_.model();
         const auto effective=screens_.effectiveSettings();
-        if (effective.brightness != appliedBrightness_) {
-            hal_.setBrightness(effective.brightness); appliedBrightness_ = effective.brightness;
-        }
+        brightness_ = effective.brightness;
         power_.setTimeout(TimeUs(effective.screenOffSec) * 1000000);
         auto watch = data_.sample(now);
         const bool clock = clockVisible(model);
@@ -111,6 +111,9 @@ void HostRuntime::step() {
         // plan.md 8.1 asks.
         if (slots_ && !scanRequested_) { scanRequested_ = true; slots_->requestScan(); }
     }
+    // After the draw, so a wake's first frame is on the panel before the level
+    // rises. A dark panel is never written: the HAL set zero before its sleep.
+    if (!power_.screenOff()) applyBrightness(now);
     // After the draw above, so the "starting" frame reaches the panel before the
     // call blocks for the pre-boot re-verification and restarts. Entering the
     // phase marks the frame dirty, so that draw happens in this same step.
@@ -126,7 +129,22 @@ void HostRuntime::wait() {
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
     auto deadline = std::min(nextInput_, std::min(nextUsb_, power_.deadline()));
-    if (!power_.screenOff()) deadline = std::min(deadline, std::min(screens_.nextUpdate(), nextDisplay_));
+    if (!power_.screenOff()) {
+        deadline = std::min(deadline, std::min(screens_.nextUpdate(), nextDisplay_));
+        // Due until the full level is applied, even when this wait itself
+        // comes after the end: a long step can run past it.
+        if (fadeEnd_) deadline = std::min(deadline, std::min(now + FadeStepUs, fadeEnd_));
+    }
     hal_.waitUs(waitDelay(now, deadline));
+}
+void HostRuntime::applyBrightness(TimeUs now) {
+    int level = brightness_;
+    // Eased out: quick at first, settling on the level. The target comes from
+    // the latest draw, so a level changed during the fade becomes its new end.
+    if (now < fadeEnd_) {
+        const float rest = float(fadeEnd_ - now) / FadeUs;
+        level = int(float(brightness_) * (1 - rest * rest) + 0.5f);
+    } else fadeEnd_ = 0;
+    if (level != appliedBrightness_) { hal_.setBrightness(level); appliedBrightness_ = level; }
 }
 }

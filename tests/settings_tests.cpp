@@ -225,17 +225,43 @@ void runtimeApplies() {
     // Unchanged settings do not keep re-applying.
     for (int i=0;i<5;++i) { hal.time+=1000000; runtime.step(); }
     CHECK(hal.brightnessCalls==1);
-    // Waking re-applies, because the panel comes back dark.
+    // Waking fades the level in, because the panel comes back dark: the first
+    // frame is drawn at zero and the level eases out over 200ms.
     for (int i=0;i<31;++i) { hal.time+=1000000; runtime.step(); }
     CHECK(runtime.power().screenOff());
     hal.input={false,false,true,100,100}; hal.time+=10000; runtime.step();
-    CHECK(!runtime.power().screenOff() && hal.brightnessCalls==2 && hal.brightness==90);
+    CHECK(!runtime.power().screenOff() && hal.brightnessCalls==2 && hal.brightness==0);
+    hal.input={}; hal.time+=10000; runtime.step();     // release
+    CHECK(hal.brightness>0 && hal.brightness<20);
+    // Past the input's follow, the fade alone keeps the wait short.
+    hal.time+=110000; runtime.step(); runtime.wait();
+    CHECK(hal.brightness==76 && hal.waited<=16000);   // 120ms: 90*(1-0.4^2)
+    // A level changed mid-fade becomes its end, without restarting it.
+    CHECK(store.save({150,30}));
+    runtime.dataChanged(); hal.time+=50000; runtime.step();
+    CHECK(hal.brightness==147);                        // 170ms: 150*(1-0.15^2)
+    hal.time+=30000; runtime.step();                   // 200ms: the fade ends
+    CHECK(hal.brightness==150);
+    // The fade leaves nothing behind: no more writes, no short wait.
+    const int lit=hal.brightnessCalls;
+    for (int i=0;i<5;++i) { hal.time+=16000; runtime.step(); }
+    runtime.wait();
+    CHECK(hal.brightnessCalls==lit && hal.waited>16000);
     // A shorter sleep timeout takes effect once it is stored.
     CHECK(store.save({90,15}));
-    hal.input={}; hal.time+=10000; runtime.step();     // release
     runtime.dataChanged(); runtime.step();             // a draw picks the value up
     hal.time+=16000000; runtime.step();
     CHECK(runtime.power().screenOff()); // 16s > 15s, which 30s would not have.
+    // A step that runs past the fade's end still lands on the level: the fade
+    // stays due until the full level is applied.
+    hal.input={false,false,true,100,100}; hal.time+=10000; runtime.step();
+    hal.input={}; hal.time+=10000; runtime.step();
+    hal.time+=110000; runtime.step();
+    CHECK(hal.brightness==76);
+    hal.time+=81000; runtime.wait();                   // 201ms, with 90 not yet applied
+    CHECK(hal.waited<=1000);
+    runtime.step(); runtime.wait();
+    CHECK(hal.brightness==90 && hal.waited>16000);
 }
 void statisticsAction() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);

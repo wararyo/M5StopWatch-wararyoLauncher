@@ -1,0 +1,64 @@
+﻿Processing m5stopwatch (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/m5stack-cores3.html
+PLATFORM: Espressif 32 (6.12.0) > M5Stack CoreS3
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-espidf @ 3.50500.0 (5.5.0) 
+ - tool-cmake @ 3.30.2 
+ - tool-esp-rom-elfs @ 0.0.1+20241011 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - tool-idf @ 1.0.1 
+ - tool-mconf @ 1.4060000.20190628 (406.0.0) 
+ - tool-ninja @ 1.9.0 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-esp32ulp @ 1.23800.240113 (2.38.0) 
+ - toolchain-riscv32-esp @ 14.2.0+20241119 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20241119
+Reading CMake configuration...
+pio : KeyError: 'version':
+At line:1 char:302
++ ... tch {} } }; pio run -e m5stopwatch *> docs/task11/20260929-11-1-build ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (KeyError: 'version'::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\wararyo\.platformio\penv\Lib\site-packages\platformio\builder\main.py", line 173:
+    env.SConscript("$BUILD_SCRIPT")
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Script\SConscript.py", line 625:
+    return _SConscript(self.fs, *files, **subst_kw)
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Script\SConscript.py", line 284:
+    exec(compile(scriptdata, scriptname, 'exec'), call_stack[-1].globals)
+  File "C:\Users\wararyo\.platformio\platforms\espressif32@6.12.0\builder\main.py", line 370:
+    target_elf = env.BuildProgram()
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Util\envs.py", line 302:
+    return self.method(*nargs, **kwargs)
+  File "C:\Users\wararyo\.platformio\penv\Lib\site-packages\platformio\builder\tools\piobuild.py", line 61:
+    env.ProcessProgramDeps()
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Util\envs.py", line 302:
+    return self.method(*nargs, **kwargs)
+  File "C:\Users\wararyo\.platformio\penv\Lib\site-packages\platformio\builder\tools\piobuild.py", line 122:
+    env.BuildFrameworks(env.get("PIOFRAMEWORK"))
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Util\envs.py", line 302:
+    return self.method(*nargs, **kwargs)
+  File "C:\Users\wararyo\.platformio\penv\Lib\site-packages\platformio\builder\tools\piobuild.py", line 353:
+    SConscript(env.GetFrameworkScript(name), exports="env")
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Script\SConscript.py", line 689:
+    return method(*args, **kw)
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Script\SConscript.py", line 625:
+    return _SConscript(self.fs, *files, **subst_kw)
+  File "C:\Users\wararyo\.platformio\packages\tool-scons\scons-local-4.11.1\SCons\Script\SConscript.py", line 284:
+    exec(compile(scriptdata, scriptname, 'exec'), call_stack[-1].globals)
+  File "C:\Users\wararyo\.platformio\platforms\espressif32@6.12.0\builder\frameworks\espidf.py", line 1766:
+    project_codemodel = get_cmake_code_model(
+  File "C:\Users\wararyo\.platformio\platforms\espressif32@6.12.0\builder\frameworks\espidf.py", line 253:
+    assert codemodel["version"]["major"] == 2
+
+========================== [FAILED] Took 1.35 seconds ==========================
+Environment    Status    Duration
+-------------  --------  ------------
+m5stopwatch    FAILED    00:00:01.350
+==================== 1 failed, 0 succeeded in 00:00:01.350 ====================

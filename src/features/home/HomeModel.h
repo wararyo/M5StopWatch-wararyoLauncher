@@ -1,6 +1,7 @@
 #pragma once
 #include "core/Time.h"
 #include "features/background/BackgroundInfo.h"
+#include <algorithm>
 #include <ctime>
 #include <cstdint>
 namespace launcher {
@@ -24,5 +25,13 @@ inline TimeUs nextMinute(TimeUs now,const WatchData& data) {
 inline TimeUs nextSecond(TimeUs now,const WatchData& data) {
     if (!data.timeValid || data.subsecondUs<0 || data.subsecondUs>=1000000) return INT64_MAX;
     return now+1000000-data.subsecondUs;
+}
+// The next :00, :10 ... :50.
+// A leap second counts as :59, whose next boundary is the same :00.
+inline TimeUs nextTenSeconds(TimeUs now,const WatchData& data) {
+    if (!data.timeValid || data.localTime.tm_sec<0 || data.localTime.tm_sec>60 ||
+        data.subsecondUs<0 || data.subsecondUs>=1000000) return INT64_MAX;
+    const int second=std::min(data.localTime.tm_sec,59);
+    return now+(10-second%10)*1000000LL-data.subsecondUs;
 }
 }

@@ -29,8 +29,19 @@ UsbState M5Hal::sampleUsb() {
     usb.vbusValid = M5.getBoard() == m5::board_t::board_M5StopWatch &&
         M5.In_I2C.readRegister(0x6e, 0x24, bytes, sizeof(bytes), 100000);
     if (usb.vbusValid) usb.vbusMv = bytes[0] | (bytes[1] << 8);
+    // GPIO_IN bit 2 is the charger's CHG_STAT, low while charging. Read here
+    // rather than through M5.Power, which cannot tell a failed read from low.
+    uint8_t in = 0;
+    usb.chargeValid = usb.vbusValid && M5.In_I2C.readRegister(0x6e, 0x12, &in, 1, 100000);
+    usb.charging = usb.chargeValid && !(in & 0x04);
     usb.dataConnected = usb_serial_jtag_is_connected();
     return usb;
+}
+void M5Hal::setStatusLed(bool on) {
+    // PWR_CFG bit 4 drives LED_EN (R19 and LED1 to GND). Read-modify-write:
+    // the same register switches the rails, the 5V boost and charging.
+    const bool ok = on ? M5.In_I2C.bitOn(0x6e, 0x06, 0x10, 100000) : M5.In_I2C.bitOff(0x6e, 0x06, 0x10, 100000);
+    std::printf("[Power] status_led=%s%s\n", on ? "on" : "off", ok ? "" : " FAILED");
 }
 void M5Hal::setScreenOff(bool off) {
     // Waking only powers the panel: the level is the runtime's to decide, since

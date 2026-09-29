@@ -42,6 +42,7 @@ private:
     static constexpr TimeUs FollowUs = 100000;
     TimeUs followUntil_ = 0;
     bool lightSleep_ = false; // The HAL starts with light sleep forbidden.
+    int statusLed_ = -1; // Unknown until the first charge reading sets it.
     TimeUs nextDisplay_ = INT64_MAX;
     // A wake fades the level in from zero, eased out, stepped at a frame rate.
     static constexpr TimeUs FadeUs = 300000, FadeStepUs = 16000;

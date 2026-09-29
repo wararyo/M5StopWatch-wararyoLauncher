@@ -11,6 +11,7 @@ public:
     bool inputPending() override;
     bool takeWristWake() override;
     void setLightSleepAllowed(bool allowed) override;
+    void setStatusLed(bool on) override;
     // Call on the UI task: it is the task the interrupts notify. Sets up the
     // IMU's wrist-wear wake-up first, since its line is one of them.
     void beginInputWake();

@@ -231,6 +231,10 @@ light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、�
 `HostRuntime` が `Hal::setLightSleepAllowed()` で許す。パネルのsleep後に許可し、パネルを起こす前に取り消す。
 起床は入力の割り込み（A・B・タッチINT）と期限による。
 
+緑の状態LEDは充電中だけ点灯する。M5PM1は起動時に点灯させるため、`HostRuntime` が1秒ごとのVBUS読み取りと同時に
+充電状態（M5PM1 G2 = CHG_STAT）を読み、変化したときだけ `Hal::setStatusLed()` で `PWR_CFG (0x06)` のbit4を切り替える。
+消灯中も同じ読み取りで追従する。読み取りに失敗したときは現状を維持する。M5PM1の設定はゲストの実行中も残る。
+
 ### 起きる必要があるときだけ処理する
 
 | 処理 | 現在の期限・条件 |

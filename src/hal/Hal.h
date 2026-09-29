@@ -23,6 +23,9 @@ public:
     // stops the USB console). Only the runtime test observes it, so the other
     // fakes inherit the no-op (work 8-5).
     virtual void setLightSleepAllowed(bool) {}
+    // The green status LED, which M5PM1 lights at power-on. The runtime
+    // decides when; fakes without one inherit the no-op.
+    virtual void setStatusLed(bool) {}
     // The RTC is read and written as UTC (plan.md 7.3). The system clock is
     // what the launcher actually reads each frame, so it sits behind the HAL
     // too: settimeofday is not available on the PC toolchain, and routing it

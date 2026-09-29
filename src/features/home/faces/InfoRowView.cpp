@@ -7,6 +7,7 @@
 #include "ui/graphics/WatchFonts.h"
 #include "ui/rendering/Element.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 namespace launcher {
@@ -88,16 +89,41 @@ void InfoRowView::plan(Gfx& g,const Viewport& viewport,const InfoRow& row,const 
                                            hashString(group.label,0x51ed27u)) : 0u;
     }
 }
-void InfoRowView::paintBattery(Gfx& g,uint16_t ink,uint16_t background) const {
+namespace {
+// A pixel's coverage from its centre's signed distance to a shape's edge:
+// drawWideLineClipped's rule, fainter than 1/32 left out, stronger than 31/32
+// solid.
+constexpr float Faint=1.0f/32,Solid=1-Faint;
+float cover(float distance) { return std::clamp(0.5f-distance,0.0f,1.0f); }
+// Signed distance to a rounded rectangle over pixels x..x+w-1, y..y+h-1.
+float roundRectDistance(float px,float py,int x,int y,int w,int h,float r) {
+    const float cx=x+(w-1)/2.0f,cy=y+(h-1)/2.0f;
+    const float qx=std::fabs(px-cx)-(w/2.0f-r),qy=std::fabs(py-cy)-(h/2.0f-r);
+    const float ox=std::max(qx,0.0f),oy=std::max(qy,0.0f);
+    return std::sqrt(ox*ox+oy*oy)+std::min(std::max(qx,qy),0.0f)-r;
+}
+// `ink` over the backdrop across `box`, each pixel as far as `coverage` says.
+template<class F> void blendShape(Gfx& g,Rect box,uint16_t ink,const Backdrop& backdrop,F&& coverage) {
+    for (int y=box.y;y<box.y+box.h;++y) for (int x=box.x;x<box.x+box.w;++x) {
+        const float c=coverage(float(x),float(y));
+        if (c<=Faint) continue;
+        g.drawPixel(x,y,c>Solid ? ink : blend565(ink,backdrop.at(x,y),uint8_t(c*255+0.5f)));
+    }
+}
+}
+void InfoRowView::paintBattery(Gfx& g,uint16_t ink,const Backdrop& backdrop) const {
     const Rect& box=boxes_[Battery];
     const int x=box.x+Pad,cy=row_.y;
     const int w=row_.batteryWidth,tip=px(viewport_,3),total=row_.batteryHeight;
     const int top=cy-total/2+tip,height=total-tip;
-    // Terminal, outline, then the charge rising from the bottom.
-    const int tipW=px(viewport_,8);
-    g.fillSmoothRoundRect(x+(w-tipW)/2,top-tip,tipW,tip+2,1,ink);
-    g.fillSmoothRoundRect(x,top,w,height,3,ink);
-    g.fillSmoothRoundRect(x+2,top+2,w-4,height-4,2,background);
+    const int tipW=px(viewport_,8),tipX=x+(w-tipW)/2;
+    // The terminal and the outline as one shape, the backdrop showing inside.
+    blendShape(g,{x-1,top-tip-1,w+2,height+tip+2},ink,backdrop,[&](float fx,float fy) {
+        const float ring=std::max(roundRectDistance(fx,fy,x,top,w,height,3),
+                                  -roundRectDistance(fx,fy,x+2,top+2,w-4,height-4,2));
+        return std::max(cover(ring),cover(roundRectDistance(fx,fy,tipX,top-tip,tipW,tip+2,1)));
+    });
+    // Then the charge rising from the bottom, or a bolt while charging.
     const int inner=height-8;
     if (charging_) {
         const int mx=x+w/2,my=top+height/2;
@@ -109,30 +135,35 @@ void InfoRowView::paintBattery(Gfx& g,uint16_t ink,uint16_t background) const {
         g.fillRect(x+4,top+4+inner-level,w-8,level,ink);
     }
     useFont(g,small_);
-    g.setTextColor(ink,background); g.setTextDatum(baseline_left);
+    setTextInk(g,ink,backdrop); g.setTextDatum(baseline_left);
     g.drawString(battery_,x+w+row_.iconGap,cy+(small_.ascent-small_.descent)/2);
 }
-void InfoRowView::paintItem(Gfx& g,const Group& item,const Rect& box,uint16_t ink,uint16_t background) const {
+void InfoRowView::paintItem(Gfx& g,const Group& item,const Rect& box,uint16_t ink,const Backdrop& backdrop) const {
     const int x=box.x+Pad,cy=row_.y,icon=std::min(row_.iconSize,MaxIcon);
     if (item.maskReady) {
         const int left=x,top=cy-icon/2;
         for (int j=0;j<icon;++j) for (int i=0;i<icon;++i) {
             const uint8_t a=item.mask[j*icon+i];
-            if (a) g.drawPixel(left+i,top+j,blend565(ink,background,a));
+            if (a) g.drawPixel(left+i,top+j,blend565(ink,backdrop.at(left+i,top+j),a));
         }
     } else {
         // No icon from the app: a plain ring stands in.
-        g.fillSmoothCircle(x+icon/2,cy,px(viewport_,10),ink);
-        g.fillSmoothCircle(x+icon/2,cy,px(viewport_,6),background);
+        const int cx=x+icon/2;
+        const float outer=px(viewport_,10),inner=px(viewport_,6);
+        const int reach=int(outer)+1;
+        blendShape(g,{cx-reach,cy-reach,2*reach+1,2*reach+1},ink,backdrop,[&](float fx,float fy) {
+            const float d=std::hypot(fx-cx,fy-cy);
+            return cover(std::max(d-outer,inner-d));
+        });
     }
     const Font& f=item.wide ? wide_ : small_;
     useFont(g,f);
-    g.setTextColor(ink,background); g.setTextDatum(baseline_left);
+    setTextInk(g,ink,backdrop); g.setTextDatum(baseline_left);
     g.drawString(item.label,x+icon+row_.iconGap,cy+(f.ascent-f.descent)/2);
 }
-void InfoRowView::paint(Gfx& g,int part,uint16_t ink,uint16_t background) const {
-    if (part==Battery) paintBattery(g,ink,background);
-    else if (part==Item0 || part==Item1) paintItem(g,groups_[part-Item0],boxes_[part],ink,background);
+void InfoRowView::paint(Gfx& g,int part,uint16_t ink,const Backdrop& backdrop) const {
+    if (part==Battery) paintBattery(g,ink,backdrop);
+    else if (part==Item0 || part==Item1) paintItem(g,groups_[part-Item0],boxes_[part],ink,backdrop);
     g.setTextSize(1);
 }
 }

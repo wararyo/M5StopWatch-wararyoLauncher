@@ -4,6 +4,7 @@
 #include "features/home/faces/AnalogWatchFace.h"
 #include "features/home/faces/DigitalWatchFace.h"
 #include "features/home/faces/ForestWatchFace.h"
+#include "features/home/faces/NoonishWatchFace.h"
 #include "ui/rendering/Renderer.h"
 #include <array>
 namespace launcher {
@@ -54,6 +55,7 @@ public:
     const DigitalWatchFace& digital() const { return digital_; }
     const ForestWatchFace& forest() const { return forest_; }
     const AnalogWatchFace& analog() const { return analog_; }
+    const NoonishWatchFace& noonish() const { return noonish_; }
     void plan(FramePlan& frame,Gfx& g) override;
     void paint(Gfx& g,const PaintContext& context) override;
     Rect opaqueArea() const override { return face_ ? intersect(face_->opaqueArea(),environment_.clip) : Rect{}; }
@@ -64,6 +66,7 @@ private:
     DigitalWatchFace digital_;
     ForestWatchFace forest_;
     AnalogWatchFace analog_;
+    NoonishWatchFace noonish_;
     FaceSelection selection_;
     std::array<WatchFace*,FaceSelection::Capacity> faces_{};
     WatchFace* face_=nullptr;

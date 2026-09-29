@@ -1,5 +1,6 @@
 #pragma once
 #include "features/home/HomeModel.h"
+#include "features/home/faces/Backdrop.h"
 #include "features/home/faces/InfoRow.h"
 #include "ui/graphics/Gfx.h"
 #include "ui/graphics/IconBitmap.h"
@@ -8,9 +9,9 @@ namespace launcher {
 // The information row's text and icons for Analog (and Noonish): the battery
 // with its percent and up to two items, each its icon in the ink and its label,
 // fitted to the row and placed by InfoRow the way Forest does. plan() decides
-// what shows and where; paint() draws one part over a single background
-// colour. Painting is kept apart so that a face on more than one colour can
-// draw the same plan its own way.
+// what shows and where; paint() draws one part over the face's backdrop, which
+// it has already painted: the icons and the battery blend their coverage with
+// the backdrop's colour at each pixel, the text blends into what is there.
 class InfoRowView {
 public:
     enum Part { Battery,Item0,Item1,PartCount };
@@ -26,7 +27,7 @@ public:
     void plan(Gfx& g,const Viewport& viewport,const InfoRow& row,const WatchData& d,bool battery,int items);
     Rect box(int part) const { return boxes_[part]; }
     uint32_t key(int part) const { return keys_[part]; }
-    void paint(Gfx& g,int part,uint16_t ink,uint16_t background) const;
+    void paint(Gfx& g,int part,uint16_t ink,const Backdrop& backdrop) const;
 private:
     static constexpr int MaxIcon=40;
     struct Group {
@@ -38,8 +39,8 @@ private:
         uint8_t mask[MaxIcon*MaxIcon]{};
     };
     void useFont(Gfx& g,const Font& f) const;
-    void paintBattery(Gfx& g,uint16_t ink,uint16_t background) const;
-    void paintItem(Gfx& g,const Group& item,const Rect& box,uint16_t ink,uint16_t background) const;
+    void paintBattery(Gfx& g,uint16_t ink,const Backdrop& backdrop) const;
+    void paintItem(Gfx& g,const Group& item,const Rect& box,uint16_t ink,const Backdrop& backdrop) const;
     Font small_,wide_;
     Viewport viewport_{};
     InfoRow row_{};

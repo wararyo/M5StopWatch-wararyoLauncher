@@ -54,6 +54,7 @@ public:
     int digitalCachedParts() const { return home_.digital().cachedParts(); }
     int forestCachedParts() const { return home_.forest().cachedParts(); }
     bool analogSeconds() const { return home_.analog().seconds(); }
+    bool noonishSeconds() const { return home_.noonish().seconds(); }
 #endif
 private:
     // Rows of the panel a transfer may reach (HostRenderer::begin).

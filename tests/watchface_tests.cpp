@@ -6,6 +6,7 @@
 #include "features/home/faces/AnalogLayout.h"
 #include "features/home/faces/DigitalLayout.h"
 #include "features/home/faces/ForestLayout.h"
+#include "features/home/faces/NoonishBackground.h"
 #include "features/settings/SettingsMenu.h"
 #include "storage/SettingsStore.h"
 #include "storage/WatchPreferences.h"
@@ -231,19 +232,22 @@ void selection() {
     FaceSelection loose; loose.add({"digital","Digital","wf_digital"}); loose.add({"forest","Forest","wf_forest"});
     CHECK(loose.startup()==0); loose.shown(0);
     CHECK(loose.choose("forest",begin)==FaceChoiceResult::SaveFailed && loose.current()==1);
-    // The built-in faces in HomeLayer's order: Analog third, stored and
-    // restored like the others. Choosing writes the selection only.
+    // The built-in faces in HomeLayer's order: Analog third, Noonish fourth,
+    // stored and restored like the others. Choosing writes the selection only.
     MemoryNvs three; WatchPreferences threeStore; threeStore.bind(&three);
     auto builtIn=[&](FaceSelection& f) {
         f.bind(&threeStore);
         CHECK(f.add({"digital","Digital","wf_digital"}) && f.add({"forest","Forest","wf_forest"}) &&
-              f.add({"analog","Analog","wf_analog"}));
+              f.add({"analog","Analog","wf_analog"}) && f.add({"noonish","Noonish","wf_noonish"}));
     };
     FaceSelection faces; builtIn(faces);
-    CHECK(faces.count()==3 && faces.find("analog")==2 && std::strcmp(faces.at(2).name,"Analog")==0);
+    CHECK(faces.count()==4 && faces.find("analog")==2 && std::strcmp(faces.at(2).name,"Analog")==0);
+    CHECK(faces.find("noonish")==3 && std::strcmp(faces.at(3).name,"Noonish")==0);
     CHECK(faces.startup()==0); faces.shown(0);
     CHECK(faces.choose("analog",begin)==FaceChoiceResult::Selected && faces.current()==2);
     { FaceSelection next; builtIn(next); CHECK(next.startup()==2); }
+    CHECK(faces.choose("noonish",begin)==FaceChoiceResult::Selected && faces.current()==3);
+    { FaceSelection next; builtIn(next); CHECK(next.startup()==3); }
     CHECK(faces.choose("digital",begin)==FaceChoiceResult::Selected);
     { FaceSelection next; builtIn(next); CHECK(next.startup()==0); }
     CHECK(three.records.size()==1 && three.records.count("watch_sel"));
@@ -615,6 +619,139 @@ void analogControlRules() {
     CHECK(c.seconds()==seconds && nvs.writes==writes && nvs.reads==reads);
 }
 namespace {
+struct Rgb { int r,g,b; };
+Rgb rgbOf(uint16_t c) { return {(c>>11)<<3,((c>>5)&0x3f)<<2,(c&0x1f)<<3}; }
+uint16_t rgb565(int r,int g,int b) { return uint16_t((r>>3)<<11|(g>>2)<<5|(b>>3)); }
+AnalogTime timeAt(int hour,int minute,int second=0) { return analogTime(clockAt(hour,minute,second)); }
+// Pixel centres at `radius` from the centre towards `degrees`.
+AnalogPoint towards(const AnalogLayout& l,float radius,float degrees) { return analogPoint(l,radius,degrees); }
+}
+// Noonish's regions, their blended edges and the lightened dot
+// (docs/task11/plan-11-3.md 7).
+void noonishBackgroundRules() {
+    // The palette is the references' colours.
+    CHECK(NoonishPalette[NoonishTop]==rgb565(96,196,218) && NoonishPalette[NoonishRight]==rgb565(144,214,229));
+    CHECK(NoonishPalette[NoonishBottom]==rgb565(131,167,209) && NoonishPalette[NoonishLeft]==rgb565(78,130,189));
+    CHECK(NoonishInk==rgb565(222,243,247));
+    const auto l=analogLayout({466,466},NoonishDateX);
+    // At 10:07, as the reference sits: the points measured there take its
+    // colours (docs/task11/11-1-validation.md 2).
+    const auto rest=noonishSplit(l,timeAt(10,7));
+    CHECK(noonishColour(rest,233,80)==NoonishPalette[NoonishTop] && noonishColour(rest,420,200)==NoonishPalette[NoonishRight]);
+    CHECK(noonishColour(rest,233,420)==NoonishPalette[NoonishBottom] && noonishColour(rest,40,250)==NoonishPalette[NoonishLeft]);
+    // The split is the hands' step: the seconds do not move it, and an unknown
+    // time rests at 10:07.
+    const auto a=noonishSplit(l,timeAt(12,34,10)),b=noonishSplit(l,timeAt(12,34,19));
+    CHECK(a.step==b.step && a.hx==b.hx && a.my==b.my);
+    CHECK(noonishSplit(l,AnalogTime{}).step==NoonishRestStep && noonishSplit(l,AnalogTime{}).hx==rest.hx);
+    // Unit vectors along the hands, all the way round.
+    for (int step=0;step<4320;step+=7) {
+        const auto s=noonishSplit(l,timeAt(step/360,(step%360)/6,(step%6)*10));
+        CHECK(near(std::hypot(s.hx,s.hy),1.0f,1e-3f) && near(std::hypot(s.mx,s.my),1.0f,1e-3f));
+    }
+    // Every pixel of a frame is one of the four colours or, next to a line,
+    // a blend of them; away from the lines exactly its region's colour.
+    auto regionsSeen=[&](const NoonishSplit& s) {
+        bool seen[4]{};
+        for (int y=0;y<466;y+=3) for (int x=0;x<466;x+=3) {
+            const float px=x-s.centre.x,py=y-s.centre.y;
+            const float dh=s.hx*py-s.hy*px,dm=s.mx*py-s.my*px;
+            if (std::fabs(dh)<noonish::Edge || std::fabs(dm)<noonish::Edge) continue;
+            const auto r=noonishRegion(s,float(x),float(y));
+            CHECK(noonishColour(s,x,y)==NoonishPalette[r]);
+            seen[r]=true;
+        }
+        return int(seen[0])|int(seen[1])<<1|int(seen[2])<<2|int(seen[3])<<3;
+    };
+    CHECK(regionsSeen(rest)==0xf);
+    // The hands together (12:00): the two regions between them are gone.
+    // Opposite (6:00): the other two are.
+    CHECK(regionsSeen(noonishSplit(l,timeAt(12,0)))==(1<<NoonishRight|1<<NoonishLeft));
+    CHECK(regionsSeen(noonishSplit(l,timeAt(6,0)))==(1<<NoonishTop|1<<NoonishBottom));
+    // Overtaking: from 3:00 to 3:59, a point at 150 degrees changes region
+    // only when the minute line passes it, at :25 and again at :55 (its other
+    // half). The hour line never reaches it. No reordering by angle.
+    {
+        const auto p=towards(l,150,150);
+        auto regionAt=[&](int step) { return noonishRegion(noonishSplit(l,timeAt(3,step/6,(step%6)*10)),p.x,p.y); };
+        NoonishRegion last=regionAt(0);
+        int changes=0,first=-1,second=-1;
+        for (int step=1;step<360;++step) {
+            const auto r=regionAt(step);
+            if (r==last) continue;
+            ++changes; (first<0 ? first : second)=step; last=r;
+        }
+        CHECK(changes==2 && first/6==25 && second/6==55);
+    }
+    // Blended edges: next to the minute line at 10:07 (42 degrees), between
+    // the two regions' colours channel by channel; the same every time.
+    {
+        int blended=0;
+        for (int i=40;i<160;++i) {
+            const auto p=towards(l,float(i),42);
+            const int x=int(std::lround(p.x)),y=int(std::lround(p.y));
+            const uint16_t c=noonishColour(rest,x,y);
+            CHECK(c==noonishColour(rest,x,y));
+            if (c==NoonishPalette[NoonishTop] || c==NoonishPalette[NoonishRight]) continue;
+            ++blended;
+            const Rgb v=rgbOf(c),t=rgbOf(NoonishPalette[NoonishTop]),r=rgbOf(NoonishPalette[NoonishRight]);
+            CHECK(v.r>=std::min(t.r,r.r) && v.r<=std::max(t.r,r.r) && v.g>=std::min(t.g,r.g) && v.g<=std::max(t.g,r.g));
+            CHECK(v.b>=std::min(t.b,r.b) && v.b<=std::max(t.b,r.b));
+        }
+        CHECK(blended>20);
+        // A line exactly between pixel centres (12:00 at x=232.5) needs no
+        // blending: 232 and 233 are half a pixel from it, on either side.
+        const auto noon=noonishSplit(l,timeAt(12,0));
+        CHECK(noonishColour(noon,232,100)==NoonishPalette[NoonishLeft] && noonishColour(noon,233,100)==NoonishPalette[NoonishRight]);
+        CHECK(noonishColour(noon,232,232)==noonishColour(noon,232,232));    // the centre: defined
+    }
+    // Painting by runs gives exactly the pixels noonishColour gives, whole
+    // rows and partial ones, at every angle, including the hands flat along
+    // a row (3:00, 9:00, 3:15) and on top of each other.
+    {
+        auto check=[&](const NoonishSplit& s,int y,int x0,int x1) {
+            int next=x0;
+            noonishRow(s,y,x0,x1,[&](int x,int length,uint16_t colour) {
+                CHECK(x==next && length>0);
+                for (int i=x;i<x+length;++i) CHECK(noonishColour(s,i,y)==colour);
+                if (x>x0) CHECK(noonishColour(s,x-1,y)!=colour);    // runs are maximal
+                next=x+length;
+            });
+            CHECK(next==x1);
+        };
+        for (int step=0;step<4320;step+=37) {
+            const auto s=noonishSplit(l,timeAt(step/360,(step%360)/6,(step%6)*10));
+            for (int y=0;y<466;y+=5) { check(s,y,0,466); check(s,y,(y*7)%200,233+(y*3)%233); }
+        }
+        for (const auto& t:{timeAt(3,0),timeAt(9,0),timeAt(3,15),timeAt(12,0),timeAt(6,0),timeAt(9,45)}) {
+            const auto s=noonishSplit(l,t);
+            for (int y=225;y<241;++y) check(s,y,0,466);
+        }
+    }
+    // The dot: lighter than the region under it by the same rule everywhere;
+    // across a boundary each side from its own region. The reference's dot
+    // on the top region reads (207,237,244).
+    for (uint16_t c:NoonishPalette) {
+        const Rgb light=rgbOf(noonishLight(c)),base=rgbOf(c);
+        CHECK(light.r>base.r && light.g>=base.g && light.b>=base.b);
+    }
+    {
+        const Rgb light=rgbOf(noonishLight(NoonishPalette[NoonishTop]));
+        CHECK(std::abs(light.r-207)<=8 && std::abs(light.g-237)<=8 && std::abs(light.b-244)<=8);
+    }
+    const auto noon=noonishSplit(l,timeAt(12,0));
+    const auto dot=analogSecond(l,timeAt(12,0,0));        // on the line, at the top
+    uint16_t left=0,right=0,edge=0,again=0;
+    CHECK(noonishDot(noon,dot,228,33,left) && noonishDot(noon,dot,237,33,right));
+    CHECK(left==noonishLight(NoonishPalette[NoonishLeft]) && right==noonishLight(NoonishPalette[NoonishRight]));
+    // Its rim blends from the light to the region under that very pixel;
+    // drawn again from the same input it is the same, never whiter.
+    CHECK(noonishDot(noon,dot,224,25,edge) && noonishDot(noon,dot,224,25,again) && edge==again);
+    CHECK(edge!=noonishLight(NoonishPalette[NoonishLeft]) && edge!=NoonishPalette[NoonishLeft]);
+    uint16_t none;
+    CHECK(!noonishDot(noon,dot,232,20,none) && !noonishDot(noon,dot,245,33,none));
+}
+namespace {
 // The clock layer as settings sees it: the first `count` faces, the one
 // shown, and what a choice returns.
 struct FakeFaces : HomeControlPort {
@@ -711,27 +848,36 @@ void settingsFaces() {
     for (int i=0;i<3;++i) screens.handle(press(true),now);
     screens.handle(press(false),now);
     CHECK(screens.model().settings.faces.selection==0);
-    // Three faces: Analog third, then back; choosing it moves the mark.
+    // Four faces: Analog third, Noonish fourth, then back; choosing moves the
+    // mark.
     {
-        FakeFaces three; three.count=3;
+        FakeFaces three; three.count=4;
         TestScreens s3; s3.bind(&store,&time); s3.bindHome(&three);
         TimeUs t3=0; openSettings(s3,t3);
         for (int i=0;i<3;++i) s3.handle(press(true),t3);
         s3.handle(press(false),t3);
         auto m3=s3.model().settings;
         const auto rows3=buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
-        CHECK(m3.faceCount==3 && rows3.count==4 && std::strcmp(rows[2].label,"Analog")==0);
-        CHECK(std::strcmp(rows[3].label,"戻る")==0 && rows[3].id==SettingsFaceBack);
+        CHECK(m3.faceCount==4 && rows3.count==5 && std::strcmp(rows[2].label,"Analog")==0);
+        CHECK(std::strcmp(rows[3].label,"Noonish")==0);
+        CHECK(std::strcmp(rows[4].label,"戻る")==0 && rows[4].id==SettingsFaceBack);
         for (int i=0;i<2;++i) { s3.handle(press(true),t3); t3+=200000; s3.update(t3); }
         s3.handle(press(false),t3);
         m3=s3.model().settings;
         CHECK(three.last=="analog" && three.current==2 && m3.currentFace==2);
         buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
         CHECK(std::strcmp(rows[2].label,"Analog  使用中")==0 && std::strcmp(rows[0].label,"Digital")==0);
-        // Back, below Analog, returns to the menu.
+        // Noonish, below it, then back at the bottom.
         s3.handle(press(true),t3); t3+=200000; s3.update(t3);
         s3.handle(press(false),t3);
-        CHECK(s3.model().settings.view==SettingsView::Menu && three.chosen==1);
+        m3=s3.model().settings;
+        CHECK(three.last=="noonish" && three.current==3 && m3.currentFace==3 && m3.faces.selection==3);
+        buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
+        CHECK(std::strcmp(rows[3].label,"Noonish  使用中")==0 && std::strcmp(rows[2].label,"Analog")==0);
+        s3.handle(press(true),t3); t3+=200000; s3.update(t3);
+        CHECK(s3.model().settings.faces.selection==4);
+        s3.handle(press(false),t3);
+        CHECK(s3.model().settings.view==SettingsView::Menu && three.chosen==2);
     }
     // Without a clock layer the choice offers back only.
     TestScreens bare; bare.bind(&store,&time); bare.bindHome(nullptr);
@@ -749,7 +895,7 @@ void settingsFaces() {
 }
 int main() {
     records(); separation(); variants(); selection(); forestBattery(); forestLayoutRules();
-    analogTimeRules(); analogLayoutRules(); analogControlRules(); settingsFaces();
+    analogTimeRules(); analogLayoutRules(); analogControlRules(); noonishBackgroundRules(); settingsFaces();
     std::cout<<"PASS: watch face records, record separation, variants, selection, forest battery, "
-               "forest layout, analog time, analog layout, analog control, settings face choice (three faces)\n";
+               "forest layout, analog time, analog layout, analog control, noonish background, settings face choice (four faces)\n";
 }

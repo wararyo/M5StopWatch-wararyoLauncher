@@ -4,6 +4,7 @@
 #include <driver/usb_serial_jtag.h>
 #include <esp_pm.h>
 #include "InputWake.h"
+#include "ImuWake.h"
 #include <algorithm>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -103,7 +104,16 @@ void M5Hal::setLightSleepAllowed(bool allowed) {
         sleepAllowed = allowed;
 }
 void M5Hal::beginInputWake() {
-    inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle());
+    imuWake_ = beginImuWake();
+    inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle(), imuWake_);
+}
+bool M5Hal::takeWristWake() {
+    // A GPIO read while the line is idle; I2C only once M5PM1 pulled it low.
+    if (!imuWake_ || !imuWakeIrqActive()) return false;
+    const auto s = serviceImuWake();
+    if (!s.read) std::printf("[ImuWake] status read failed\n");
+    else if (s.wrist) std::printf("[ImuWake] wrist\n");
+    return s.wrist;
 }
 void M5Hal::waitUs(TimeUs delay) {
     // Without the interrupts nothing would end a long wait on a press, so fall

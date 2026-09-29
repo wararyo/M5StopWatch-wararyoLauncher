@@ -1,0 +1,148 @@
+#include "ImuWake.h"
+#include <M5Unified.h>
+#include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <cstdio>
+namespace launcher {
+namespace {
+// The feature-engine image M5Unified uploads for its own BMI270 driver. It is
+// byte-identical to Bosch BMI270_SensorAPI's default bmi270.c image (checked
+// against 41129fc), the one that carries wrist-wear wake-up. Included here
+// because M5Unified gives it internal linkage.
+#include <utility/imu/BMI270_config.inl>
+
+constexpr uint8_t Imu = 0x68;  // SDO pulled down by R47.
+constexpr uint32_t ImuHz = 400000;
+constexpr uint8_t Pm1 = 0x6E;
+constexpr uint32_t Pm1Hz = 100000;
+constexpr gpio_num_t IrqPin = GPIO_NUM_12;  // G12_PY_IRQ = M5PM1 G1
+
+// BMI270 registers (datasheet 5.2) and the feature layout of the image above.
+enum : uint8_t {
+    ChipId = 0x00, IntStatus0 = 0x1C, InternalStatus = 0x21, FeatPage = 0x2F, Features = 0x30,
+    AccConf = 0x40, Int1IoCtrl = 0x53, IntLatch = 0x55, Int1MapFeat = 0x56, InitCtrl = 0x59,
+    InitAddr0 = 0x5B, InitData = 0x5E, PwrConf = 0x7C, PwrCtrl = 0x7D, Cmd = 0x7E,
+};
+constexpr uint8_t WristPage = 7, WristByte = 0, WristEnable = 0x10;
+constexpr uint8_t WristStatus = 0x08;  // INT_STATUS_0 and INT1_MAP_FEAT
+// Low-power accelerometer (filter_perf 0), 4-sample average, 50Hz: the
+// feature engine runs at 50Hz.
+constexpr uint8_t AccLowPower50Hz = 0x27;
+
+// M5PM1 registers (M5PM1 datasheet 5).
+enum : uint8_t {
+    GpioMode = 0x10, GpioDrv = 0x13, GpioFunc0 = 0x16,
+    IrqStatus1 = 0x40, IrqMask1 = 0x43, IrqMask2 = 0x44, IrqMask3 = 0x45,
+};
+
+bool imuWrite(uint8_t reg, uint8_t value) { return M5.In_I2C.writeRegister8(Imu, reg, value, ImuHz); }
+bool imuRead(uint8_t reg, uint8_t* data, size_t length) { return M5.In_I2C.readRegister(Imu, reg, data, length, ImuHz); }
+bool pm1Write(uint8_t reg, uint8_t value) { return M5.In_I2C.writeRegister8(Pm1, reg, value, Pm1Hz); }
+bool pm1Read(uint8_t reg, uint8_t& value) { return M5.In_I2C.readRegister(Pm1, reg, &value, 1, Pm1Hz); }
+// Read-modify-write: M5Unified configures G2 in the same registers.
+bool pm1Update(uint8_t reg, uint8_t clear, uint8_t set) {
+    uint8_t value = 0;
+    return pm1Read(reg, value) && pm1Write(reg, uint8_t((value & ~clear) | set));
+}
+
+bool loadFeatureEngine() {
+    uint8_t id = 0;
+    if (!imuRead(ChipId, &id, 1) || id != 0x24) {
+        std::printf("[ImuWake] BMI270 not found at 0x%02x (chip id 0x%02x)\n", Imu, id);
+        return false;
+    }
+    imuWrite(Cmd, 0xB6);  // Soft reset; the chip needs 2ms before the next access.
+    vTaskDelay(pdMS_TO_TICKS(3));
+    // Advanced power save off for the upload: in it every write needs 450us.
+    if (!imuWrite(PwrConf, 0x00)) return false;
+    vTaskDelay(pdMS_TO_TICKS(1));
+    if (!imuWrite(InitCtrl, 0x00)) return false;
+    constexpr size_t Chunk = 64;  // Even: the address counts 16-bit words.
+    for (size_t index = 0; index < sizeof(bmi270_config_file); index += Chunk) {
+        const uint8_t address[2] = {uint8_t((index / 2) & 0x0F), uint8_t((index / 2) >> 4)};
+        if (!M5.In_I2C.writeRegister(Imu, InitAddr0, address, sizeof(address), ImuHz) ||
+            !M5.In_I2C.writeRegister(Imu, InitData, bmi270_config_file + index, Chunk, ImuHz)) return false;
+    }
+    if (!imuWrite(InitCtrl, 0x01)) return false;
+    // The datasheet allows 20ms for the engine to start.
+    uint8_t status = 0;
+    for (int retry = 0; retry < 10 && (status & 0x0F) != 0x01; ++retry) {
+        vTaskDelay(pdMS_TO_TICKS(5));
+        imuRead(InternalStatus, &status, 1);
+    }
+    if ((status & 0x0F) != 0x01) {
+        std::printf("[ImuWake] feature engine did not start: internal_status=0x%02x\n", status);
+        return false;
+    }
+    return true;
+}
+
+bool enableWristWear() {
+    // Accelerometer on: the feature engine reads it.
+    if (!imuWrite(AccConf, AccLowPower50Hz) || !imuWrite(PwrCtrl, 0x04)) return false;
+    // The feature page is written whole, so the other features' inputs stay
+    // at the image's defaults, wrist-wear wake-up's thresholds among them.
+    uint8_t page[16]{};
+    if (!imuWrite(FeatPage, WristPage) || !imuRead(Features, page, sizeof(page))) return false;
+    page[WristByte] |= WristEnable;
+    if (!M5.In_I2C.writeRegister(Imu, Features, page, sizeof(page), ImuHz)) return false;
+    // INT1: output enabled, push-pull, active high (it drives Q7's gate), and
+    // latched until INT_STATUS_0 is read, so M5PM1's scan cannot miss it.
+    if (!imuWrite(Int1IoCtrl, 0x0A) || !imuWrite(IntLatch, 0x01) || !imuWrite(Int1MapFeat, WristStatus))
+        return false;
+    uint8_t clear[2];
+    imuRead(IntStatus0, clear, sizeof(clear));
+    // Advanced power save last: every register write above would need 450us in it.
+    uint8_t pwrConf = 0;
+    return imuRead(PwrConf, &pwrConf, 1) && imuWrite(PwrConf, uint8_t(pwrConf | 0x01));
+}
+
+bool clearPm1Status() {
+    bool ok = true;
+    for (uint8_t i = 0; i < 3; ++i) ok = pm1Write(uint8_t(IrqStatus1 + i), 0x00) && ok;
+    return ok;
+}
+
+bool routePm1() {
+    // Only G0's changes raise the IRQ: G2 is the charge status, G3 and G4 the
+    // charge programming and the port, and the power and button events have
+    // their own readers.
+    bool ok = pm1Write(IrqMask1, 0x1E) && pm1Write(IrqMask2, 0x3F) && pm1Write(IrqMask3, 0x07);
+    // G0: a plain input (R46 pulls it up). G1: push-pull, since M5PM1 is the
+    // only driver of G12_PY_IRQ; then its IRQ function.
+    ok = ok && pm1Update(GpioFunc0, 0x03, 0x00) && pm1Update(GpioMode, 0x01, 0x00) &&
+         pm1Update(GpioDrv, 0x02, 0x00) && clearPm1Status();
+    ok = ok && pm1Update(GpioFunc0, 0x0C, 0x04);
+    // Scanning starts with the IRQ function; a change seen while it was being
+    // set up is not an event.
+    return clearPm1Status() && ok;
+}
+}
+
+bool beginImuWake() {
+    gpio_config_t io{};
+    io.pin_bit_mask = 1ULL << IrqPin;
+    io.mode = GPIO_MODE_INPUT;
+    io.pull_up_en = GPIO_PULLUP_ENABLE;  // Harmless with push-pull; keeps an unconfigured PM1 high.
+    gpio_config(&io);
+    const bool imu = loadFeatureEngine() && enableWristWear();
+    // M5PM1 is left alone without the IMU: nothing would raise the line.
+    const bool pm1 = imu && routePm1();
+    std::printf("[ImuWake] imu=%s pm1=%s irq=%s\n", imu ? "ok" : "FAILED", pm1 ? "ok" : "FAILED",
+                imuWakeIrqActive() ? "low" : "high");
+    return imu && pm1;
+}
+
+ImuWakeStatus serviceImuWake() {
+    ImuWakeStatus s{};
+    uint8_t imu = 0;
+    const bool imuOk = imuRead(IntStatus0, &imu, 1);
+    s.wrist = imuOk && (imu & WristStatus);
+    // Only G0 is unmasked, so there is nothing to tell apart: clear them all.
+    s.read = clearPm1Status() && imuOk;
+    return s;
+}
+
+bool imuWakeIrqActive() { return gpio_get_level(IrqPin) == 0; }
+}

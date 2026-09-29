@@ -45,6 +45,8 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
         interrupt = false;
         return pending;
     }
+    bool wrist = false; // Consumed when asked, as the IMU's status is.
+    bool takeWristWake() override { const bool w = wrist; wrist = false; return w; }
 };
 void buttons() {
     InputController c;
@@ -212,6 +214,29 @@ void lightSleep() {
     h.usb = {true, 5000, true};
     h.time += 1000000; r.step(); CHECK(!h.lightSleep);
     CHECK(!h.panelWhileSleepAllowed);
+}
+void wristWake() {
+    // A wrist raised to look wakes a dark panel and nothing else: no screen
+    // gets it, and a lit panel keeps its own timeout.
+    FakeHal h;
+    HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
+    h.input.a = true; h.time += 10000; r.step();
+    h.input.a = false; h.time += 10000; r.step();
+    CHECK(r.model().screen == ScreenId::AppList);
+    const auto last = h.time;
+    h.time = last + 20000000; h.wrist = true; r.step();
+    CHECK(!h.wrist && !r.power().screenOff()); // Asked, but not activity.
+    h.time = last + 30000000; r.step(); CHECK(r.power().screenOff() && h.sleeps == 1);
+    h.usb = {true, 0, false};
+    h.time += 1000000; r.step(); CHECK(h.lightSleep);
+    const int draws = h.draws, samples = h.inputSamples;
+    h.time += 1000000; h.wrist = true; r.step();
+    CHECK(!r.power().screenOff() && h.wakes == 1 && h.draws == draws + 1);
+    CHECK(!h.lightSleep && !h.panelWhileSleepAllowed);
+    CHECK(r.model().screen == ScreenId::AppList && h.inputSamples == samples);
+    // The wake starts the timeout like any activity.
+    h.time += 29999000; r.step(); CHECK(!r.power().screenOff());
+    h.time += 1000; r.step(); CHECK(r.power().screenOff() && h.sleeps == 2);
 }
 void interrupts() {
     // Work 8-4: the touch controller raises INT before its first report is
@@ -429,8 +454,8 @@ void simultaneousHomeInputs() {
     }
 }
 int main() {
-    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep();
+    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep(); wristWake();
     overload(); longPress(); homeGestures(); simultaneousHomeInputs();
-    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, overload/early-wake, "
+    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, wrist wake, overload/early-wake, "
                  "long press, home gestures\n";
 }

@@ -9,8 +9,10 @@ public:
     void setScreenOff(bool off) override;
     void waitUs(TimeUs delay) override;
     bool inputPending() override;
+    bool takeWristWake() override;
     void setLightSleepAllowed(bool allowed) override;
-    // Call on the UI task: it is the task the interrupts notify.
+    // Call on the UI task: it is the task the interrupts notify. Sets up the
+    // IMU's wrist-wear wake-up first, since its line is one of them.
     void beginInputWake();
     bool readRtc(CivilTime& utc) override;
     bool writeRtc(const CivilTime& utc) override;
@@ -19,7 +21,7 @@ public:
     BatteryState sampleBattery() override;
     void setBrightness(int level) override;
 private:
-    bool inputWake_ = false, pending_ = false;
+    bool inputWake_ = false, pending_ = false, imuWake_ = false;
 };
 // Dynamic frequency scaling between the two limits, and automatic light sleep
 // while setLightSleepAllowed(true) (work 8-5).

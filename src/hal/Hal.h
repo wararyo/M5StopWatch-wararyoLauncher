@@ -14,6 +14,10 @@ public:
     // True once after a press or touch interrupt (or a slot result) ended a
     // wait, so the input is read now instead of at a far deadline (work 8-4).
     virtual bool inputPending() = 0;
+    // True once per wrist raised to look at the watch (the IMU's wrist-wear
+    // wake-up). Also clears the interrupt, so ask it every step. The fakes
+    // without an IMU inherit false.
+    virtual bool takeWristWake() { return false; }
     // Automatic light sleep is only safe with the panel asleep (the display
     // driver's DMA transfers hold no PM lock) and without USB power (sleep
     // stops the USB console). Only the runtime test observes it, so the other

@@ -22,7 +22,13 @@ struct FaceDescriptor {
 // is registered: a valid key, not the host's, not another face's.
 class FaceSelection {
 public:
+    // The built-in faces. The render check registers its two test faces on
+    // top of them; settings lists the first SettingsFaceCapacity either way.
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+    static constexpr int Capacity=6;
+#else
     static constexpr int Capacity=4;
+#endif
     void bind(WatchPreferences* store) { store_=store; }
     // Refused: a full registry, a bad or duplicate id, a bad, reserved or
     // duplicate key. The returned port lives as long as this object.

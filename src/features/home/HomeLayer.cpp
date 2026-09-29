@@ -6,6 +6,7 @@ bool HomeLayer::begin(Gfx& g,bool disableCache,WatchPreferences* store) {
     selection_.bind(store && store->bound() ? store : nullptr);
     registerFace(digital_);
     registerFace(forest_);
+    registerFace(analog_);
     const int start=selection_.startup();
     if(selectFace(g,selection_.at(start).id,disableCache)) return true;
     return face_!=nullptr;

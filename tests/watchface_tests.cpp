@@ -193,8 +193,8 @@ void selection() {
     };
     { FaceSelection s; registry(s); CHECK(s.startup()==0 && nvs.writes==0); }
     // Unknown and broken records show the first face and stay as they are.
-    nvs.records["watch_sel"]={1,6,'a','n','a','l','o','g'};
-    { FaceSelection s; registry(s); CHECK(s.startup()==0 && nvs.writes==0 && nvs.records["watch_sel"].size()==8); }
+    nvs.records["watch_sel"]={1,7,'s','u','n','d','i','a','l'};
+    { FaceSelection s; registry(s); CHECK(s.startup()==0 && nvs.writes==0 && nvs.records["watch_sel"].size()==9); }
     nvs.records["watch_sel"]={9,1,'x'};
     { FaceSelection s; registry(s); CHECK(s.startup()==0 && nvs.writes==0); }
     nvs.readable=false;
@@ -211,7 +211,7 @@ void selection() {
     // The same face again: nothing begun, nothing written.
     const int writes=nvs.writes;
     CHECK(s.choose("forest",begin)==FaceChoiceResult::Unchanged && begins==1 && nvs.writes==writes);
-    CHECK(s.choose("analog",begin)==FaceChoiceResult::Unknown && begins==1);
+    CHECK(s.choose("sundial",begin)==FaceChoiceResult::Unknown && begins==1);
     // A face that cannot begin: the previous one stays, nothing is stored.
     ok=false;
     CHECK(s.choose("digital",begin)==FaceChoiceResult::Failed && s.current()==1 && nvs.writes==writes);
@@ -231,6 +231,22 @@ void selection() {
     FaceSelection loose; loose.add({"digital","Digital","wf_digital"}); loose.add({"forest","Forest","wf_forest"});
     CHECK(loose.startup()==0); loose.shown(0);
     CHECK(loose.choose("forest",begin)==FaceChoiceResult::SaveFailed && loose.current()==1);
+    // The built-in faces in HomeLayer's order: Analog third, stored and
+    // restored like the others. Choosing writes the selection only.
+    MemoryNvs three; WatchPreferences threeStore; threeStore.bind(&three);
+    auto builtIn=[&](FaceSelection& f) {
+        f.bind(&threeStore);
+        CHECK(f.add({"digital","Digital","wf_digital"}) && f.add({"forest","Forest","wf_forest"}) &&
+              f.add({"analog","Analog","wf_analog"}));
+    };
+    FaceSelection faces; builtIn(faces);
+    CHECK(faces.count()==3 && faces.find("analog")==2 && std::strcmp(faces.at(2).name,"Analog")==0);
+    CHECK(faces.startup()==0); faces.shown(0);
+    CHECK(faces.choose("analog",begin)==FaceChoiceResult::Selected && faces.current()==2);
+    { FaceSelection next; builtIn(next); CHECK(next.startup()==2); }
+    CHECK(faces.choose("digital",begin)==FaceChoiceResult::Selected);
+    { FaceSelection next; builtIn(next); CHECK(next.startup()==0); }
+    CHECK(three.records.size()==1 && three.records.count("watch_sel"));
 }
 // Below 30% or charging, no hysteresis, failures never read as low.
 void forestBattery() {
@@ -599,22 +615,23 @@ void analogControlRules() {
     CHECK(c.seconds()==seconds && nvs.writes==writes && nvs.reads==reads);
 }
 namespace {
-// The clock layer as settings sees it: two faces, the one shown, and what a
-// choice returns.
+// The clock layer as settings sees it: the first `count` faces, the one
+// shown, and what a choice returns.
 struct FakeFaces : HomeControlPort {
-    const char* ids[2]={"digital","forest"};
-    const char* names[2]={"Digital","Forest"};
-    int current=0,chosen=0;
+    const char* ids[4]={"digital","forest","analog","noonish"};
+    const char* names[4]={"Digital","Forest","Analog","Noonish"};
+    int count=2,current=0,chosen=0;
     FaceChoiceResult next=FaceChoiceResult::Selected;
     std::string last;
     HomeOutcome outcome{};
     HomeOutcome handle(const HomeEvent&) override { return outcome; }
-    int faceCount() const override { return 2; }
+    int faceCount() const override { return count; }
     WatchFaceChoice faceAt(int i) const override { return {ids[i],names[i]}; }
     int currentFace() const override { return current; }
     FaceChoiceResult chooseFace(const char* id) override {
         ++chosen; last=id;
-        if (next==FaceChoiceResult::Selected || next==FaceChoiceResult::SaveFailed) current=std::strcmp(id,"forest")==0;
+        if (next==FaceChoiceResult::Selected || next==FaceChoiceResult::SaveFailed)
+            for (int i=0;i<count;++i) if (std::strcmp(id,ids[i])==0) current=i;
         return next;
     }
 };
@@ -694,6 +711,28 @@ void settingsFaces() {
     for (int i=0;i<3;++i) screens.handle(press(true),now);
     screens.handle(press(false),now);
     CHECK(screens.model().settings.faces.selection==0);
+    // Three faces: Analog third, then back; choosing it moves the mark.
+    {
+        FakeFaces three; three.count=3;
+        TestScreens s3; s3.bind(&store,&time); s3.bindHome(&three);
+        TimeUs t3=0; openSettings(s3,t3);
+        for (int i=0;i<3;++i) s3.handle(press(true),t3);
+        s3.handle(press(false),t3);
+        auto m3=s3.model().settings;
+        const auto rows3=buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
+        CHECK(m3.faceCount==3 && rows3.count==4 && std::strcmp(rows[2].label,"Analog")==0);
+        CHECK(std::strcmp(rows[3].label,"戻る")==0 && rows[3].id==SettingsFaceBack);
+        for (int i=0;i<2;++i) { s3.handle(press(true),t3); t3+=200000; s3.update(t3); }
+        s3.handle(press(false),t3);
+        m3=s3.model().settings;
+        CHECK(three.last=="analog" && three.current==2 && m3.currentFace==2);
+        buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
+        CHECK(std::strcmp(rows[2].label,"Analog  使用中")==0 && std::strcmp(rows[0].label,"Digital")==0);
+        // Back, below Analog, returns to the menu.
+        s3.handle(press(true),t3); t3+=200000; s3.update(t3);
+        s3.handle(press(false),t3);
+        CHECK(s3.model().settings.view==SettingsView::Menu && three.chosen==1);
+    }
     // Without a clock layer the choice offers back only.
     TestScreens bare; bare.bind(&store,&time); bare.bindHome(nullptr);
     TimeUs t=0; openSettings(bare,t);
@@ -712,5 +751,5 @@ int main() {
     records(); separation(); variants(); selection(); forestBattery(); forestLayoutRules();
     analogTimeRules(); analogLayoutRules(); analogControlRules(); settingsFaces();
     std::cout<<"PASS: watch face records, record separation, variants, selection, forest battery, "
-               "forest layout, analog time, analog layout, analog control, settings face choice\n";
+               "forest layout, analog time, analog layout, analog control, settings face choice (three faces)\n";
 }

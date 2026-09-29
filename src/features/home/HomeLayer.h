@@ -1,6 +1,7 @@
 #pragma once
 #include "features/home/FaceSelection.h"
 #include "features/home/WatchFace.h"
+#include "features/home/faces/AnalogWatchFace.h"
 #include "features/home/faces/DigitalWatchFace.h"
 #include "features/home/faces/ForestWatchFace.h"
 #include "ui/rendering/Renderer.h"
@@ -52,6 +53,7 @@ public:
     uint16_t listBackground() const { return face_ ? face_->listBackground() : 0; }
     const DigitalWatchFace& digital() const { return digital_; }
     const ForestWatchFace& forest() const { return forest_; }
+    const AnalogWatchFace& analog() const { return analog_; }
     void plan(FramePlan& frame,Gfx& g) override;
     void paint(Gfx& g,const PaintContext& context) override;
     Rect opaqueArea() const override { return face_ ? intersect(face_->opaqueArea(),environment_.clip) : Rect{}; }
@@ -61,6 +63,7 @@ public:
 private:
     DigitalWatchFace digital_;
     ForestWatchFace forest_;
+    AnalogWatchFace analog_;
     FaceSelection selection_;
     std::array<WatchFace*,FaceSelection::Capacity> faces_{};
     WatchFace* face_=nullptr;

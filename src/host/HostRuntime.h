@@ -44,7 +44,7 @@ private:
     bool lightSleep_ = false; // The HAL starts with light sleep forbidden.
     TimeUs nextDisplay_ = INT64_MAX;
     // A wake fades the level in from zero, eased out, stepped at a frame rate.
-    static constexpr TimeUs FadeUs = 200000, FadeStepUs = 16000;
+    static constexpr TimeUs FadeUs = 300000, FadeStepUs = 16000;
     TimeUs fadeEnd_ = 0; // Zero once the full level is applied.
     int brightness_ = Settings{}.brightness; // The level to reach, from the last draw.
     int appliedBrightness_ = -1; // Forced re-apply after every wake.

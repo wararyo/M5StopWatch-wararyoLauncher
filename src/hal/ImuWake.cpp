@@ -25,6 +25,11 @@ enum : uint8_t {
     InitAddr0 = 0x5B, InitData = 0x5E, PwrConf = 0x7C, PwrCtrl = 0x7D, Cmd = 0x7E,
 };
 constexpr uint8_t WristPage = 7, WristByte = 0, WristEnable = 0x10;
+// GEN_SET_1 axis map: per engine axis, the sensor axis it reads (0 x, 1 y,
+// 2 z) and whether it is negated. [1:0] x, [2] x sign, [4:3] y, [5] y sign,
+// [7:6] z; z's sign is bit 0 of the next byte. The identity is 0x88.
+constexpr uint8_t AxisMapPage = 1, AxisMapByte = 4;
+constexpr uint8_t WatchAxes = 0x01 | (0x00 << 3) | 0x20 | (0x02 << 6);  // x=+y, y=-x, z=+z
 constexpr uint8_t WristStatus = 0x08;  // INT_STATUS_0 and INT1_MAP_FEAT
 // Low-power accelerometer (filter_perf 0), 4-sample average, 50Hz: the
 // feature engine runs at 50Hz.
@@ -81,6 +86,19 @@ bool loadFeatureEngine() {
 bool enableWristWear() {
     // Accelerometer on: the feature engine reads it.
     if (!imuWrite(AccConf, AccLowPower50Hz) || !imuWrite(PwrCtrl, 0x04)) return false;
+    // The gesture assumes a watch frame (datasheet Figure 3): x to 3 o'clock,
+    // y to 12, z out of the dial. The StopWatch is worn with the screen's top
+    // at 12 o'clock on the left wrist, and its sensor has +x towards the
+    // screen's bottom and +y towards its right (UserDemo's IMU app), so the
+    // engine gets x = +y and y = -x. Only the engine's input changes; DATA
+    // registers keep the sensor frame.
+    uint8_t axes[2]{};
+    if (!imuWrite(FeatPage, AxisMapPage) || !imuRead(uint8_t(Features + AxisMapByte), axes, sizeof(axes)))
+        return false;
+    std::printf("[ImuWake] axis map was 0x%02x 0x%02x\n", axes[0], axes[1]);
+    axes[0] = WatchAxes;
+    axes[1] &= uint8_t(~0x01);  // z sign: positive
+    if (!M5.In_I2C.writeRegister(Imu, uint8_t(Features + AxisMapByte), axes, sizeof(axes), ImuHz)) return false;
     // The feature page is written whole, so the other features' inputs stay
     // at the image's defaults, wrist-wear wake-up's thresholds among them.
     uint8_t page[16]{};
@@ -94,8 +112,14 @@ bool enableWristWear() {
     uint8_t clear[2];
     imuRead(IntStatus0, clear, sizeof(clear));
     // Advanced power save last: every register write above would need 450us in it.
-    uint8_t pwrConf = 0;
-    return imuRead(PwrConf, &pwrConf, 1) && imuWrite(PwrConf, uint8_t(pwrConf | 0x01));
+    uint8_t pwrConf = 0, status = 0;
+    if (!imuRead(PwrConf, &pwrConf, 1) || !imuWrite(PwrConf, uint8_t(pwrConf | 0x01))) return false;
+    // The engine flags a map it cannot use once a feature is enabled.
+    if (imuRead(InternalStatus, &status, 1) && (status & 0x20)) {
+        std::printf("[ImuWake] axis map rejected: internal_status=0x%02x\n", status);
+        return false;
+    }
+    return true;
 }
 
 bool clearPm1Status() {

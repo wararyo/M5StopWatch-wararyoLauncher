@@ -160,11 +160,15 @@ bool beginImuWake() {
 
 ImuWakeStatus serviceImuWake() {
     ImuWakeStatus s{};
-    uint8_t imu = 0;
-    const bool imuOk = imuRead(IntStatus0, &imu, 1);
-    s.wrist = imuOk && (imu & WristStatus);
+    // M5PM1 first, the IMU second. Reading INT_STATUS_0 releases the latch,
+    // so an event before the read is in it and one after it raises G0 again
+    // and a fresh IRQ. The other order could clear the IRQ of an event that
+    // came between the two, with G0 then held low and never changing again.
     // Only G0 is unmasked, so there is nothing to tell apart: clear them all.
-    s.read = clearPm1Status() && imuOk;
+    s.cleared = clearPm1Status();
+    uint8_t imu = 0;
+    s.read = imuRead(IntStatus0, &imu, 1);
+    s.wrist = s.read && (imu & WristStatus);
     return s;
 }
 

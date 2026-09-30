@@ -22,7 +22,7 @@ public:
     BatteryState sampleBattery() override;
     void setBrightness(int level) override;
 private:
-    bool inputWake_ = false, pending_ = false, imuWake_ = false;
+    bool inputWake_ = false, pending_ = false, imuWake_ = false, imuRetry_ = false;
 };
 // Dynamic frequency scaling between the two limits, and automatic light sleep
 // while setLightSleepAllowed(true) (work 8-5).

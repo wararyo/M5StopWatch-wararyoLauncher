@@ -119,10 +119,12 @@ void M5Hal::beginInputWake() {
     inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle(), imuWake_);
 }
 bool M5Hal::takeWristWake() {
-    // A GPIO read while the line is idle; I2C only once M5PM1 pulled it low.
-    if (!imuWake_ || !imuWakeIrqActive()) return false;
+    // A GPIO read while the line is idle; I2C only once M5PM1 pulled it low,
+    // or while an IMU status read is still owed (ImuWake.h).
+    if (!imuWake_ || (!imuWakeIrqActive() && !imuRetry_)) return false;
     const auto s = serviceImuWake();
-    if (!s.read) std::printf("[ImuWake] status read failed\n");
+    imuRetry_ = !s.read;
+    if (!s.read || !s.cleared) std::printf("[ImuWake] status %s failed\n", s.read ? "clear" : "read");
     else if (s.wrist) std::printf("[ImuWake] wrist\n");
     return s.wrist;
 }

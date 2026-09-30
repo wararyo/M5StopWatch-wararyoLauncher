@@ -39,6 +39,11 @@ void HostRuntime::step() {
         const bool follow = raw.a || raw.b || raw.touching || now < followUntil_;
         nextInput_ = follow ? now + 10000 : INT64_MAX;
     } else power_.update(now, false, screens_.active());
+    // A wrist raised to look at the watch wakes a dark panel. It is not input:
+    // the screens get nothing, and a lit panel keeps its own timeout, so the
+    // arm moving while the watch is read does not hold it on. Asked every
+    // step, since asking also clears the interrupt.
+    if (hal_.takeWristWake() && power_.screenOff()) power_.update(now, true, screens_.active());
     // Cheap enough to do every pass. The worker notifies the UI task when it
     // publishes, so a result also ends a long idle wait.
     if (slots_) {
@@ -55,6 +60,11 @@ void HostRuntime::step() {
             if (!power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
         }
         power_.usb = usb;
+        // The green LED means charging and nothing else: M5PM1 lights it at
+        // power-on whatever the state. An unanswered read leaves it as it is;
+        // a write that failed is sent again at the next sample.
+        if (usb.chargeValid && int(usb.charging) != statusLed_ && hal_.setStatusLed(usb.charging))
+            statusLed_ = usb.charging;
         nextUsb_ = now + 1000000;
     }
     // Light sleep only with the panel asleep and a VBUS reading that says no

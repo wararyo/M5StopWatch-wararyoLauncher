@@ -226,7 +226,7 @@ void runtimeApplies() {
     for (int i=0;i<5;++i) { hal.time+=1000000; runtime.step(); }
     CHECK(hal.brightnessCalls==1);
     // Waking fades the level in, because the panel comes back dark: the first
-    // frame is drawn at zero and the level eases out over 200ms.
+    // frame is drawn at zero and the level eases out over 300ms.
     for (int i=0;i<31;++i) { hal.time+=1000000; runtime.step(); }
     CHECK(runtime.power().screenOff());
     hal.input={false,false,true,100,100}; hal.time+=10000; runtime.step();
@@ -235,12 +235,12 @@ void runtimeApplies() {
     CHECK(hal.brightness>0 && hal.brightness<20);
     // Past the input's follow, the fade alone keeps the wait short.
     hal.time+=110000; runtime.step(); runtime.wait();
-    CHECK(hal.brightness==76 && hal.waited<=16000);   // 120ms: 90*(1-0.4^2)
+    CHECK(hal.brightness==58 && hal.waited<=16000);   // 120ms: 90*(1-0.6^2)
     // A level changed mid-fade becomes its end, without restarting it.
     CHECK(store.save({150,30}));
     runtime.dataChanged(); hal.time+=50000; runtime.step();
-    CHECK(hal.brightness==147);                        // 170ms: 150*(1-0.15^2)
-    hal.time+=30000; runtime.step();                   // 200ms: the fade ends
+    CHECK(hal.brightness==122);                        // 170ms: 150*(1-(13/30)^2)
+    hal.time+=130000; runtime.step();                  // 300ms: the fade ends
     CHECK(hal.brightness==150);
     // The fade leaves nothing behind: no more writes, no short wait.
     const int lit=hal.brightnessCalls;
@@ -257,8 +257,8 @@ void runtimeApplies() {
     hal.input={false,false,true,100,100}; hal.time+=10000; runtime.step();
     hal.input={}; hal.time+=10000; runtime.step();
     hal.time+=110000; runtime.step();
-    CHECK(hal.brightness==76);
-    hal.time+=81000; runtime.wait();                   // 201ms, with 90 not yet applied
+    CHECK(hal.brightness==58);
+    hal.time+=181000; runtime.wait();                  // 301ms, with 90 not yet applied
     CHECK(hal.waited<=1000);
     runtime.step(); runtime.wait();
     CHECK(hal.brightness==90 && hal.waited>16000);

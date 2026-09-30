@@ -12,6 +12,9 @@ struct UsbState {
     bool vbusValid = false;
     int vbusMv = 0;
     bool dataConnected = false;
+    // The charger's own status pin (M5PM1 G2), read with VBUS. A failed read
+    // is unknown, not "not charging".
+    bool chargeValid = false, charging = false;
     bool powered() const { return vbusValid && vbusMv > 4000; }
 };
 class PowerManager {

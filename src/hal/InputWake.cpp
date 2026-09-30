@@ -4,10 +4,14 @@
 #include <esp_sleep.h>
 #include <cstdint>
 #include <cstdio>
+#include <iterator>
 namespace launcher {
 namespace {
-// KEY.A, KEY.B and the touch controller's INT; all idle high and go low when active.
-constexpr gpio_num_t Pins[] = {GPIO_NUM_2, GPIO_NUM_1, GPIO_NUM_13};
+// KEY.A, KEY.B, the touch controller's INT and M5PM1's IRQ output (the IMU's
+// wrist-wear wake-up, hal/ImuWake.h); all idle high and go low when active.
+constexpr gpio_num_t Pins[] = {GPIO_NUM_2, GPIO_NUM_1, GPIO_NUM_13, GPIO_NUM_12};
+// The IRQ output comes last, and is left out when its route was not set up.
+size_t pinCount = 0;
 TaskHandle_t waiter = nullptr;
 
 void IRAM_ATTR onLow(void* arg) {
@@ -19,14 +23,16 @@ void IRAM_ATTR onLow(void* arg) {
     if (woken) portYIELD_FROM_ISR();
 }
 }
-bool beginInputWake(TaskHandle_t task) {
+bool beginInputWake(TaskHandle_t task, bool imuIrq) {
     const auto err = gpio_install_isr_service(0);
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         std::printf("[Input] wake interrupts unavailable: %s\n", esp_err_to_name(err));
         return false;
     }
     waiter = task;
-    for (const auto pin : Pins) {
+    pinCount = imuIrq ? std::size(Pins) : std::size(Pins) - 1;
+    for (size_t i = 0; i < pinCount; ++i) {
+        const auto pin = Pins[i];
         // Low level rather than an edge: light-sleep GPIO wake-up only
         // supports levels and shares the pin's interrupt type.
         gpio_set_intr_type(pin, GPIO_INTR_LOW_LEVEL);
@@ -42,7 +48,7 @@ bool beginInputWake(TaskHandle_t task) {
 }
 void rearmInputWake() {
     if (!waiter) return;
-    for (const auto pin : Pins)
-        if (gpio_get_level(pin)) gpio_intr_enable(pin);
+    for (size_t i = 0; i < pinCount; ++i)
+        if (gpio_get_level(Pins[i])) gpio_intr_enable(Pins[i]);
 }
 }

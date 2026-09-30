@@ -956,6 +956,286 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
                 renderer.selectFace("digital"); check("forest-to-digital",fm,d);
             }
+            // Work 11-2: Analog against full repaints: the hands in their ten
+            // second steps, the dot at every second, the hands across the date
+            // and the row, and the list over it (docs/task11/plan-11-2.md 6).
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData ad;
+                auto items=[&](int count) {
+                    for(int i=0;i<count && i<BackgroundCapacity;++i) {
+                        auto& item=ad.background.items[i];
+                        item=BackgroundInfo{};
+                        item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
+                        std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
+                        item.icon=appIcon(IconId::Stopwatch);
+                        item.suggestedColor=StopwatchAccent;
+                    }
+                    ad.background.count=uint8_t(std::min(count,BackgroundCapacity));
+                };
+                auto at=[&](int hour,int minute,int second) {
+                    ad.localTime.tm_hour=hour; ad.localTime.tm_min=minute; ad.localTime.tm_sec=second;
+                };
+                // A frame that should send nothing at all.
+                auto quiet=[&](const char* name,const FrameModel& m) {
+                    renderer.draw(m,ad); ++checks;
+                    if(!renderer.lastDirty().empty()) {
+                        ++failures; const Rect r=renderer.lastDirty();
+                        std::printf("[Verify] FAIL %s repainted %d,%d %dx%d\n",name,r.x,r.y,r.w,r.h);
+                    }
+                };
+                FrameModel am; am.viewport={w,h};
+                if(!renderer.selectFace("analog")) { ++failures; std::printf("[Verify] FAIL analog did not begin\n"); }
+                if(renderer.analogSeconds()) renderer.handle(hold);
+                ad=sampleData();                                   // 9:41:00, 82%: no row
+                check("analog",am,ad);
+                // Without the dot, seconds inside a step draw nothing; the
+                // step moves both hands.
+                for(int s=1;s<10;++s) { ad.localTime.tm_sec=s; quiet("analog-quiet-second",am); }
+                ad.localTime.tm_sec=10; check("analog-step",am,ad);
+                ad.localTime.tm_sec=59; check("analog-step-59",am,ad);
+                at(9,42,0); check("analog-minute",am,ad);
+                at(11,59,50); check("analog-before-noon",am,ad);
+                at(12,0,0); check("analog-noon",am,ad);
+                at(23,59,50); check("analog-before-midnight",am,ad);
+                at(0,0,0); ad.localTime.tm_mday=20; check("analog-new-day",am,ad);
+                ad.localTime.tm_mday=9; check("analog-one-digit-day",am,ad);
+                ad.localTime.tm_mday=31; check("analog-two-digit-day",am,ad);
+                // The axes and the diagonals, the hands apart and together.
+                const int angles[][2]={{3,0},{6,0},{9,0},{12,15},{1,30},{4,30},{7,45},{10,7},{6,32},{3,16}};
+                for(const auto& t:angles) { at(t[0],t[1],0); check("analog-angles",am,ad); }
+                // The hands over the date, and the date changing under them.
+                at(3,15,0); check("analog-over-date",am,ad);
+                ad.localTime.tm_mday=19; check("analog-date-under-hands",am,ad);
+                at(3,15,10); check("analog-off-date",am,ad);
+                // Over the row: its parts appearing, changing and going under
+                // the hands.
+                at(6,32,0);
+                for(int percent:{31,30,29,5,0,100,-1,30}) { ad.batteryPercent=percent; check("analog-battery",am,ad); }
+                ad.charging=true; check("analog-charging",am,ad);
+                ad.batteryPercent=-1; check("analog-charging-unknown",am,ad);
+                ad.charging=false; ad.batteryPercent=82; check("analog-discharging",am,ad);
+                ad.chargingKnown=false; ad.batteryPercent=12; check("analog-charging-unreadable",am,ad);
+                ad.chargingKnown=true; ad.batteryPercent=82; check("analog-battery-gone",am,ad);
+                items(1); check("analog-item",am,ad);
+                items(2); check("analog-items",am,ad);
+                ad.batteryPercent=18; check("analog-battery-items",am,ad);
+                std::snprintf(ad.background.items[0].label,BackgroundLabelBytes,"02:41"); check("analog-item-label",am,ad);
+                // The suggested colour is not used: a change of it alone draws nothing.
+                ad.background.items[1].suggestedColor=uint16_t(0xf800); quiet("analog-colour-only",am);
+                check("analog-colour-only",am,ad);
+                ad.background.items[1].icon=appIcon(IconId::Settings); check("analog-item-icon",am,ad);
+                ad.background.items[1].icon=nullptr; check("analog-item-generic",am,ad);
+                std::snprintf(ad.background.items[0].label,BackgroundLabelBytes,"A long label the row has to shorten, 999:59");
+                check("analog-item-long",am,ad);
+                std::snprintf(ad.background.items[1].label,BackgroundLabelBytes,"計測中"); check("analog-item-japanese",am,ad);
+                at(6,32,10); check("analog-step-over-row",am,ad);
+                am.toast="保存しました"; check("analog-toast-on",am,ad);
+                am.toast=nullptr; check("analog-toast-off",am,ad);
+                items(1); check("analog-item-removed",am,ad);
+                ad.background.count=0; ad.batteryPercent=82; check("analog-plain-again",am,ad);
+                vTaskDelay(1);
+                // The dot: shown, every second of a minute, across the steps,
+                // over the date, then hidden again.
+                at(9,41,0);
+                renderer.handle(hold); check("analog-seconds",am,ad);
+                for(int s=1;s<60;++s) {
+                    ad.localTime.tm_sec=s; check("analog-second",am,ad);
+                    if(s%8==0) vTaskDelay(1);
+                }
+                at(9,42,0); check("analog-second-minute",am,ad);
+                at(3,15,15); check("analog-second-at-date",am,ad);     // the minute hand over the date, the dot beyond it
+                items(2); ad.batteryPercent=5; at(6,30,30); check("analog-second-info",am,ad);
+                ad.timeValid=false; check("analog-seconds-unknown",am,ad);
+                ad.timeValid=true; check("analog-seconds-known",am,ad);
+                renderer.handle(hold); check("analog-seconds-hidden",am,ad);
+                ad.background.count=0; ad.batteryPercent=82;
+                ad.timeValid=false; check("analog-unknown",am,ad);
+                ad.timeValid=true; check("analog-known",am,ad);
+                vTaskDelay(1);
+                // The list over Analog, which stays still, with the dot ticking.
+                renderer.handle(hold);
+                items(1);
+                am.screen=ScreenId::AppList;
+                for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
+                    am.launcher.transition=p; ++ad.localTime.tm_sec; ad.localTime.tm_sec%=60;
+                    check("analog-transition",am,ad);
+                }
+                am.launcher.transition=0.5f; ad.background.count=0; check("analog-info-gone-under-list",am,ad);
+                items(2); check("analog-info-under-list",am,ad);
+                at(9,41,50); check("analog-step-under-list",am,ad);
+                // A slow return: only the last frame is compared, so anything a
+                // step left behind shows.
+                {
+                    auto edge=[&](int top) { am.launcher.transition=1.0f-(float(top)+0.5f)/float(h); };
+                    edge(0); check("analog-slow-start",am,ad);
+                    int top=0,step=0;
+                    while (top<h-20) {
+                        top+=1+step%2;
+                        if (step%7==6) top-=3;
+                        edge(top);
+                        if (step%29==0) { ++ad.localTime.tm_sec; ad.localTime.tm_sec%=60; }
+                        renderer.draw(am,ad);
+                        if (++step%16==0) vTaskDelay(1);
+                    }
+                    check("analog-slow-return",am,ad);
+                }
+                am.screen=ScreenId::Home; am.launcher.transition=0; check("analog-rest",am,ad);
+                renderer.handle(hold);
+                renderer.selectFace("analog",true); check("analog-reselected",am,ad);
+                renderer.capacityForTest(2); check("analog-overflow",am,ad);
+                renderer.capacityForTest(FramePlan::Capacity); check("analog-overflow-recovery",am,ad);
+                // Choosing faces and the dot over and over leaks nothing.
+                const auto free=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+                for(int i=0;i<16;++i) {
+                    renderer.selectFace("digital"); renderer.draw(am,ad);
+                    renderer.selectFace("forest"); renderer.draw(am,ad);
+                    renderer.selectFace("analog"); renderer.handle(hold); renderer.draw(am,ad);
+                    vTaskDelay(1);
+                }
+                std::printf("[Verify] analog faces internal_free_before=%u after=%u\n",unsigned(free),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+                if(renderer.analogSeconds()) renderer.handle(hold);
+                renderer.selectFace("digital"); check("analog-to-digital",am,d);
+            }
+            // Work 11-3: Noonish against full repaints: its regions turning
+            // at every step, the hands meeting and passing, text, icons and the
+            // dot across boundaries, and the list over it (docs/task11/plan-11-3.md 7).
+            {
+                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+                static WatchData nd;
+                auto items=[&](int count) {
+                    for(int i=0;i<count && i<BackgroundCapacity;++i) {
+                        auto& item=nd.background.items[i];
+                        item=BackgroundInfo{};
+                        item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
+                        std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
+                        item.icon=appIcon(IconId::Stopwatch);
+                        item.suggestedColor=StopwatchAccent;
+                    }
+                    nd.background.count=uint8_t(std::min(count,BackgroundCapacity));
+                };
+                auto at=[&](int hour,int minute,int second) {
+                    nd.localTime.tm_hour=hour; nd.localTime.tm_min=minute; nd.localTime.tm_sec=second;
+                };
+                auto quiet=[&](const char* name,const FrameModel& m) {
+                    renderer.draw(m,nd); ++checks;
+                    if(!renderer.lastDirty().empty()) {
+                        ++failures; const Rect r=renderer.lastDirty();
+                        std::printf("[Verify] FAIL %s repainted %d,%d %dx%d\n",name,r.x,r.y,r.w,r.h);
+                    }
+                };
+                FrameModel nm; nm.viewport={w,h};
+                if(!renderer.selectFace("noonish")) { ++failures; std::printf("[Verify] FAIL noonish did not begin\n"); }
+                if(renderer.noonishSeconds()) renderer.handle(hold);
+                nd=sampleData(); at(10,7,0);
+                check("noonish",nm,nd);
+                for(int s=1;s<10;++s) { nd.localTime.tm_sec=s; quiet("noonish-quiet-second",nm); }
+                nd.localTime.tm_sec=10; check("noonish-step",nm,nd);
+                at(10,8,0); check("noonish-minute",nm,nd);
+                // Together, opposite, and the minute hand passing the hour hand
+                // (3:16:22) step by step.
+                at(12,0,0); check("noonish-together",nm,nd);
+                at(6,0,0); check("noonish-opposite",nm,nd);
+                for(int s=90;s<=110;++s) { at(3,s/6,(s%6)*10); check("noonish-overtake",nm,nd); vTaskDelay(1); }
+                const int angles[][2]={{3,0},{9,0},{12,15},{1,30},{4,30},{7,45},{11,59},{6,32},{3,16},{9,45}};
+                for(const auto& t:angles) { at(t[0],t[1],50); check("noonish-angles",nm,nd); vTaskDelay(1); }
+                // The date across a boundary and under the hands, changing.
+                at(3,15,0); nd.localTime.tm_mday=19; check("noonish-over-date",nm,nd);
+                nd.localTime.tm_mday=20; check("noonish-date-change",nm,nd);
+                at(2,15,0); check("noonish-date-boundary",nm,nd);       // the hour line through the date
+                // The row across boundaries: the hands at 7:30 and 4:40 split it.
+                at(7,30,0);
+                for(int percent:{31,29,5,-1,82}) { nd.batteryPercent=percent; check("noonish-battery",nm,nd); }
+                vTaskDelay(1);
+                nd.charging=true; nd.batteryPercent=18; check("noonish-charging",nm,nd);
+                nd.charging=false;
+                items(1); check("noonish-item",nm,nd);
+                items(2); check("noonish-items",nm,nd);
+                std::snprintf(nd.background.items[0].label,BackgroundLabelBytes,"02:41"); check("noonish-item-label",nm,nd);
+                nd.background.items[1].suggestedColor=uint16_t(0xf800); quiet("noonish-colour-only",nm);
+                nd.background.items[1].icon=nullptr; check("noonish-item-generic",nm,nd);
+                std::snprintf(nd.background.items[0].label,BackgroundLabelBytes,"A long label the row has to shorten, 999:59");
+                check("noonish-item-long",nm,nd);
+                std::snprintf(nd.background.items[1].label,BackgroundLabelBytes,"計測中"); check("noonish-item-japanese",nm,nd);
+                // The regions turning under a row that stays.
+                for(int s=0;s<6;++s) { at(4,40,s*10); check("noonish-row-under-step",nm,nd); vTaskDelay(1); }
+                nm.toast="保存しました"; check("noonish-toast-on",nm,nd);
+                nm.toast=nullptr; check("noonish-toast-off",nm,nd);
+                items(1); check("noonish-item-removed",nm,nd);
+                vTaskDelay(1);
+                // The dot: every second over the regions, on a boundary at
+                // 12:00, and at a step together with the regions turning.
+                at(10,7,0);
+                renderer.handle(hold); check("noonish-seconds",nm,nd);
+                for(int s=1;s<60;++s) {
+                    nd.localTime.tm_sec=s; check("noonish-second",nm,nd);
+                    vTaskDelay(1);
+                }
+                at(12,0,0); check("noonish-dot-on-boundary",nm,nd);
+                for(int s=1;s<=3;++s) { nd.localTime.tm_sec=s; check("noonish-dot-leaves-boundary",nm,nd); }
+                at(11,59,50); check("noonish-dot-step",nm,nd);
+                at(12,0,0); check("noonish-dot-step-noon",nm,nd);
+                // Unknown: the resting split, no hands, no dot; then known again.
+                nd.timeValid=false; check("noonish-unknown",nm,nd);
+                at(10,7,0); nd.timeValid=true; check("noonish-known-at-rest",nm,nd);
+                at(10,8,30); check("noonish-known",nm,nd);
+                renderer.handle(hold); check("noonish-seconds-hidden",nm,nd);
+                vTaskDelay(1);
+                // The list over Noonish: its edge moving over the regions.
+                renderer.handle(hold);
+                nm.screen=ScreenId::AppList;
+                for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
+                    nm.launcher.transition=p; ++nd.localTime.tm_sec; nd.localTime.tm_sec%=60;
+                    check("noonish-transition",nm,nd); vTaskDelay(1);
+                }
+                nm.launcher.transition=0.5f; at(10,8,50); check("noonish-step-under-list",nm,nd);
+                nd.background.count=0; check("noonish-info-gone-under-list",nm,nd);
+                {
+                    auto edge=[&](int top) { nm.launcher.transition=1.0f-(float(top)+0.5f)/float(h); };
+                    edge(0); check("noonish-slow-start",nm,nd);
+                    int top=0,step=0;
+                    while (top<h-20) {
+                        top+=1+step%2;
+                        if (step%7==6) top-=3;
+                        edge(top);
+                        if (step%29==0) { ++nd.localTime.tm_sec; nd.localTime.tm_sec%=60; }
+                        renderer.draw(nm,nd);
+                        if (++step%16==0) vTaskDelay(1);
+                    }
+                    check("noonish-slow-return",nm,nd);
+                }
+                nm.screen=ScreenId::Home; nm.launcher.transition=0; check("noonish-rest",nm,nd);
+                // Analog and Noonish keep their own dot: showing Noonish's
+                // leaves Analog's as it was, and back.
+                {
+                    renderer.selectFace("analog");
+                    const bool analogDot=renderer.analogSeconds();
+                    renderer.selectFace("noonish");
+                    const bool noonishDot=renderer.noonishSeconds();
+                    renderer.handle(hold);
+                    renderer.selectFace("analog"); ++checks;
+                    if(renderer.analogSeconds()!=analogDot || renderer.noonishSeconds()==noonishDot) {
+                        ++failures; std::printf("[Verify] FAIL noonish and analog share the dot\n");
+                    }
+                    check("noonish-to-analog",nm,nd);
+                    renderer.selectFace("noonish"); check("analog-to-noonish",nm,nd);
+                    renderer.handle(hold);
+                }
+                renderer.selectFace("noonish",true); check("noonish-reselected",nm,nd);
+                renderer.capacityForTest(2); check("noonish-overflow",nm,nd);
+                renderer.capacityForTest(FramePlan::Capacity); check("noonish-overflow-recovery",nm,nd);
+                const auto free=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+                for(int i=0;i<16;++i) {
+                    renderer.selectFace("analog"); renderer.draw(nm,nd);
+                    renderer.selectFace("noonish"); renderer.handle(hold); renderer.draw(nm,nd);
+                    vTaskDelay(1);
+                }
+                std::printf("[Verify] noonish faces internal_free_before=%u after=%u\n",unsigned(free),
+                    unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
+                if(renderer.noonishSeconds()) renderer.handle(hold);
+                renderer.selectFace("digital"); check("noonish-to-digital",nm,d);
+            }
             // Repeated cache release/recreation gives before/after heap evidence.
             const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }
@@ -1053,6 +1333,48 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 pm.launcher.transition=0;
                 run("forest-full",pm,20,[&](int) { renderer.invalidate(); });
                 std::printf("[Perf] forest caches=%d/3\n",renderer.forestCachedParts());
+                // Work 11-2: Analog's dot alone, its hands' ten second steps
+                // (long diagonal boxes), and both at once (docs/task11/plan.md 4).
+                renderer.selectFace("analog");
+                if(renderer.analogSeconds()) renderer.handle(hold);
+                auto step=[&](int i) { const int k=i+1; frame.localTime.tm_sec=(k%6)*10; frame.localTime.tm_min=41+k/6; };
+                frame=sampleData();
+                run("analog-static",pm,30,[&](int) {});
+                run("analog-step",pm,30,step);
+                stopwatchItem(0);
+                run("analog-item-second",pm,60,[&](int i) { stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData();
+                // Inside one ten second step: the dot alone, never the hands.
+                run("analog-dot",pm,54,[&](int i) { frame.localTime.tm_sec=1+i%9; });
+                run("analog-second-step",pm,30,step);
+                stopwatchItem(0);
+                run("analog-second-item",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData(); stopwatchItem(160);
+                run("analog-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                pm.launcher.transition=0;
+                run("analog-full",pm,20,[&](int) { renderer.invalidate(); });
+                // Work 11-3: Noonish's steps turn the regions, so they repaint
+                // the whole face; the dot alone lightens a small square.
+                renderer.selectFace("noonish");
+                if(renderer.noonishSeconds()) renderer.handle(hold);
+                frame=sampleData();
+                run("noonish-static",pm,30,[&](int) {});
+                run("noonish-step",pm,30,step);
+                stopwatchItem(0);
+                run("noonish-item-second",pm,60,[&](int i) { stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData();
+                run("noonish-dot",pm,54,[&](int i) { frame.localTime.tm_sec=1+i%9; });
+                run("noonish-second-step",pm,30,step);
+                stopwatchItem(0);
+                run("noonish-second-item",pm,60,[&](int i) { frame.localTime.tm_sec=i%60; stopwatchItem(i+1); });
+                renderer.handle(hold);
+                frame=sampleData(); stopwatchItem(160);
+                run("noonish-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
+                pm.launcher.transition=0;
+                run("noonish-full",pm,20,[&](int) { renderer.invalidate(); });
                 renderer.selectFace("digital");
                 run("digital-full",pm,20,[&](int) { renderer.invalidate(); });
                 std::printf("[Perf] digital caches=%d/5 internal_free=%u largest=%u\n",renderer.digitalCachedParts(),
@@ -1135,6 +1457,54 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 shoot("forest-mixed",sm,scene);
                 scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
                 slide("forest-transition",0.45f);
+                sm.screen=ScreenId::Home; sm.launcher.transition=0;
+                // Work 11-2: Analog, like the reference pictures (6:00:00 on
+                // the 20th, the dot shown) and around them.
+                renderer.selectFace("analog");
+                if(!renderer.analogSeconds()) renderer.handle(hold);
+                auto setTime=[&](int hour,int minute,int second) {
+                    scene.localTime.tm_hour=hour; scene.localTime.tm_min=minute; scene.localTime.tm_sec=second;
+                };
+                scene=sampleData(); setTime(6,0,0); scene.localTime.tm_mday=20; shoot("analog",sm,scene);
+                scene.batteryPercent=18;
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                shoot("analog-info",sm,scene);
+                scene=sampleData(); setTime(10,8,37); shoot("analog-seconds",sm,scene);
+                setTime(3,15,0); scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                shoot("analog-over-date",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
+                shoot("analog-unknown",sm,scene);
+                scene=sampleData(); setTime(6,32,0); scene.batteryPercent=100; scene.charging=true;
+                item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
+                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+                shoot("analog-mixed",sm,scene);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                slide("analog-transition",0.45f);
+                sm.screen=ScreenId::Home; sm.launcher.transition=0;
+                // Work 11-3: Noonish at the references' 10:07 on the 20th, the
+                // dot at the top, and around them.
+                renderer.selectFace("noonish");
+                if(!renderer.noonishSeconds()) renderer.handle(hold);
+                scene=sampleData(); setTime(10,7,0); scene.localTime.tm_mday=20; shoot("noonish",sm,scene);
+                scene.batteryPercent=18;
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+                shoot("noonish-info",sm,scene);
+                setTime(12,0,0); shoot("noonish-together",sm,scene);
+                setTime(6,0,15); shoot("noonish-opposite",sm,scene);
+                setTime(7,30,0); scene.charging=true; shoot("noonish-row-boundary",sm,scene);
+                scene=sampleData(); setTime(10,8,37); shoot("noonish-seconds",sm,scene);
+                renderer.handle(hold);
+                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
+                shoot("noonish-unknown",sm,scene);
+                scene=sampleData(); setTime(4,40,0); scene.batteryPercent=100; scene.charging=true;
+                item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
+                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+                shoot("noonish-mixed",sm,scene);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                slide("noonish-transition",0.45f);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 renderer.selectFace("digital");
             }

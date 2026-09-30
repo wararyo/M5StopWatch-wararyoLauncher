@@ -1,5 +1,6 @@
 #pragma once
 #include "features/home/HomeInteraction.h"
+#include "features/home/faces/InfoRow.h"
 #include "features/home/faces/TimeGroups.h"
 #include "features/home/VariantRecord.h"
 #include <algorithm>
@@ -46,9 +47,7 @@ struct ForestLayout {
     std::array<ForestTriangle,ForestTrees.size()> trees{};
     int cx=0,timeBaseline=0;
     TimeGroups time{};
-    int infoY=0;            // centre line of the information row
-    int iconSize=0,batteryWidth=0,batteryHeight=0,iconGap=0,groupGap=0;
-    int infoWidth=0;        // the most the whole row may use
+    InfoRow row{};          // the information row, on the ground
 };
 namespace forest {
 inline float scale(const Viewport& v) { return float(std::min(v.width,v.height))/ForestReference; }
@@ -76,67 +75,8 @@ inline ForestLayout forestLayout(const Viewport& v,TimeVariant variant,bool info
     l.timeBaseline=middle+(m.timeAscent-m.timeDescent)/2;
     l.time=placeTimeGroups(l.cx,l.timeBaseline,variant,
         {m.timeAscent,m.timeDescent,m.hourWidth,m.minuteWidth,m.colonWidth});
-    l.infoY=int(y(367));
-    l.iconSize=forest::px(v,28); l.batteryWidth=forest::px(v,18); l.batteryHeight=forest::px(v,30);
-    l.iconGap=forest::px(v,12); l.groupGap=forest::px(v,28);
-    // The widest the row may be where it meets the circle at its lower edge,
-    // keeping a margin from the rim.
-    const float radius=side/2.0f;
-    const float far=std::abs(l.infoY+l.iconSize/2.0f-v.height/2.0f);
-    l.infoWidth=std::max(0,int(2*std::sqrt(std::max(0.0f,radius*radius-far*far)))-2*forest::px(v,12));
+    l.row=infoRow(v,int(y(367)));
     return l;
-}
-// The information row: the battery first when it shows, then the items in the
-// providers' order, centred as one row. `widths` are each group's width
-// (icon, gap, label); returns how many were placed.
-inline int placeForestInfo(const ForestLayout& l,const int* widths,int count,Rect* out) {
-    int total=count>0 ? (count-1)*l.groupGap : 0;
-    for (int i=0;i<count;++i) total+=widths[i];
-    int x=l.cx-total/2;
-    const int h=std::max(l.iconSize,l.batteryHeight);
-    for (int i=0;i<count;++i) { out[i]={x,l.infoY-h/2,widths[i],h}; x+=widths[i]+l.groupGap; }
-    return count;
-}
-// The widest one group may be when `count` share the row equally.
-inline int forestGroupWidthLimit(const ForestLayout& l,int count) {
-    count=std::max(1,count);
-    return (l.infoWidth-(count-1)*l.groupGap)/count;
-}
-// Each group's limit from the widths it wants: narrower groups keep their
-// width and leave the rest to the wider ones, so a label is shortened only
-// when the row as a whole cannot hold it. Never less than the equal share.
-inline void forestGroupLimits(const ForestLayout& l,const int* natural,int count,int* limits) {
-    if (count<=0) return;
-    int room=l.infoWidth-(count-1)*l.groupGap;
-    bool done[ForestMaxItems+1]{};
-    for (int left=count;left>0;--left) {
-        // The narrowest group still open: if it fits its share it keeps its
-        // width and gives the rest back; if not, neither does any wider one,
-        // and all that are left split the room equally.
-        int pick=-1;
-        for (int i=0;i<count;++i) if (!done[i] && (pick<0 || natural[i]<natural[pick])) pick=i;
-        const int share=room/left;
-        if (natural[pick]>share) {
-            for (int i=0;i<count;++i) if (!done[i]) limits[i]=share;
-            return;
-        }
-        limits[pick]=share;
-        room-=natural[pick];
-        done[pick]=true;
-    }
-}
-// Whether Forest shows the battery (docs/task10/plan.md 3.3): below 30% or
-// charging, with no hysteresis. A reading that failed is never taken for a low
-// battery: an unknown level shows only while charging is confirmed or while
-// the battery was already showing (then as unknown), and a charging state that
-// could not be read keeps whatever was shown unless the level decides.
-inline bool forestBatteryShown(int percent,bool charging,bool chargingKnown,bool wasShown) {
-    if (chargingKnown && charging) return true;
-    if (percent>=0 && percent<=100) {
-        if (percent<30) return true;
-        return chargingKnown ? false : wasShown;
-    }
-    return wasShown;
 }
 // Forest's behaviour without its drawing: the variant (kept in Forest's own
 // record), the battery rule, which layout applies, and when to draw again. A
@@ -148,7 +88,7 @@ public:
     // The frame about to be drawn. The same input twice leaves the same state.
     void update(const WatchData& d) {
         items_=std::min<int>(d.background.count,ForestMaxItems);
-        battery_=forestBatteryShown(d.batteryPercent,d.charging,d.chargingKnown,battery_);
+        battery_=infoBatteryShown(d.batteryPercent,d.charging,d.chargingKnown,battery_);
     }
     bool batteryShown() const { return battery_; }
     int items() const { return items_; }

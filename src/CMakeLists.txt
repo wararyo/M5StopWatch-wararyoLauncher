@@ -1,6 +1,6 @@
 idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     "ui/rendering/Element.cpp" "ui/rendering/Renderer.cpp"
-    "ui/graphics/Text.cpp" "ui/graphics/VlwFont.cpp" "ui/graphics/WatchFonts.cpp" "ui/graphics/VlwGlyphs.cpp" "ui/graphics/MaskImage.cpp" "ui/graphics/Shapes.cpp" "features/home/faces/TimeDigits.cpp" "features/home/faces/ForestWatchFace.cpp" "storage/WatchPreferences.cpp"
+    "ui/graphics/Text.cpp" "ui/graphics/VlwFont.cpp" "ui/graphics/WatchFonts.cpp" "ui/graphics/VlwGlyphs.cpp" "ui/graphics/MaskImage.cpp" "ui/graphics/Shapes.cpp" "features/home/faces/TimeDigits.cpp" "features/home/faces/ForestWatchFace.cpp" "features/home/faces/HandsFace.cpp" "features/home/faces/AnalogWatchFace.cpp" "features/home/faces/NoonishWatchFace.cpp" "features/home/faces/InfoRowView.cpp" "storage/WatchPreferences.cpp"
     "ui/list/ListController.cpp" "ui/list/ListView.cpp"
     "ui/overlays/ToastLayer.cpp" "ui/overlays/StatsOverlay.cpp"
     "host/ScreenManager.cpp" "host/HostRuntime.cpp" "host/HostRenderer.cpp" "host/RenderDiagnostics.cpp"

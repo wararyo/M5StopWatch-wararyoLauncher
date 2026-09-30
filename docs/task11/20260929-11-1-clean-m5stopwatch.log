@@ -1,0 +1,20 @@
+﻿Processing m5stopwatch (platform: espressif32 @ 6.12.0; framework: espidf; board: m5stack-cores3)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+Removing .pio\build\m5stopwatch
+pio : [WinError 32] プロセスはファイルにアクセスできません。別のプロセスが使用中です。: 'C:\\Users\\wararyo\\Git\\M5StopWatch-wararyoLauncher\\.pio\\bui
+ld\\m5stopwatch' 
+At line:1 char:302
++ ... tch {} } }; pio run -e m5stopwatch -t clean *> docs/task11/20260929-1 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([WinError 32] プ...\\m5stopwatch' :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Done cleaning
+Please manually remove the file `C:\Users\wararyo\Git\M5StopWatch-wararyoLauncher\.pio\build\m5stopwatch`
+========================= [SUCCESS] Took 1.20 seconds =========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+m5stopwatch    SUCCESS   00:00:01.199
+========================= 1 succeeded in 00:00:01.199 =========================

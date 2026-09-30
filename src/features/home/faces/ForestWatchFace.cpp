@@ -83,20 +83,20 @@ void ForestWatchFace::plan(FramePlan& frame,Gfx& g,const WatchEnvironment& env,c
     if (batteryPercent_<0) std::strcpy(battery_,"--%");
     else std::snprintf(battery_,sizeof(battery_),"%d%%",batteryPercent_);
     const int items=control_.items();
-    const int icon=std::min(layout_.iconSize,MaxIcon);
+    const int icon=std::min(layout_.row.iconSize,MaxIcon);
     // What each group would take whole, then what it may take in this row.
     int natural[ForestMaxItems+1]{},limits[ForestMaxItems+1]{},widths[ForestMaxItems+1]{};
     int n=0;
     if (batteryShown_) {
         useFont(g,small_);
-        natural[n++]=layout_.batteryWidth+layout_.iconGap+g.textWidth(battery_);
+        natural[n++]=layout_.row.batteryWidth+layout_.row.iconGap+g.textWidth(battery_);
     }
     for (int i=0;i<items;++i) {
         groups_[i].wide=!ascii(d.background.items[i].label);
         useFont(g,groups_[i].wide ? wide_ : small_);
-        natural[n++]=icon+layout_.iconGap+g.textWidth(d.background.items[i].label);
+        natural[n++]=icon+layout_.row.iconGap+g.textWidth(d.background.items[i].label);
     }
-    forestGroupLimits(layout_,natural,n,limits);
+    infoGroupLimits(layout_.row,natural,n,limits);
     n=0;
     if (batteryShown_) { widths[0]=natural[0]; n=1; }
     for (int i=0;i<items;++i) {
@@ -104,8 +104,8 @@ void ForestWatchFace::plan(FramePlan& frame,Gfx& g,const WatchEnvironment& env,c
         auto& group=groups_[i];
         useFont(g,group.wide ? wide_ : small_);
         // The app's own text, shortened to fit and otherwise untouched.
-        fitText(g,item.label,group.label,sizeof(group.label),std::max(0,limits[n]-icon-layout_.iconGap));
-        widths[n++]=icon+layout_.iconGap+g.textWidth(group.label);
+        fitText(g,item.label,group.label,sizeof(group.label),std::max(0,limits[n]-icon-layout_.row.iconGap));
+        widths[n++]=icon+layout_.row.iconGap+g.textWidth(group.label);
         // Forest draws every icon white and ignores the suggested colour.
         group.icon=usableIcon(item.icon);
         if (group.icon!=group.scaled) {
@@ -114,7 +114,7 @@ void ForestWatchFace::plan(FramePlan& frame,Gfx& g,const WatchEnvironment& env,c
         }
     }
     Rect placed[ForestMaxItems+1]{};
-    placeForestInfo(layout_,widths,n,placed);
+    placeInfoRow(layout_.row,widths,n,placed);
     auto padded=[](Rect r) { return r.empty() ? r : Rect{r.x-Pad,r.y-Pad,r.w+2*Pad,r.h+2*Pad}; };
     boxes_[Battery]=batteryShown_ ? padded(placed[0]) : Rect{};
     for (int i=0;i<ForestMaxItems;++i)
@@ -147,8 +147,8 @@ void ForestWatchFace::paintScenery(Gfx& g,const PaintContext& context) {
     }
 }
 void ForestWatchFace::paintBattery(Gfx& g,const Rect& box) {
-    const int x=box.x+Pad,cy=layout_.infoY;
-    const int w=layout_.batteryWidth,tip=forest::px(viewport_,3),total=layout_.batteryHeight;
+    const int x=box.x+Pad,cy=layout_.row.y;
+    const int w=layout_.row.batteryWidth,tip=forest::px(viewport_,3),total=layout_.row.batteryHeight;
     const int top=cy-total/2+tip,height=total-tip;
     // Terminal, outline, then the charge rising from the bottom.
     const int tipW=forest::px(viewport_,8);
@@ -167,10 +167,10 @@ void ForestWatchFace::paintBattery(Gfx& g,const Rect& box) {
     }
     useFont(g,small_);
     g.setTextColor(ForestInk,ForestGround); g.setTextDatum(baseline_left);
-    g.drawString(battery_,x+w+layout_.iconGap,cy+(small_.ascent-small_.descent)/2);
+    g.drawString(battery_,x+w+layout_.row.iconGap,cy+(small_.ascent-small_.descent)/2);
 }
 void ForestWatchFace::paintItem(Gfx& g,const Group& item,const Rect& box) {
-    const int x=box.x+Pad,cy=layout_.infoY,icon=std::min(layout_.iconSize,MaxIcon);
+    const int x=box.x+Pad,cy=layout_.row.y,icon=std::min(layout_.row.iconSize,MaxIcon);
     if (item.maskReady) {
         const int left=x,top=cy-icon/2;
         for (int j=0;j<icon;++j) for (int i=0;i<icon;++i) {
@@ -185,7 +185,7 @@ void ForestWatchFace::paintItem(Gfx& g,const Group& item,const Rect& box) {
     const Font& f=item.wide ? wide_ : small_;
     useFont(g,f);
     g.setTextColor(ForestInk,ForestGround); g.setTextDatum(baseline_left);
-    g.drawString(item.label,x+icon+layout_.iconGap,cy+(f.ascent-f.descent)/2);
+    g.drawString(item.label,x+icon+layout_.row.iconGap,cy+(f.ascent-f.descent)/2);
 }
 void ForestWatchFace::paint(Gfx& g,const PaintContext& context) {
     paintScenery(g,context);

@@ -37,11 +37,12 @@ UsbState M5Hal::sampleUsb() {
     usb.dataConnected = usb_serial_jtag_is_connected();
     return usb;
 }
-void M5Hal::setStatusLed(bool on) {
+bool M5Hal::setStatusLed(bool on) {
     // PWR_CFG bit 4 drives LED_EN (R19 and LED1 to GND). Read-modify-write:
     // the same register switches the rails, the 5V boost and charging.
     const bool ok = on ? M5.In_I2C.bitOn(0x6e, 0x06, 0x10, 100000) : M5.In_I2C.bitOff(0x6e, 0x06, 0x10, 100000);
     std::printf("[Power] status_led=%s%s\n", on ? "on" : "off", ok ? "" : " FAILED");
+    return ok;
 }
 void M5Hal::setScreenOff(bool off) {
     // Waking only powers the panel: the level is the runtime's to decide, since

@@ -46,7 +46,12 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
         return pending;
     }
     int led = -1, ledCommands = 0;
-    void setStatusLed(bool on) override { led = on; ++ledCommands; }
+    bool ledFails = false; // The write does not reach M5PM1.
+    bool setStatusLed(bool on) override {
+        ++ledCommands;
+        if (!ledFails) led = on;
+        return !ledFails;
+    }
     bool wrist = false; // Consumed when asked, as the IMU's status is.
     bool takeWristWake() override { const bool w = wrist; wrist = false; return w; }
 };
@@ -258,6 +263,13 @@ void statusLed() {
     h.time += 31000000; r.step(); CHECK(r.power().screenOff());
     h.usb = {true, 5000, true, true, true};
     h.time += 1000000; r.step(); CHECK(h.led == 1 && h.ledCommands == 4);
+    // A write that does not reach M5PM1 is sent again at the next sample,
+    // though the charge state has not changed since.
+    h.ledFails = true; h.usb = {true, 5000, true, true, false};
+    h.time += 1000000; r.step(); CHECK(h.led == 1 && h.ledCommands == 5);
+    h.ledFails = false;
+    h.time += 1000000; r.step(); CHECK(h.led == 0 && h.ledCommands == 6);
+    h.time += 1000000; r.step(); CHECK(h.ledCommands == 6);
 }
 void interrupts() {
     // Work 8-4: the touch controller raises INT before its first report is

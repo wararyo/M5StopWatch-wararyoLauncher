@@ -61,11 +61,10 @@ void HostRuntime::step() {
         }
         power_.usb = usb;
         // The green LED means charging and nothing else: M5PM1 lights it at
-        // power-on whatever the state. An unanswered read leaves it as it is.
-        if (usb.chargeValid && int(usb.charging) != statusLed_) {
-            hal_.setStatusLed(usb.charging);
+        // power-on whatever the state. An unanswered read leaves it as it is;
+        // a write that failed is sent again at the next sample.
+        if (usb.chargeValid && int(usb.charging) != statusLed_ && hal_.setStatusLed(usb.charging))
             statusLed_ = usb.charging;
-        }
         nextUsb_ = now + 1000000;
     }
     // Light sleep only with the panel asleep and a VBUS reading that says no

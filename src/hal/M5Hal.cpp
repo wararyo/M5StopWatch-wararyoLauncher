@@ -111,6 +111,18 @@ void beginPowerManagement(int maxMhz, int minMhz) {
     std::printf("[Power] dfs max=%dMHz min=%dMHz light_sleep=%d lock=%s result=%s\n", maxMhz, minMhz,
                 int(config.light_sleep_enable), esp_err_to_name(err), esp_err_to_name(pm));
 }
+void beginIoe1IdleSleep() {
+    if (M5.getBoard() != m5::board_t::board_M5StopWatch) return;
+    // I2C_CFG [3:0] is the idle time in seconds; the speed, wake edge and pull
+    // bits above it keep what M5GFX set (M5IOE1 datasheet, I2C configuration).
+    constexpr uint8_t Ioe1 = 0x4F, I2cCfg = 0x23, Seconds = 1;
+    uint8_t cfg = 0, readBack = 0;
+    bool ok = M5.In_I2C.readRegister(Ioe1, I2cCfg, &cfg, 1, 100000);
+    cfg = uint8_t((cfg & 0xF0) | Seconds);
+    ok = ok && M5.In_I2C.writeRegister8(Ioe1, I2cCfg, cfg, 100000) &&
+         M5.In_I2C.readRegister(Ioe1, I2cCfg, &readBack, 1, 100000) && readBack == cfg;
+    std::printf("[Ioe1] idle_sleep=%us i2c_cfg=0x%02x result=%s\n", unsigned(Seconds), readBack, ok ? "ok" : "FAILED");
+}
 void M5Hal::setLightSleepAllowed(bool allowed) {
     if (!sleepLock || allowed == sleepAllowed) return;
     if ((allowed ? esp_pm_lock_release(sleepLock) : esp_pm_lock_acquire(sleepLock)) == ESP_OK)

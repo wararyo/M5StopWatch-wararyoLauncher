@@ -32,6 +32,12 @@ private:
 // Dynamic frequency scaling between the two limits, and automatic light sleep
 // while setLightSleepAllowed(true) (work 8-5).
 void beginPowerManagement(int maxMhz, int minMhz);
+// M5IOE1 sleeps once the shared I2C bus has been quiet for a second, holding
+// its outputs, and any traffic on the bus wakes it in about 2ms; an access of
+// its own that wakes it fails. M5.begin() turns the sleep off. Nothing reads or
+// writes the chip after it, so nothing has to wake it; the next boot's M5GFX
+// probe retries for 200ms, and turns the sleep off again.
+void beginIoe1IdleSleep();
 void beginRuntimeDiagnostics();
 void runtimeDiagnostics();
 }

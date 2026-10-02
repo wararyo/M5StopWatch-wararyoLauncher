@@ -48,7 +48,7 @@ def read_dump(port):
     device.dtr = False
     device.rts = False
     device.open()
-    header, records, sleep = None, [], None
+    header, records, sleep, clock = None, [], None, None
     with device:
         device.reset_input_buffer()
         device.write(b"O")
@@ -68,8 +68,11 @@ def read_dump(port):
                     records.append(values)
                 elif "slept_s" in values:
                     sleep = values
+                elif "drift_ms" in values:
+                    clock = values
                 elif "n" in values:
                     values["sleep"] = sleep
+                    values["clock"] = clock
                     return header, records, values
     raise SystemExit("No complete DRAIN dump within 20s (is this the m5stopwatch-drain build?)")
 
@@ -94,6 +97,11 @@ def main():
         sleep, span = end["sleep"], max(records[-1]["t"], 1)
         print(f"[drain] light sleep: {sleep['count']} times, {sleep['slept_s']}s "
               f"({100 * sleep['slept_s'] / span:.1f}% of the recorded {span}s)")
+    # The system clock against the RTC over the run (long light sleeps).
+    if end.get("clock"):
+        clock = end["clock"]
+        print(f"[drain] clock drift: {clock['drift_ms']}ms over {clock['over_s']}s "
+              f"(offset {clock['start_offset_us']}us -> {clock['offset_us']}us)")
     if not records:
         return
     # A failed PMIC read comes back as <= 0; it is not a voltage.

@@ -1,5 +1,6 @@
 #include "M5Hal.h"
 #include <M5Unified.h>
+#include <lgfx/v1/panel/Panel_AMOLED.hpp>
 #include <esp_timer.h>
 #include <driver/usb_serial_jtag.h>
 #include <esp_pm.h>
@@ -45,11 +46,40 @@ bool M5Hal::setStatusLed(bool on) {
     std::printf("[Power] status_led=%s%s\n", on ? "on" : "off", ok ? "" : " FAILED");
     return ok;
 }
+namespace {
+// M5GFX draws through a framebuffer panel whose setSleep() is empty, so
+// M5.Display.sleep() only zeroes the level and the CO5300 behind it keeps
+// scanning black, about 5.5mA more than in Sleep In. The panel itself is
+// reached through M5GFX's pointer to it.
+struct PanelAccess : m5gfx::M5GFX {
+    static lgfx::Panel_AMOLED* co5300() {
+        if (M5.getBoard() != m5::board_t::board_M5StopWatch) return nullptr;
+        return static_cast<lgfx::Panel_AMOLED*>((M5.Display.*(&PanelAccess::_panel_last)).get());
+    }
+};
+TimeUs sleptAt = 0;
+// CO5300 datasheet 7.5.11-12: Sleep Out only 120ms after Sleep In, and the
+// next command only 5ms after Sleep Out; the memory keeps its image. 0x80 is
+// command_list's delay flag (Panel_Device::CMD_INIT_DELAY).
+void sleepPanel(bool sleep) {
+    static constexpr uint8_t In[] = {0x10, 0, 0xFF, 0xFF}, Out[] = {0x11, 0x80, 5, 0xFF, 0xFF};
+    auto* panel = PanelAccess::co5300();
+    if (!panel) return;
+    if (sleep) {
+        panel->command_list(In);
+        sleptAt = esp_timer_get_time();
+        return;
+    }
+    const auto early = sleptAt + 120000 - esp_timer_get_time();
+    if (early > 0) vTaskDelay(pdMS_TO_TICKS((early + 999) / 1000));
+    panel->command_list(Out);
+}
+}
 void M5Hal::setScreenOff(bool off) {
     // Waking only powers the panel: the level is the runtime's to decide, since
     // it can be a settings preview rather than the stored value.
-    if (off) { M5.Display.setBrightness(0); M5.Display.sleep(); }
-    else M5.Display.wakeup();
+    if (off) { M5.Display.setBrightness(0); sleepPanel(true); }
+    else sleepPanel(false);
     std::printf("[Power] screen=%s\n", off ? "off" : "on");
 }
 bool M5Hal::readRtc(CivilTime& utc) {

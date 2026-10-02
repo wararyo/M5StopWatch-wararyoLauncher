@@ -1,6 +1,7 @@
 #include "host/HostApplication.h"
 #include "features/home/HomeDataSource.h"
 #include "services/TimeService.h"
+#include "power/BatteryCurve.h"
 #include <cstdlib>
 #include <iostream>
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
@@ -183,6 +184,45 @@ void displayData() {
     const auto blank=unset.sample(0);
     CHECK(!blank.timeValid && blank.batteryPercent==55 && blank.subsecondUs==0);
 }
+void batteryCurve() {
+    // Points read back exactly, the ends clamp, and between points it rounds.
+    CHECK(batteryPercentFromMv(4300)==100 && batteryPercentFromMv(4200)==100);
+    CHECK(batteryPercentFromMv(3700)==52 && batteryPercentFromMv(3600)==29);
+    CHECK(batteryPercentFromMv(3100)==0 && batteryPercentFromMv(2900)==0);
+    CHECK(batteryPercentFromMv(3675)==47); // 41 + 11*25/50 = 46.5
+    CHECK(batteryPercentFromMv(3250)==2);
+    // Never rises as the voltage falls.
+    int previous=100;
+    for(int mv=4300;mv>=2900;--mv) { const int p=batteryPercentFromMv(mv); CHECK(p<=previous && p>=0); previous=p; }
+    // The charging curve tops out at 90%: the rest is time at 4.2 V.
+    CHECK(chargingPercentFromMv(4300)==90 && chargingPercentFromMv(3800)==53 && chargingPercentFromMv(3200)==0);
+    previous=90;
+    for(int mv=4300;mv>=3200;--mv) { const int p=chargingPercentFromMv(mv); CHECK(p<=previous && p>=0); previous=p; }
+}
+void batteryEstimator() {
+    constexpr TimeUs S=1000000, M=60*S;
+    const ChargeInput battery{false,true,false}, charging{true,true,true}, full{true,true,false};
+    BatteryEstimator e;
+    // Each reading stands on its own: noise and the plug-in jump show as they are.
+    CHECK(e.update(0,3700,battery)==52);
+    CHECK(e.update(30*S,3710,battery)==53);
+    CHECK(e.update(60*S,0,battery)==-1); // A failed read is unknown.
+    CHECK(e.update(120*S,3740,charging)==43);
+    CHECK(e.update(10*M,3800,charging)==53);
+    // At 4.2 V time takes over from 90%, also through a dip below it, and only
+    // the charger says 100.
+    CHECK(e.update(200*M,4205,charging)==90);
+    CHECK(e.update(200*M+450*S,4210,charging)==95);
+    CHECK(e.update(230*M,4195,charging)==99);
+    CHECK(e.update(231*M,4200,full)==100);
+    CHECK(e.update(232*M,4150,battery)==98);
+    // A failed status read on battery is not charging.
+    CHECK(e.update(233*M,4100,{false,true,true})==93);
+    // Charging again starts the time at 4.2 V over.
+    CHECK(e.update(300*M,4205,charging)==90);
+    // On USB with the charger idle well below full: paused, not full.
+    CHECK(e.update(301*M,3900,full)==74);
+}
 void runtimeIntegration() {
     StubHal hal; StubRender render; TimeService service; service.begin(hal);
     HomeDataSource data(hal,service);
@@ -203,7 +243,7 @@ void runtimeIntegration() {
 }
 int main() {
     calendar(); jstBoundary(); startup(); manualSave(); saveFailure();
-    displayData(); runtimeIntegration();
+    displayData(); batteryCurve(); batteryEstimator(); runtimeIntegration();
     std::cout << "PASS: calendar, jst boundary, startup, manual save, save failure, "
-                 "display data, runtime integration\n";
+                 "display data, battery curve, battery estimator, runtime integration\n";
 }

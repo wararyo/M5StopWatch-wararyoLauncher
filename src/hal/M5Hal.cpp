@@ -35,6 +35,7 @@ UsbState M5Hal::sampleUsb() {
     usb.chargeValid = usb.vbusValid && M5.In_I2C.readRegister(0x6e, 0x12, &in, 1, 100000);
     usb.charging = usb.chargeValid && !(in & 0x04);
     usb.dataConnected = usb_serial_jtag_is_connected();
+    if (usb.vbusValid) usbPowered_ = usb.powered();
     return usb;
 }
 bool M5Hal::setStatusLed(bool on) {
@@ -80,12 +81,12 @@ int64_t M5Hal::utcClockUs() {
 }
 BatteryState M5Hal::sampleBattery() {
     BatteryState battery{};
-    const auto level = M5.Power.getBatteryLevel();
-    // Out of range means the PMIC did not answer; leave it unknown.
-    if (level >= 0 && level <= 100) battery.percent = int(level);
     const auto charging = M5.Power.isCharging();
     battery.charging = charging == m5::Power_Class::is_charging;
     battery.chargingKnown = charging != m5::Power_Class::charge_unknown;
+    // Zero or below means the PMIC did not answer; the estimator leaves it unknown.
+    battery.percent = battery_.update(now(), M5.Power.getBatteryVoltage(),
+        {usbPowered_, battery.chargingKnown, battery.charging});
     return battery;
 }
 void M5Hal::setBrightness(int level) {

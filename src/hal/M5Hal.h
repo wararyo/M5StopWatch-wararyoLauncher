@@ -1,5 +1,6 @@
 #pragma once
 #include "Hal.h"
+#include "power/BatteryCurve.h"
 namespace launcher {
 class M5Hal final : public Hal {
 public:
@@ -23,6 +24,9 @@ public:
     void setBrightness(int level) override;
 private:
     bool inputWake_ = false, pending_ = false, imuWake_ = false, imuRetry_ = false;
+    // USB power as of the last valid VBUS read, for the estimator.
+    bool usbPowered_ = false;
+    BatteryEstimator battery_;
 };
 // Dynamic frequency scaling between the two limits, and automatic light sleep
 // while setLightSleepAllowed(true) (work 8-5).

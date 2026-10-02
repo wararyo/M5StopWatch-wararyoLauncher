@@ -50,6 +50,7 @@ private:
     bool lightSleep_ = false; // The HAL starts with light sleep forbidden.
     int statusLed_ = -1; // Unknown until the first charge reading sets it.
     TimeUs nextDisplay_ = INT64_MAX;
+    TimeUs nextService_ = INT64_MAX; // The data source's own work (DisplayDataSource::service).
     // A wake fades the level in from zero, eased out, stepped at a frame rate.
     static constexpr TimeUs FadeUs = 300000, FadeStepUs = 16000;
     TimeUs fadeEnd_ = 0; // Zero once the full level is applied.

@@ -4,7 +4,11 @@
 #include "host/RenderDiagnostics.h"
 #endif
 namespace launcher {
-void HostRuntime::begin() { power_.begin(hal_.now()); nextInput_ = nextUsb_ = hal_.now(); renderer_.invalidate(); }
+void HostRuntime::begin() {
+    const TimeUs now = hal_.now();
+    power_.begin(now); nextInput_ = nextUsb_ = now; renderer_.invalidate();
+    data_.panelWoke(now);
+}
 void HostRuntime::step() {
     const TimeUs now = hal_.now();
     const bool wasOff = power_.screenOff();
@@ -87,8 +91,13 @@ void HostRuntime::step() {
         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
         appliedBrightness_ = -1;
         fadeEnd_ = power_.screenOff() ? 0 : now + FadeUs;
+        if (wasOff) data_.panelWoke(now);
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
+    // A clock that moved is drawn again, which also takes its new deadlines.
+    bool moved = false;
+    nextService_ = data_.service(now, moved);
+    if (moved && !power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
     if (!power_.screenOff()) {
         dirty_ = screens_.update(now) || dirty_;
         // A provider's notification redraws a clock on screen. A covered
@@ -152,7 +161,7 @@ void HostRuntime::wait(TimeUs also) {
     // postpone unsampled input forever under continuous processing overruns.
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
-    auto deadline = std::min({nextInput_, power_.deadline(), also});
+    auto deadline = std::min({nextInput_, power_.deadline(), nextService_, also});
     if (usbPolled(now)) deadline = std::min(deadline, nextUsb_);
     if (!power_.screenOff()) {
         deadline = std::min(deadline, std::min(screens_.nextUpdate(), nextDisplay_));

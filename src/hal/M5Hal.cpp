@@ -5,6 +5,7 @@
 #include <esp_pm.h>
 #include "InputWake.h"
 #include "ImuWake.h"
+#include "Pm1Irq.h"
 #include <algorithm>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -117,17 +118,41 @@ void M5Hal::setLightSleepAllowed(bool allowed) {
 }
 void M5Hal::beginInputWake() {
     imuWake_ = beginImuWake();
-    inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle(), imuWake_);
+    // Routed without the IMU too: USB power events use the same line.
+    pm1Irq_ = M5.getBoard() == m5::board_t::board_M5StopWatch && beginPm1Irq(imuWake_);
+    inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle(), pm1Irq_);
 }
-bool M5Hal::takeWristWake() {
+void M5Hal::servicePm1Irq() {
     // A GPIO read while the line is idle; I2C only once M5PM1 pulled it low,
     // or while an IMU status read is still owed (ImuWake.h).
-    if (!imuWake_ || (!imuWakeIrqActive() && !imuRetry_)) return false;
-    const auto s = serviceImuWake();
+    const bool raised = pm1Irq_ && pm1IrqActive();
+    if (!raised && !imuRetry_) return;
+    if (raised) {
+        // M5PM1 first: VBUS and the IMU's status are read after the clear,
+        // so they are newer than any event it cleared.
+        const auto s = clearPm1Irq();
+        if (!s.cleared) std::printf("[Pm1Irq] status clear failed\n");
+        if (s.power) std::printf("[Pm1Irq] power status=0x%02x\n", s.power);
+        usbEvent_ = true;
+    }
+    if (!imuWake_) return;
+    const auto s = readImuWake();
     imuRetry_ = !s.read;
-    if (!s.read || !s.cleared) std::printf("[ImuWake] status %s failed\n", s.read ? "clear" : "read");
+    if (!s.read) std::printf("[ImuWake] status read failed\n");
     else if (s.wrist) std::printf("[ImuWake] wrist\n");
-    return s.wrist;
+    wrist_ = wrist_ || s.wrist;
+}
+bool M5Hal::takeWristWake() {
+    servicePm1Irq();
+    const bool wrist = wrist_;
+    wrist_ = false;
+    return wrist;
+}
+bool M5Hal::takeUsbEvent() {
+    servicePm1Irq();
+    const bool event = usbEvent_;
+    usbEvent_ = false;
+    return event;
 }
 void M5Hal::waitUs(TimeUs delay) {
     // Without the interrupts nothing would end a long wait on a press, so fall

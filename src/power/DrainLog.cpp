@@ -6,6 +6,7 @@
 #include <freertos/FreeRTOS.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstdio>
 namespace launcher {
 namespace {
@@ -163,5 +164,6 @@ void drainLog(TimeUs now, const PowerManager& power) {
     if (ram) nextAt += RecordIntervalUs;
     if (nvs) nextPersistAt += PersistIntervalUs;
 }
+TimeUs drainLogDeadline() { return active ? std::min(nextAt, nextPersistAt) : INT64_MAX; }
 }
 #endif

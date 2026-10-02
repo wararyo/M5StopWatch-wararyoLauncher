@@ -50,7 +50,11 @@ void HostRuntime::step() {
         SlotCatalog catalog;
         if (slots_->poll(catalog)) { screens_.setSlots(catalog); dirty_ = true; }
     }
-    if (now >= nextUsb_) {
+    // USB power came or went (M5PM1 saw 5VIN cross 2.4V): VBUS is read now,
+    // and every second for a while, since the launcher counts USB power only
+    // from 4V and the voltage may still be on its way.
+    if (hal_.takeUsbEvent()) { nextUsb_ = now; usbSettleUntil_ = now + UsbSettleUs; }
+    if (now >= nextUsb_ && usbPolled(now)) {
         const auto usb = hal_.sampleUsb();
         // Charging follows USB power, and the battery is otherwise read every
         // 30s: a change here reads it again (docs/task10/plan.md 3.1). The
@@ -71,7 +75,7 @@ void HostRuntime::step() {
     // USB power (work 8-5); an unanswered read keeps it forbidden. It is
     // forbidden before the panel wakes and allowed only after it has slept,
     // so no panel transfer ever runs while sleep is possible.
-    const bool sleepOk = power_.screenOff() && power_.usb.vbusValid && !power_.usb.powered();
+    const bool sleepOk = sleepAllowed();
     if (!sleepOk && lightSleep_) { hal_.setLightSleepAllowed(false); lightSleep_ = false; }
     if (wasOff != power_.screenOff()) {
 #ifdef LAUNCHER_RENDER_METRICS
@@ -131,14 +135,25 @@ void HostRuntime::step() {
     // strand the commit, because the screen itself takes no input until it ends.
     if (screens_.commitPendingBoot()) dirty_ = true;
 }
-void HostRuntime::wait() {
+bool HostRuntime::sleepAllowed() const {
+    return power_.screenOff() && power_.usb.vbusValid && !power_.usb.powered();
+}
+bool HostRuntime::usbPolled(TimeUs now) const {
+    // While light sleep is allowed, USB power can only arrive, and the HAL
+    // reports that, so an idle watch is woken by nothing but its interrupts.
+    // Everywhere else (a lit panel, USB power, an unanswered read, no
+    // interrupt) VBUS is read every second as before.
+    return !hal_.usbEvents() || !sleepAllowed() || now < usbSettleUntil_;
+}
+void HostRuntime::wait(TimeUs also) {
     const auto now = hal_.now();
     // Keep overdue work due until step() actually services it. vTaskDelay can
     // wake before an absolute deadline (tick phase); rebasing here would then
     // postpone unsampled input forever under continuous processing overruns.
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
-    auto deadline = std::min(nextInput_, std::min(nextUsb_, power_.deadline()));
+    auto deadline = std::min({nextInput_, power_.deadline(), also});
+    if (usbPolled(now)) deadline = std::min(deadline, nextUsb_);
     if (!power_.screenOff()) {
         deadline = std::min(deadline, std::min(screens_.nextUpdate(), nextDisplay_));
         // Due until the full level is applied, even when this wait itself

@@ -54,6 +54,9 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     }
     bool wrist = false; // Consumed when asked, as the IMU's status is.
     bool takeWristWake() override { const bool w = wrist; wrist = false; return w; }
+    bool events = false, usbEvent = false; // An interrupt reports USB power; consumed when asked.
+    bool usbEvents() const override { return events; }
+    bool takeUsbEvent() override { const bool e = usbEvent; usbEvent = false; return e; }
 };
 void buttons() {
     InputController c;
@@ -244,6 +247,52 @@ void wristWake() {
     // The wake starts the timeout like any activity.
     h.time += 29999000; r.step(); CHECK(!r.power().screenOff());
     h.time += 1000; r.step(); CHECK(r.power().screenOff() && h.sleeps == 2);
+}
+void usbEvents() {
+    // With USB power reported by interrupt, a dark watch on battery is not
+    // woken to read VBUS. Anywhere light sleep is forbidden it still is.
+    FakeHal h; h.events = true;
+    HostApplication application(h, h, h, 468, 468); auto& r=application.runtime(); r.begin(); r.step();
+    h.usb = {true, 0, false};
+    r.wait(); CHECK(h.waited <= 1000000); // Lit: polled every second.
+    h.time += 31000000; r.step(); CHECK(r.power().screenOff() && h.lightSleep);
+    int samples = h.usbSamples;
+    const auto asleep = h.time;
+    r.wait(); CHECK(h.waited > 3600000000LL); // Nothing left to wake for.
+    h.time = asleep + 3600000000LL; r.step(); CHECK(h.usbSamples == samples);
+    r.wait(h.time + 60000000); CHECK(h.waited == 60000000); // The caller's own deadline.
+    h.time = asleep + 3660000000LL;
+    // Plugged in: read at once, and polled while it powers the watch.
+    h.usb = {true, 5000, true}; h.usbEvent = true;
+    h.time += 1000; r.step(); CHECK(h.usbSamples == ++samples && !h.lightSleep);
+    r.wait(); CHECK(h.waited <= 1000000);
+    h.time += 1000000; r.step(); CHECK(h.usbSamples == ++samples);
+    // Unplugged: read at once, then polled for the settling time only.
+    h.usb = {true, 0, false}; h.usbEvent = true;
+    h.time += 1000; r.step(); CHECK(h.usbSamples == ++samples && h.lightSleep);
+    for (int i = 0; i < 4; ++i) { h.time += 1000000; r.step(); CHECK(h.usbSamples == ++samples); }
+    h.time += 1000000; r.step(); CHECK(h.usbSamples == samples); // 5s on.
+    h.time += 10000000; r.step(); CHECK(h.usbSamples == samples);
+    // An event seen below 4V: still on battery, but read again while VBUS
+    // may still be rising.
+    h.usb = {true, 3000, false}; h.usbEvent = true;
+    h.time += 1000; r.step(); CHECK(h.usbSamples == ++samples && h.lightSleep);
+    h.usb = {true, 5000, true};
+    h.time += 1000000; r.step(); CHECK(h.usbSamples == ++samples && !h.lightSleep);
+    // An unanswered read forbids sleep, and so keeps polling.
+    h.usb = {false, 0, false};
+    h.time += 1000000; r.step(); CHECK(h.usbSamples == ++samples && !h.lightSleep);
+    h.time += 10000000; r.step(); CHECK(h.usbSamples == ++samples);
+    // A lit panel is polled again, from the moment it wakes.
+    h.usb = {true, 0, false};
+    h.time += 1000000; r.step(); CHECK(h.lightSleep);
+    samples = h.usbSamples;
+    h.time += 10000000; r.step(); CHECK(h.usbSamples == samples);
+    h.time += 10000; h.input = {false, false, true, 100, 100}; r.step();
+    CHECK(!r.power().screenOff() && !h.lightSleep);
+    h.input = {}; r.wait(); CHECK(h.waited <= 10000);
+    h.time += 10000; r.step(); CHECK(h.usbSamples == samples + 1);
+    CHECK(!h.panelWhileSleepAllowed);
 }
 void statusLed() {
     // The green LED shows charging only, set once per change at the USB sample.
@@ -487,8 +536,8 @@ void simultaneousHomeInputs() {
     }
 }
 int main() {
-    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep(); wristWake(); statusLed();
+    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep(); wristWake(); usbEvents(); statusLed();
     overload(); longPress(); homeGestures(); simultaneousHomeInputs();
-    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, wrist wake, status led, overload/early-wake, "
+    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, wrist wake, usb events, status led, overload/early-wake, "
                  "long press, home gestures\n";
 }

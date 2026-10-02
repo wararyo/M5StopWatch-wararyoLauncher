@@ -18,6 +18,12 @@ public:
     // wake-up). Also clears the interrupt, so ask it every step. The fakes
     // without an IMU inherit false.
     virtual bool takeWristWake() { return false; }
+    // True when an interrupt reports USB power coming and going, so VBUS need
+    // not be polled while the watch sleeps. Then takeUsbEvent() is true once
+    // after the line was raised, by that or by anything sharing it: VBUS is
+    // read afresh rather than trusting what the event said. The fakes poll.
+    virtual bool usbEvents() const { return false; }
+    virtual bool takeUsbEvent() { return false; }
     // Automatic light sleep is only safe with the panel asleep (the display
     // driver's DMA transfers hold no PM lock) and without USB power (sleep
     // stops the USB console). Only the runtime test observes it, so the other

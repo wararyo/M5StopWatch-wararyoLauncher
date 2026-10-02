@@ -182,6 +182,10 @@ extern "C" void app_main() {
         launcher::recordLoop();
         launcher::reportRenderDiagnostics(renderer, hal.now());
 #endif
+#ifdef LAUNCHER_DRAIN_LOG
+        runtime.wait(launcher::drainLogDeadline());
+#else
         runtime.wait();
+#endif
     }
 }

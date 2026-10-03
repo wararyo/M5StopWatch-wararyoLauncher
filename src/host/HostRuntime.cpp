@@ -86,11 +86,12 @@ void HostRuntime::step() {
         if (wasOff) recordWake(now);
 #endif
         // The panel comes back at zero brightness: the first frame is drawn
-        // dark and the level fades in behind it, rather than inside the HAL.
-        // Going off ends a fade that is still running.
+        // dark and the level fades in behind it, rather than inside the HAL,
+        // from when the panel starts to show. Going off ends a fade that is
+        // still running.
         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
         appliedBrightness_ = -1;
-        fadeEnd_ = power_.screenOff() ? 0 : now + FadeUs;
+        fadeEnd_ = power_.screenOff() ? 0 : std::max(now, hal_.panelShowsAt()) + FadeUs;
         if (wasOff) data_.panelWoke(now);
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
@@ -175,8 +176,9 @@ void HostRuntime::applyBrightness(TimeUs now) {
     int level = brightness_;
     // Eased out: quick at first, settling on the level. The target comes from
     // the latest draw, so a level changed during the fade becomes its new end.
+    // Zero until the fade starts.
     if (now < fadeEnd_) {
-        const float rest = float(fadeEnd_ - now) / FadeUs;
+        const float rest = std::min(1.0f, float(fadeEnd_ - now) / FadeUs);
         level = int(float(brightness_) * (1 - rest * rest) + 0.5f);
     } else fadeEnd_ = 0;
     if (level != appliedBrightness_) { hal_.setBrightness(level); appliedBrightness_ = level; }

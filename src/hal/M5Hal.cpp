@@ -60,26 +60,32 @@ struct PanelAccess : m5gfx::M5GFX {
 TimeUs sleptAt = 0;
 // CO5300 datasheet 7.5.11-12: Sleep Out only 120ms after Sleep In, and the
 // next command only 5ms after Sleep Out; the memory keeps its image. 0x80 is
-// command_list's delay flag (Panel_Device::CMD_INIT_DELAY).
-void sleepPanel(bool sleep) {
+// command_list's delay flag (Panel_Device::CMD_INIT_DELAY). The woken panel
+// shows nothing until its booster is up, up to 120ms by the datasheet; the
+// fade starts 100ms after Sleep Out, which on the device looked right
+// (2026-10-03). Returns when a woken panel shows.
+TimeUs sleepPanel(bool sleep) {
     static constexpr uint8_t In[] = {0x10, 0, 0xFF, 0xFF}, Out[] = {0x11, 0x80, 5, 0xFF, 0xFF};
+    constexpr TimeUs SleepInToOutUs = 120000, ShowsUs = 100000;
     auto* panel = PanelAccess::co5300();
-    if (!panel) return;
+    if (!panel) return 0;
     if (sleep) {
         panel->command_list(In);
         sleptAt = esp_timer_get_time();
-        return;
+        return 0;
     }
-    const auto early = sleptAt + 120000 - esp_timer_get_time();
+    const auto early = sleptAt + SleepInToOutUs - esp_timer_get_time();
     if (early > 0) vTaskDelay(pdMS_TO_TICKS((early + 999) / 1000));
+    const auto sleepOut = esp_timer_get_time();
     panel->command_list(Out);
+    return sleepOut + ShowsUs;
 }
 }
 void M5Hal::setScreenOff(bool off) {
     // Waking only powers the panel: the level is the runtime's to decide, since
     // it can be a settings preview rather than the stored value.
     if (off) { M5.Display.setBrightness(0); sleepPanel(true); }
-    else sleepPanel(false);
+    else panelShowsAt_ = sleepPanel(false);
     std::printf("[Power] screen=%s\n", off ? "off" : "on");
 }
 bool M5Hal::readRtc(CivilTime& utc) {

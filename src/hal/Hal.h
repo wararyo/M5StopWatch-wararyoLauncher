@@ -29,6 +29,9 @@ public:
     // stops the USB console). Only the runtime test observes it, so the other
     // fakes inherit the no-op (work 8-5).
     virtual void setLightSleepAllowed(bool) {}
+    // When the panel woken last starts to show its image. A level set before
+    // then is not seen, so a wake's fade starts there. The fakes show at once.
+    virtual TimeUs panelShowsAt() const { return 0; }
     // The green status LED, which M5PM1 lights at power-on. The runtime
     // decides when; fakes without one inherit the no-op. False when the
     // write did not reach M5PM1, so the runtime sends it again.

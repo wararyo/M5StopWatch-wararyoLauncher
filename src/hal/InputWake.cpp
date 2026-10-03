@@ -8,7 +8,8 @@
 namespace launcher {
 namespace {
 // KEY.A, KEY.B, the touch controller's INT and M5PM1's IRQ output (the IMU's
-// wrist-wear wake-up, hal/ImuWake.h); all idle high and go low when active.
+// wrist-wear wake-up and USB power, hal/Pm1Irq.h); all idle high and go low
+// when active.
 constexpr gpio_num_t Pins[] = {GPIO_NUM_2, GPIO_NUM_1, GPIO_NUM_13, GPIO_NUM_12};
 // The IRQ output comes last, and is left out when its route was not set up.
 size_t pinCount = 0;
@@ -23,14 +24,14 @@ void IRAM_ATTR onLow(void* arg) {
     if (woken) portYIELD_FROM_ISR();
 }
 }
-bool beginInputWake(TaskHandle_t task, bool imuIrq) {
+bool beginInputWake(TaskHandle_t task, bool pm1Irq) {
     const auto err = gpio_install_isr_service(0);
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         std::printf("[Input] wake interrupts unavailable: %s\n", esp_err_to_name(err));
         return false;
     }
     waiter = task;
-    pinCount = imuIrq ? std::size(Pins) : std::size(Pins) - 1;
+    pinCount = pm1Irq ? std::size(Pins) : std::size(Pins) - 1;
     for (size_t i = 0; i < pinCount; ++i) {
         const auto pin = Pins[i];
         // Low level rather than an edge: light-sleep GPIO wake-up only

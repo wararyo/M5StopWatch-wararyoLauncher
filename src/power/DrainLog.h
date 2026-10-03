@@ -10,5 +10,8 @@ void beginDrainLog();
 // starts by itself when USB power goes away, so starting a run never needs the
 // serial port, whose opening adds 16mA until the next reset.
 void drainLog(TimeUs now, const PowerManager& power);
+// When drainLog() next has a record to take. The UI task waits for it too:
+// an idle watch on battery is otherwise woken only by its interrupts.
+TimeUs drainLogDeadline();
 }
 #endif

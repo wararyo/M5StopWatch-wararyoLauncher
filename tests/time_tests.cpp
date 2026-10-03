@@ -205,6 +205,16 @@ void alignment() {
     // Neither is it on a failed read.
     service.beginAlign(0); hal.readable=false;
     CHECK(service.align(0,stepped)==INT64_MAX && !stepped && hal.clockSets==sets+1);
+    // A late read does not take an edge, which may lie that far back; the
+    // next edge read in time does.
+    hal.readable=true;
+    const TimeUs start=30000000, late=start+TimeService::AlignGapUs+1;
+    service.beginAlign(start); service.align(start,stepped);
+    hal.rtc.second=2;
+    CHECK(service.align(late,stepped)==late+TimeService::AlignPollUs && !stepped && hal.clockSets==sets+1);
+    hal.rtc.second=3;
+    CHECK(service.align(late+TimeService::AlignPollUs,stepped)==INT64_MAX && stepped);
+    CHECK(hal.clockUs==(second+3)*1000000 && hal.clockSets==sets+2);
 }
 void runtimeIntegration() {
     StubHal hal; StubRender render; TimeService service; service.begin(hal);

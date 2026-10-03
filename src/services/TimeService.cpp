@@ -72,12 +72,15 @@ TimeUs TimeService::align(TimeUs now, bool& stepped) {
         return INT64_MAX;
     }
     const int64_t second = unixFromCivil(utc);
-    if (alignFirst_ || second == alignSecond_) {
+    // A late read starts the watch again from itself instead.
+    const bool late = now - alignReadAt_ > AlignGapUs;
+    alignReadAt_ = now;
+    if (alignFirst_ || late || second == alignSecond_) {
         alignFirst_ = false;
         alignSecond_ = second;
         return now + AlignPollUs;
     }
-    // The edge came since the previous read, at most one poll ago.
+    // The edge came since the previous read, at most AlignGapUs ago.
     const int64_t before = hal_->utcClockUs();
     hal_->setUtcClock(second);
     valid_ = true;

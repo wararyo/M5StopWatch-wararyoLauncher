@@ -14,66 +14,51 @@ inline constexpr BatteryCurvePoint BatteryCurve[] = {
     {3850,70}, {3800,64}, {3750,58}, {3700,52}, {3650,41}, {3600,29}, {3550,20},
     {3500,14}, {3450,8}, {3400,6}, {3350,5}, {3300,3}, {3200,1}, {3100,0},
 };
-// Charge by voltage while the charger holds its constant current, which lifts
-// the voltage about 44 mV over the rested battery. Share of the charging time,
-// from one charge after a drain to cut-off (docs/battery-curve, 2026-10-02):
-// the current held steady, and about 5 minutes of charging preceded the record.
-// Provisional until a second charge from a known empty start confirms it.
-inline constexpr BatteryCurvePoint ChargingCurve[] = {
-    {4200,90}, {4150,86}, {4100,82}, {4050,78}, {4000,74}, {3950,69}, {3900,64},
-    {3850,58}, {3800,53}, {3750,46}, {3700,33}, {3650,21}, {3600,16}, {3550,9},
-    {3500,5}, {3450,4}, {3400,2}, {3300,0},
-};
 // Linear between points; the ends clamp.
-template <int N>
-int percentOnCurve(const BatteryCurvePoint (&curve)[N], int mv) {
-    if (mv >= curve[0].mv) return curve[0].percent;
-    for (int i = 1; i < N; ++i) {
-        const auto& hi = curve[i - 1];
-        const auto& lo = curve[i];
+inline int batteryPercentFromMv(int mv) {
+    constexpr int count = int(sizeof(BatteryCurve) / sizeof(BatteryCurve[0]));
+    if (mv >= BatteryCurve[0].mv) return BatteryCurve[0].percent;
+    for (int i = 1; i < count; ++i) {
+        const auto& hi = BatteryCurve[i - 1];
+        const auto& lo = BatteryCurve[i];
         if (mv < lo.mv) continue;
         const int span = hi.mv - lo.mv;
         return lo.percent + ((hi.percent - lo.percent) * (mv - lo.mv) + span / 2) / span;
     }
-    return curve[N - 1].percent;
+    return BatteryCurve[count - 1].percent;
 }
-inline int batteryPercentFromMv(int mv) { return percentOnCurve(BatteryCurve, mv); }
-inline int chargingPercentFromMv(int mv) { return percentOnCurve(ChargingCurve, mv); }
 
-// What the PMIC says at a battery reading.
-struct ChargeInput { bool powered = false, chargingKnown = false, charging = false; };
-// Turns a reading into the shown percent: the discharge curve, the charging
-// curve while charging, then time at 4.2 V. Each reading stands on its own
-// apart from that time, so noise and the voltage jump at plugging or
-// unplugging show as they are.
+// What the PMIC says at a battery reading. `settling` is true for a minute
+// after charging started or stopped.
+struct ChargeInput { bool powered = false, chargingKnown = false, charging = false, settling = false; };
+// Turns a reading into the shown percent, on the discharge curve throughout so
+// that plugging in or unplugging does not change the scale: while charging,
+// the voltage less the charger's lift reads as the rested battery would.
 class BatteryEstimator {
 public:
-    // The charger reaches 4.2 V at about 90% (ChargingCurve), then tapers the
-    // current; it took 15 minutes from there to finish.
-    static constexpr int ConstantVoltageMv = 4200, ConstantVoltagePercent = 90;
-    static constexpr TimeUs ConstantVoltageUs = 15 * 60 * 1000000LL;
+    // The charger's constant current lifts the voltage over the rested battery:
+    // 44 mV on average over the 16 rests of the 2026-10-02 charge (32-52 mV),
+    // which leaves the charging value within 2 points of the rested one.
+    static constexpr int ChargeLiftMv = 44;
+    // Just after charging starts or stops the voltage is still moving: the
+    // rests above needed about a minute to settle. Until then the last value
+    // stays, and the voltage is not read at all.
+    static constexpr TimeUs SettleUs = 60 * 1000000LL;
     // A charger idle on USB below this has paused or failed; it is not full.
     static constexpr int FullMinMv = 4100;
-    // mv <= 0 is a failed read: unknown.
-    int update(TimeUs now, int mv, const ChargeInput& in) {
+    // `readMv` returns the battery voltage; <= 0 is a failed read, unknown.
+    template <class ReadMv>
+    int update(const ChargeInput& in, ReadMv readMv) {
+        if (in.settling && shown_ >= 0) return shown_;
+        const int mv = readMv();
         if (mv <= 0) return -1;
-        if (in.powered && in.chargingKnown && !in.charging && mv >= FullMinMv) {
-            constantVoltageSince_ = -1;
-            return 100;
-        }
+        if (in.powered && in.chargingKnown && !in.charging && mv >= FullMinMv) return shown_ = 100;
         // M5Unified reads a failed status read as charging; on battery, ignore it.
-        if (in.powered && in.chargingKnown && in.charging) {
-            if (mv >= ConstantVoltageMv && constantVoltageSince_ < 0) constantVoltageSince_ = now;
-            int p = chargingPercentFromMv(mv);
-            if (constantVoltageSince_ >= 0)
-                p = std::max(p, ConstantVoltagePercent + int((now - constantVoltageSince_) *
-                    (100 - ConstantVoltagePercent) / ConstantVoltageUs));
-            return std::min(p, 99); // 100 is the charger's word, not the voltage's.
-        }
-        constantVoltageSince_ = -1;
-        return batteryPercentFromMv(mv);
+        if (in.powered && in.chargingKnown && in.charging)
+            return shown_ = std::min(batteryPercentFromMv(mv - ChargeLiftMv), 99); // 100 is the charger's word.
+        return shown_ = batteryPercentFromMv(mv);
     }
 private:
-    TimeUs constantVoltageSince_ = -1;
+    int shown_ = -1;
 };
 }

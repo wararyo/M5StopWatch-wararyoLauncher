@@ -24,8 +24,9 @@ public:
     void setBrightness(int level) override;
 private:
     bool inputWake_ = false, pending_ = false, imuWake_ = false, imuRetry_ = false;
-    // USB power as of the last valid VBUS read, for the estimator.
-    bool usbPowered_ = false;
+    // USB power and charging as of the last valid reads, for the estimator.
+    bool usbPowered_ = false, chargingKnown_ = false, charging_ = false;
+    TimeUs settleUntil_ = 0;
     BatteryEstimator battery_;
 };
 // Dynamic frequency scaling between the two limits, and automatic light sleep

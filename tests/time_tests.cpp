@@ -194,34 +194,35 @@ void batteryCurve() {
     // Never rises as the voltage falls.
     int previous=100;
     for(int mv=4300;mv>=2900;--mv) { const int p=batteryPercentFromMv(mv); CHECK(p<=previous && p>=0); previous=p; }
-    // The charging curve tops out at 90%: the rest is time at 4.2 V.
-    CHECK(chargingPercentFromMv(4300)==90 && chargingPercentFromMv(3800)==53 && chargingPercentFromMv(3200)==0);
-    previous=90;
-    for(int mv=4300;mv>=3200;--mv) { const int p=chargingPercentFromMv(mv); CHECK(p<=previous && p>=0); previous=p; }
 }
 void batteryEstimator() {
-    constexpr TimeUs S=1000000, M=60*S;
-    const ChargeInput battery{false,true,false}, charging{true,true,true}, full{true,true,false};
+    const ChargeInput battery{false,true,false,false}, charging{true,true,true,false}, full{true,true,false,false};
+    const auto mv=[](int value) { return [value] { return value; }; };
     BatteryEstimator e;
-    // Each reading stands on its own: noise and the plug-in jump show as they are.
-    CHECK(e.update(0,3700,battery)==52);
-    CHECK(e.update(30*S,3710,battery)==53);
-    CHECK(e.update(60*S,0,battery)==-1); // A failed read is unknown.
-    CHECK(e.update(120*S,3740,charging)==43);
-    CHECK(e.update(10*M,3800,charging)==53);
-    // At 4.2 V time takes over from 90%, also through a dip below it, and only
-    // the charger says 100.
-    CHECK(e.update(200*M,4205,charging)==90);
-    CHECK(e.update(200*M+450*S,4210,charging)==95);
-    CHECK(e.update(230*M,4195,charging)==99);
-    CHECK(e.update(231*M,4200,full)==100);
-    CHECK(e.update(232*M,4150,battery)==98);
+    // Each reading stands on its own: noise shows as it is.
+    CHECK(e.update(battery,mv(3700))==52);
+    CHECK(e.update(battery,mv(3710))==53);
+    CHECK(e.update(battery,mv(0))==-1); // A failed read is unknown.
+    // While charging the voltage less the charger's 44 mV lift: 3744 mV
+    // charging reads as 3700 mV rested, on the same curve.
+    CHECK(e.update(charging,mv(3744))==52);
+    CHECK(e.update(charging,mv(4212))==99);
+    CHECK(e.update(charging,mv(4300))==99); // Only the charger says 100.
+    CHECK(e.update(full,mv(4200))==100);
+    // Settling after charging stops: the last value stays, and the voltage
+    // is not even read.
+    int reads=0;
+    const auto counted=[&reads] { ++reads; return 3600; };
+    const ChargeInput settling{false,true,false,true};
+    CHECK(e.update(settling,counted)==100 && reads==0);
+    CHECK(e.update(battery,counted)==29 && reads==1);
+    // With nothing to hold yet, it reads.
+    BatteryEstimator fresh;
+    CHECK(fresh.update(settling,mv(3700))==52);
     // A failed status read on battery is not charging.
-    CHECK(e.update(233*M,4100,{false,true,true})==93);
-    // Charging again starts the time at 4.2 V over.
-    CHECK(e.update(300*M,4205,charging)==90);
+    CHECK(e.update({false,true,true,false},mv(4100))==93);
     // On USB with the charger idle well below full: paused, not full.
-    CHECK(e.update(301*M,3900,full)==74);
+    CHECK(e.update(full,mv(3900))==74);
 }
 void runtimeIntegration() {
     StubHal hal; StubRender render; TimeService service; service.begin(hal);

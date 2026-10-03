@@ -42,7 +42,8 @@ def crossing(records, mv):
     return records[0]["t"] if records and records[0]["vbat"] <= mv else None
 
 
-def read_dump(port):
+def read_dump(port, command=b"O", tag="DRAIN"):
+    """Send command and collect one `<tag> ...` dump: header, records, end line."""
     device = serial.Serial()
     device.port, device.baudrate, device.timeout = port, 115200, 0.2
     device.dtr = False
@@ -51,17 +52,17 @@ def read_dump(port):
     header, records, sleep, clock = None, [], None, None
     with device:
         device.reset_input_buffer()
-        device.write(b"O")
+        device.write(command)
         deadline, buffer = time.time() + 20, b""
         while time.time() < deadline:
             buffer += device.read(4096)
             *lines, buffer = buffer.split(b"\n")
             for raw in lines:
                 line = raw.decode("utf-8", "replace").strip()
-                at = line.find("DRAIN ")
+                at = line.find(tag + " ")
                 if at < 0:
                     continue
-                values = fields(line[at + 6:])
+                values = fields(line[at + len(tag) + 1:])
                 if "source" in values:
                     header = values
                 elif {"t", "vbat", "st"} <= values.keys():
@@ -74,7 +75,7 @@ def read_dump(port):
                     values["sleep"] = sleep
                     values["clock"] = clock
                     return header, records, values
-    raise SystemExit("No complete DRAIN dump within 20s (is this the m5stopwatch-drain build?)")
+    raise SystemExit(f"No complete {tag} dump within 20s (is this the right build?)")
 
 
 def main():

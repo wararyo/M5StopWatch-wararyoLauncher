@@ -55,7 +55,7 @@ def main():
     parser.add_argument("--environment",
                         choices=("m5stopwatch", "m5stopwatch-diagnostics",
                                  "m5stopwatch-measure", "m5stopwatch-render-check",
-                                 "m5stopwatch-drain"),
+                                 "m5stopwatch-drain", "m5stopwatch-charge"),
                         default="m5stopwatch")
     environment = parser.parse_args().environment
     BUILD = ROOT / ".pio/build" / environment
@@ -100,12 +100,15 @@ def main():
     require((b"[RenderDiag] window_us=" in image_bytes) ==
             (environment in ("m5stopwatch-measure", "m5stopwatch-render-check")),
             "Frame metrics do not match the selected environment")
-    require((b"[Drain] enabled" in image_bytes) == (environment == "m5stopwatch-drain"),
+    require((b"[Drain] enabled" in image_bytes) ==
+            (environment in ("m5stopwatch-drain", "m5stopwatch-charge")),
             "Battery drain record does not match the selected environment")
+    require((b"[Charge] enabled" in image_bytes) == (environment == "m5stopwatch-charge"),
+            "Charging record does not match the selected environment")
     require((b"[UsbDiag] history" in image_bytes) == (environment == "m5stopwatch-measure"),
             "USB bus-activity history does not match the selected environment")
     print("[OK] overload diagnostics / synthetic clock / pixel checks / frame metrics / "
-          "drain record / USB history isolated by environment")
+          "drain / charge records / USB history isolated by environment")
     print(f"[OK] firmware SHA-256={hashlib.sha256(image.read_bytes()).hexdigest()}")
     print(f"[Build] project={description['project_name']} "
           f"version={description['project_version']} IDF={description['git_revision']}")

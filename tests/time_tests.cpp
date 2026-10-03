@@ -1,6 +1,7 @@
 #include "host/HostApplication.h"
 #include "features/home/HomeDataSource.h"
 #include "services/TimeService.h"
+#include "power/BatteryCurve.h"
 #include <cstdlib>
 #include <iostream>
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
@@ -183,6 +184,58 @@ void displayData() {
     const auto blank=unset.sample(0);
     CHECK(!blank.timeValid && blank.batteryPercent==55 && blank.subsecondUs==0);
 }
+void batteryCurve() {
+    // Points read back exactly, the ends clamp, and between points it rounds.
+    CHECK(batteryPercentFromMv(4300)==100 && batteryPercentFromMv(4200)==100);
+    CHECK(batteryPercentFromMv(3700)==52 && batteryPercentFromMv(3600)==29);
+    CHECK(batteryPercentFromMv(3100)==0 && batteryPercentFromMv(2900)==0);
+    CHECK(batteryPercentFromMv(3675)==47); // 41 + 11*25/50 = 46.5
+    CHECK(batteryPercentFromMv(3250)==2);
+    // Never rises as the voltage falls.
+    int previous=100;
+    for(int mv=4300;mv>=2900;--mv) { const int p=batteryPercentFromMv(mv); CHECK(p<=previous && p>=0); previous=p; }
+}
+void batteryEstimator() {
+    constexpr TimeUs S=1000000, M=60*S;
+    const ChargeInput battery{false,true,false,-1}, charging{true,true,true,-1}, full{true,true,false,-1};
+    const auto mv=[](int value) { return [value] { return value; }; };
+    BatteryEstimator e;
+    // Each reading stands on its own: noise shows as it is.
+    CHECK(e.update(0,battery,mv(3700))==52);
+    CHECK(e.update(30*S,battery,mv(3710))==53);
+    CHECK(e.update(60*S,battery,mv(0))==-1); // A failed read is unknown.
+    // While charging the voltage less the charger's 44 mV lift: 3744 mV
+    // charging reads as 3700 mV rested, on the same curve.
+    CHECK(e.update(90*S,charging,mv(3744))==52);
+    CHECK(e.update(120*S,charging,mv(4212))==99);
+    CHECK(e.update(150*S,charging,mv(4300))==99); // Only the charger says 100.
+    CHECK(e.update(180*S,full,mv(4200))==100);
+    // Unplugged 20s after a reading: that value stands until the voltage
+    // settles a minute later, and the voltage is not even read.
+    int reads=0;
+    const auto counted=[&reads] { ++reads; return 3600; };
+    const ChargeInput unplugged{false,true,false,200*S};
+    CHECK(e.update(210*S,unplugged,counted)==100 && reads==0);
+    CHECK(e.update(240*S,unplugged,counted)==100 && reads==0);
+    CHECK(e.update(260*S,unplugged,counted)==29 && reads==1);
+    // Charged in the dark from 8%, unplugged just before a glance: the value
+    // from before the panel went dark is hours old, so it reads, and goes on
+    // reading through the rest of the minute.
+    BatteryEstimator dark;
+    CHECK(dark.update(0,battery,mv(3450))==8);
+    const ChargeInput glance{false,true,false,120*M};
+    CHECK(dark.update(120*M+10*S,glance,mv(4100))==93);
+    CHECK(dark.update(120*M+40*S,glance,mv(4090))==92);
+    // With nothing to hold yet, it reads.
+    BatteryEstimator fresh;
+    CHECK(fresh.update(10*S,{false,true,false,0},mv(3700))==52);
+    // Charging counts only on USB power.
+    CHECK(e.update(300*S,{false,true,true,-1},mv(4100))==93);
+    // On USB with the charger idle well below full: paused, not full.
+    CHECK(e.update(330*S,full,mv(3900))==74);
+    // Before the charger's state is known, the voltage reads as discharging.
+    CHECK(e.update(360*S,{true,false,false,-1},mv(4100))==93);
+}
 void alignment() {
     // The system clock is set at the RTC's second edge, read once per call.
     StubHal hal; TimeService service; service.begin(hal);
@@ -243,7 +296,7 @@ void runtimeIntegration() {
 }
 int main() {
     calendar(); jstBoundary(); startup(); manualSave(); saveFailure();
-    displayData(); alignment(); runtimeIntegration();
+    displayData(); batteryCurve(); batteryEstimator(); alignment(); runtimeIntegration();
     std::cout << "PASS: calendar, jst boundary, startup, manual save, save failure, "
-                 "display data, rtc alignment, runtime integration\n";
+                 "display data, battery curve, battery estimator, rtc alignment, runtime integration\n";
 }

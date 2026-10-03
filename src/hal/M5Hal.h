@@ -1,5 +1,6 @@
 #pragma once
 #include "Hal.h"
+#include "power/BatteryCurve.h"
 namespace launcher {
 class M5Hal final : public Hal {
 public:
@@ -30,6 +31,10 @@ private:
     bool wrist_ = false, usbEvent_ = false; // Taken by the calls above.
     TimeUs panelShowsAt_ = 0;
     void servicePm1Irq();
+    // USB power and charging as of the last valid reads, for the estimator.
+    bool usbPowered_ = false, chargingKnown_ = false, charging_ = false;
+    TimeUs chargingChangedAt_ = -1;
+    BatteryEstimator battery_;
 };
 // Dynamic frequency scaling between the two limits, and automatic light sleep
 // while setLightSleepAllowed(true) (work 8-5).

@@ -24,6 +24,9 @@
 #ifdef LAUNCHER_DRAIN_LOG
 #include "power/DrainLog.h"
 #endif
+#ifdef LAUNCHER_CHARGE_LOG
+#include "power/ChargeLog.h"
+#endif
 #ifdef LAUNCHER_USB_DIAG
 #include "power/UsbDiag.h"
 #endif
@@ -170,11 +173,17 @@ extern "C" void app_main() {
 #ifdef LAUNCHER_DRAIN_LOG
     launcher::beginDrainLog(); // After nvs.begin(): the record lives in NVS.
 #endif
+#ifdef LAUNCHER_CHARGE_LOG
+    launcher::beginChargeLog();
+#endif
     while (true) {
         runtime.step();
         launcher::runtimeDiagnostics();
 #ifdef LAUNCHER_DRAIN_LOG
         launcher::drainLog(hal.now(), runtime.power());
+#endif
+#ifdef LAUNCHER_CHARGE_LOG
+        launcher::chargeLog(hal.now(), runtime.power());
 #endif
 #ifdef LAUNCHER_USB_DIAG
         launcher::usbDiag(hal.now(), runtime.power());

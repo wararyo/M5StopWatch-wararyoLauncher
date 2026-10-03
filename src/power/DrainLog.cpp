@@ -1,5 +1,6 @@
 #include "DrainLog.h"
 #ifdef LAUNCHER_DRAIN_LOG
+#include "ChargeLog.h"
 #include <M5Unified.h>
 #include "services/CivilTime.h"
 #include <nvs.h>
@@ -182,6 +183,9 @@ void drainLog(TimeUs now, const PowerManager& power) {
     char c;
     for (int i = 0; i < 16 && read(STDIN_FILENO, &c, 1) == 1; ++i)
         if (c == 'O') dump();
+#ifdef LAUNCHER_CHARGE_LOG
+        else if (c == 'C') dumpChargeLog();
+#endif
     // An unanswered VBUS read decides nothing: it must neither start a run
     // nor end one.
     if (!power.usb.vbusValid) return;

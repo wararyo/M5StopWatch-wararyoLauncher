@@ -42,9 +42,10 @@ UsbState M5Hal::sampleUsb() {
         // Charging starting or stopping holds the battery value until the
         // voltage settles. Seen even while the panel is dark: VBUS is read
         // every second on USB power, and on M5PM1's 5VIN interrupt otherwise.
+        // A failed status read keeps the last state rather than guessing.
         if (usb.chargeValid || !usbPowered_) {
             const bool charging = usbPowered_ && usb.charging;
-            if (chargingKnown_ && charging != charging_) settleUntil_ = now() + BatteryEstimator::SettleUs;
+            if (chargingKnown_ && charging != charging_) chargingChangedAt_ = now();
             chargingKnown_ = true;
             charging_ = charging;
         }
@@ -132,9 +133,10 @@ BatteryState M5Hal::sampleBattery() {
     const auto charging = M5.Power.isCharging();
     battery.charging = charging == m5::Power_Class::is_charging;
     battery.chargingKnown = charging != m5::Power_Class::charge_unknown;
-    // Zero or below means the PMIC did not answer; the estimator leaves it unknown.
-    battery.percent = battery_.update(
-        {usbPowered_, battery.chargingKnown, battery.charging, now() < settleUntil_},
+    // Charging as sampleUsb() read it, which tells a failed read from charging,
+    // unlike M5.Power. Zero volts or below means the PMIC did not answer; the
+    // estimator leaves it unknown.
+    battery.percent = battery_.update(now(), {usbPowered_, chargingKnown_, charging_, chargingChangedAt_},
         [] { return int(M5.Power.getBatteryVoltage()); });
     return battery;
 }

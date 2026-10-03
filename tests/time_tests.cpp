@@ -196,33 +196,45 @@ void batteryCurve() {
     for(int mv=4300;mv>=2900;--mv) { const int p=batteryPercentFromMv(mv); CHECK(p<=previous && p>=0); previous=p; }
 }
 void batteryEstimator() {
-    const ChargeInput battery{false,true,false,false}, charging{true,true,true,false}, full{true,true,false,false};
+    constexpr TimeUs S=1000000, M=60*S;
+    const ChargeInput battery{false,true,false,-1}, charging{true,true,true,-1}, full{true,true,false,-1};
     const auto mv=[](int value) { return [value] { return value; }; };
     BatteryEstimator e;
     // Each reading stands on its own: noise shows as it is.
-    CHECK(e.update(battery,mv(3700))==52);
-    CHECK(e.update(battery,mv(3710))==53);
-    CHECK(e.update(battery,mv(0))==-1); // A failed read is unknown.
+    CHECK(e.update(0,battery,mv(3700))==52);
+    CHECK(e.update(30*S,battery,mv(3710))==53);
+    CHECK(e.update(60*S,battery,mv(0))==-1); // A failed read is unknown.
     // While charging the voltage less the charger's 44 mV lift: 3744 mV
     // charging reads as 3700 mV rested, on the same curve.
-    CHECK(e.update(charging,mv(3744))==52);
-    CHECK(e.update(charging,mv(4212))==99);
-    CHECK(e.update(charging,mv(4300))==99); // Only the charger says 100.
-    CHECK(e.update(full,mv(4200))==100);
-    // Settling after charging stops: the last value stays, and the voltage
-    // is not even read.
+    CHECK(e.update(90*S,charging,mv(3744))==52);
+    CHECK(e.update(120*S,charging,mv(4212))==99);
+    CHECK(e.update(150*S,charging,mv(4300))==99); // Only the charger says 100.
+    CHECK(e.update(180*S,full,mv(4200))==100);
+    // Unplugged 20s after a reading: that value stands until the voltage
+    // settles a minute later, and the voltage is not even read.
     int reads=0;
     const auto counted=[&reads] { ++reads; return 3600; };
-    const ChargeInput settling{false,true,false,true};
-    CHECK(e.update(settling,counted)==100 && reads==0);
-    CHECK(e.update(battery,counted)==29 && reads==1);
+    const ChargeInput unplugged{false,true,false,200*S};
+    CHECK(e.update(210*S,unplugged,counted)==100 && reads==0);
+    CHECK(e.update(240*S,unplugged,counted)==100 && reads==0);
+    CHECK(e.update(260*S,unplugged,counted)==29 && reads==1);
+    // Charged in the dark from 8%, unplugged just before a glance: the value
+    // from before the panel went dark is hours old, so it reads, and goes on
+    // reading through the rest of the minute.
+    BatteryEstimator dark;
+    CHECK(dark.update(0,battery,mv(3450))==8);
+    const ChargeInput glance{false,true,false,120*M};
+    CHECK(dark.update(120*M+10*S,glance,mv(4100))==93);
+    CHECK(dark.update(120*M+40*S,glance,mv(4090))==92);
     // With nothing to hold yet, it reads.
     BatteryEstimator fresh;
-    CHECK(fresh.update(settling,mv(3700))==52);
-    // A failed status read on battery is not charging.
-    CHECK(e.update({false,true,true,false},mv(4100))==93);
+    CHECK(fresh.update(10*S,{false,true,false,0},mv(3700))==52);
+    // Charging counts only on USB power.
+    CHECK(e.update(300*S,{false,true,true,-1},mv(4100))==93);
     // On USB with the charger idle well below full: paused, not full.
-    CHECK(e.update(full,mv(3900))==74);
+    CHECK(e.update(330*S,full,mv(3900))==74);
+    // Before the charger's state is known, the voltage reads as discharging.
+    CHECK(e.update(360*S,{true,false,false,-1},mv(4100))==93);
 }
 void alignment() {
     // The system clock is set at the RTC's second edge, read once per call.

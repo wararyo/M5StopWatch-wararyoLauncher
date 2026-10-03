@@ -18,11 +18,20 @@ public:
     // wake-up). Also clears the interrupt, so ask it every step. The fakes
     // without an IMU inherit false.
     virtual bool takeWristWake() { return false; }
+    // True when an interrupt reports USB power coming and going, so VBUS need
+    // not be polled while the watch sleeps. Then takeUsbEvent() is true once
+    // after the line was raised, by that or by anything sharing it: VBUS is
+    // read afresh rather than trusting what the event said. The fakes poll.
+    virtual bool usbEvents() const { return false; }
+    virtual bool takeUsbEvent() { return false; }
     // Automatic light sleep is only safe with the panel asleep (the display
     // driver's DMA transfers hold no PM lock) and without USB power (sleep
     // stops the USB console). Only the runtime test observes it, so the other
     // fakes inherit the no-op (work 8-5).
     virtual void setLightSleepAllowed(bool) {}
+    // When the panel woken last starts to show its image. A level set before
+    // then is not seen, so a wake's fade starts there. The fakes show at once.
+    virtual TimeUs panelShowsAt() const { return 0; }
     // The green status LED, which M5PM1 lights at power-on. The runtime
     // decides when; fakes without one inherit the no-op. False when the
     // write did not reach M5PM1, so the runtime sends it again.

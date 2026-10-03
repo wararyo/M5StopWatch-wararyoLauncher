@@ -83,6 +83,7 @@ extern "C" void app_main() {
     M5.begin(cfg);
     declareReadableFramebuffer(M5.Display);
     launcher::beginPowerManagement(240, LAUNCHER_CPU_MIN_MHZ);
+    launcher::beginIoe1IdleSleep();
     // The stored level is applied once NVS has been read; this only keeps the
     // boot screen visible until then.
     M5.Display.setBrightness(launcher::Settings{}.brightness);
@@ -191,6 +192,10 @@ extern "C" void app_main() {
         launcher::recordLoop();
         launcher::reportRenderDiagnostics(renderer, hal.now());
 #endif
+#ifdef LAUNCHER_DRAIN_LOG
+        runtime.wait(launcher::drainLogDeadline());
+#else
         runtime.wait();
+#endif
     }
 }

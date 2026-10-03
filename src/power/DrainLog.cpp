@@ -2,11 +2,15 @@
 #ifdef LAUNCHER_DRAIN_LOG
 #include "ChargeLog.h"
 #include <M5Unified.h>
+#include "services/CivilTime.h"
 #include <nvs.h>
 #include <esp_pm.h>
+#include <esp_timer.h>
+#include <sys/time.h>
 #include <freertos/FreeRTOS.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstdio>
 namespace launcher {
 namespace {
@@ -62,6 +66,37 @@ void printSleep() {
     std::printf("DRAIN sleep count=%lu slept_s=%lld\n", (unsigned long)n, (long long)(us / 1000000));
 }
 
+// The system clock runs on the internal RC oscillator through light sleep,
+// calibrated once per sleep, while the RTC keeps a crystal. Their difference
+// at the start and at the dump tells how far the clock drifted over the run.
+// Measured at an RTC second edge, so the RTC's whole seconds do not hide it.
+bool clockOffset(int64_t& us) {
+    m5::rtc_time_t first{};
+    if (!M5.Rtc.isEnabled() || !M5.Rtc.getTime(&first)) return false;
+    const TimeUs until = esp_timer_get_time() + 1100000;
+    m5::rtc_datetime_t edge{};
+    while (esp_timer_get_time() < until) {
+        if (!M5.Rtc.getDateTime(&edge)) return false;
+        if (edge.time.seconds == first.seconds) continue;
+        timeval tv{};
+        gettimeofday(&tv, nullptr);
+        const int64_t rtc = unixFromCivil({edge.date.year, edge.date.month, edge.date.date,
+                                           edge.time.hours, edge.time.minutes, edge.time.seconds});
+        us = (int64_t(tv.tv_sec) - rtc) * 1000000 + tv.tv_usec;
+        return true;
+    }
+    return false;
+}
+bool startOffsetValid = false;
+int64_t startOffsetUs = 0;
+void printClock(TimeUs now) {
+    int64_t offset = 0;
+    if (!startOffsetValid || !clockOffset(offset)) { std::printf("DRAIN clock unavailable\n"); return; }
+    std::printf("DRAIN clock start_offset_us=%lld offset_us=%lld drift_ms=%lld over_s=%lld\n",
+                (long long)startOffsetUs, (long long)offset, (long long)((offset - startOffsetUs) / 1000),
+                (long long)((now - startedAt) / 1000000));
+}
+
 void save() {
     nvs_handle_t nvs;
     auto err = nvs_open(Namespace, NVS_READWRITE, &nvs);
@@ -104,6 +139,7 @@ void start(TimeUs now, const PowerManager& power) {
     startedAt = now;
     active = true;
     resetSleep();
+    startOffsetValid = clockOffset(startOffsetUs);
     persisted = {PersistVersion, uint16_t(PersistIntervalUs / 1000000), 0, {}, {}};
     record(now, power, true, true);
     nextAt = now + RecordIntervalUs;
@@ -119,6 +155,7 @@ void dump() {
             std::printf("DRAIN t=%lu vbat=%d st=%u\n", (unsigned long)e.seconds, e.vbat, e.state);
         }
         printSleep(); // RAM only, like the 1-minute record: lost on a restart.
+        printClock(esp_timer_get_time());
         std::printf("DRAIN end n=%d nvs_n=%u\n", count, persisted.count);
     } else {
         // Nothing in RAM: the chip restarted, e.g. after the battery ran flat.
@@ -167,5 +204,6 @@ void drainLog(TimeUs now, const PowerManager& power) {
     if (ram) nextAt += RecordIntervalUs;
     if (nvs) nextPersistAt += PersistIntervalUs;
 }
+TimeUs drainLogDeadline() { return active ? std::min(nextAt, nextPersistAt) : INT64_MAX; }
 }
 #endif

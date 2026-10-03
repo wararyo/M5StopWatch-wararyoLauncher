@@ -22,7 +22,8 @@ public:
     void bindSlots(SlotService& slots) { slots_=&slots; screens_.bindSlots(&slots); }
     void begin();
     void step();
-    void wait();
+    // `also` is a deadline of the caller's own, such as an instrument's.
+    void wait(TimeUs also = INT64_MAX);
     const PowerManager& power() const { return power_; }
     FrameModel model() const { return screens_.model(); }
     void dataChanged() { dirty_ = true; } // UI-task service notification
@@ -38,12 +39,18 @@ private:
     ScreenManager& screens_;
     PowerManager power_;
     TimeUs nextInput_ = 0, nextUsb_ = 0;
+    // VBUS is still polled this long after a USB power event.
+    static constexpr TimeUs UsbSettleUs = 5000000;
+    TimeUs usbSettleUntil_ = 0;
+    bool sleepAllowed() const;
+    bool usbPolled(TimeUs now) const;
     // How long input is still read at its period after an interrupt.
     static constexpr TimeUs FollowUs = 100000;
     TimeUs followUntil_ = 0;
     bool lightSleep_ = false; // The HAL starts with light sleep forbidden.
     int statusLed_ = -1; // Unknown until the first charge reading sets it.
     TimeUs nextDisplay_ = INT64_MAX;
+    TimeUs nextService_ = INT64_MAX; // The data source's own work (DisplayDataSource::service).
     // A wake fades the level in from zero, eased out, stepped at a frame rate.
     static constexpr TimeUs FadeUs = 300000, FadeStepUs = 16000;
     TimeUs fadeEnd_ = 0; // Zero once the full level is applied.

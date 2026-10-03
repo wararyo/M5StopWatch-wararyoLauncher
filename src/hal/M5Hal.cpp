@@ -1,10 +1,12 @@
 #include "M5Hal.h"
 #include <M5Unified.h>
+#include <lgfx/v1/panel/Panel_AMOLED.hpp>
 #include <esp_timer.h>
 #include <driver/usb_serial_jtag.h>
 #include <esp_pm.h>
 #include "InputWake.h"
 #include "ImuWake.h"
+#include "Pm1Irq.h"
 #include <algorithm>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -37,8 +39,9 @@ UsbState M5Hal::sampleUsb() {
     usb.dataConnected = usb_serial_jtag_is_connected();
     if (usb.vbusValid) {
         usbPowered_ = usb.powered();
-        // Charging starting or stopping, seen every second even while the
-        // panel is dark, holds the battery value until the voltage settles.
+        // Charging starting or stopping holds the battery value until the
+        // voltage settles. Seen even while the panel is dark: VBUS is read
+        // every second on USB power, and on M5PM1's 5VIN interrupt otherwise.
         if (usb.chargeValid || !usbPowered_) {
             const bool charging = usbPowered_ && usb.charging;
             if (chargingKnown_ && charging != charging_) settleUntil_ = now() + BatteryEstimator::SettleUs;
@@ -55,11 +58,46 @@ bool M5Hal::setStatusLed(bool on) {
     std::printf("[Power] status_led=%s%s\n", on ? "on" : "off", ok ? "" : " FAILED");
     return ok;
 }
+namespace {
+// M5GFX draws through a framebuffer panel whose setSleep() is empty, so
+// M5.Display.sleep() only zeroes the level and the CO5300 behind it keeps
+// scanning black, about 5.5mA more than in Sleep In. The panel itself is
+// reached through M5GFX's pointer to it.
+struct PanelAccess : m5gfx::M5GFX {
+    static lgfx::Panel_AMOLED* co5300() {
+        if (M5.getBoard() != m5::board_t::board_M5StopWatch) return nullptr;
+        return static_cast<lgfx::Panel_AMOLED*>((M5.Display.*(&PanelAccess::_panel_last)).get());
+    }
+};
+TimeUs sleptAt = 0;
+// CO5300 datasheet 7.5.11-12: Sleep Out only 120ms after Sleep In, and the
+// next command only 5ms after Sleep Out; the memory keeps its image. 0x80 is
+// command_list's delay flag (Panel_Device::CMD_INIT_DELAY). The woken panel
+// shows nothing until its booster is up, up to 120ms by the datasheet; the
+// fade starts 100ms after Sleep Out, which on the device looked right
+// (2026-10-03). Returns when a woken panel shows.
+TimeUs sleepPanel(bool sleep) {
+    static constexpr uint8_t In[] = {0x10, 0, 0xFF, 0xFF}, Out[] = {0x11, 0x80, 5, 0xFF, 0xFF};
+    constexpr TimeUs SleepInToOutUs = 120000, ShowsUs = 100000;
+    auto* panel = PanelAccess::co5300();
+    if (!panel) return 0;
+    if (sleep) {
+        panel->command_list(In);
+        sleptAt = esp_timer_get_time();
+        return 0;
+    }
+    const auto early = sleptAt + SleepInToOutUs - esp_timer_get_time();
+    if (early > 0) vTaskDelay(pdMS_TO_TICKS((early + 999) / 1000));
+    const auto sleepOut = esp_timer_get_time();
+    panel->command_list(Out);
+    return sleepOut + ShowsUs;
+}
+}
 void M5Hal::setScreenOff(bool off) {
     // Waking only powers the panel: the level is the runtime's to decide, since
     // it can be a settings preview rather than the stored value.
-    if (off) { M5.Display.setBrightness(0); M5.Display.sleep(); }
-    else M5.Display.wakeup();
+    if (off) { M5.Display.setBrightness(0); sleepPanel(true); }
+    else panelShowsAt_ = sleepPanel(false);
     std::printf("[Power] screen=%s\n", off ? "off" : "on");
 }
 bool M5Hal::readRtc(CivilTime& utc) {
@@ -122,6 +160,18 @@ void beginPowerManagement(int maxMhz, int minMhz) {
     std::printf("[Power] dfs max=%dMHz min=%dMHz light_sleep=%d lock=%s result=%s\n", maxMhz, minMhz,
                 int(config.light_sleep_enable), esp_err_to_name(err), esp_err_to_name(pm));
 }
+void beginIoe1IdleSleep() {
+    if (M5.getBoard() != m5::board_t::board_M5StopWatch) return;
+    // I2C_CFG [3:0] is the idle time in seconds; the speed, wake edge and pull
+    // bits above it keep what M5GFX set (M5IOE1 datasheet, I2C configuration).
+    constexpr uint8_t Ioe1 = 0x4F, I2cCfg = 0x23, Seconds = 1;
+    uint8_t cfg = 0, readBack = 0;
+    bool ok = M5.In_I2C.readRegister(Ioe1, I2cCfg, &cfg, 1, 100000);
+    cfg = uint8_t((cfg & 0xF0) | Seconds);
+    ok = ok && M5.In_I2C.writeRegister8(Ioe1, I2cCfg, cfg, 100000) &&
+         M5.In_I2C.readRegister(Ioe1, I2cCfg, &readBack, 1, 100000) && readBack == cfg;
+    std::printf("[Ioe1] idle_sleep=%us i2c_cfg=0x%02x result=%s\n", unsigned(Seconds), readBack, ok ? "ok" : "FAILED");
+}
 void M5Hal::setLightSleepAllowed(bool allowed) {
     if (!sleepLock || allowed == sleepAllowed) return;
     if ((allowed ? esp_pm_lock_release(sleepLock) : esp_pm_lock_acquire(sleepLock)) == ESP_OK)
@@ -129,23 +179,51 @@ void M5Hal::setLightSleepAllowed(bool allowed) {
 }
 void M5Hal::beginInputWake() {
     imuWake_ = beginImuWake();
-    inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle(), imuWake_);
+    // Routed without the IMU too: USB power events use the same line.
+    pm1Irq_ = M5.getBoard() == m5::board_t::board_M5StopWatch && beginPm1Irq(imuWake_);
+    inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle(), pm1Irq_);
 }
-bool M5Hal::takeWristWake() {
+void M5Hal::servicePm1Irq() {
     // A GPIO read while the line is idle; I2C only once M5PM1 pulled it low,
     // or while an IMU status read is still owed (ImuWake.h).
-    if (!imuWake_ || (!imuWakeIrqActive() && !imuRetry_)) return false;
-    const auto s = serviceImuWake();
+    const bool raised = pm1Irq_ && pm1IrqActive();
+    if (!raised && !imuRetry_) return;
+    if (raised) {
+        // M5PM1 first: VBUS and the IMU's status are read after the clear,
+        // so they are newer than any event it cleared.
+        const auto s = clearPm1Irq();
+        if (!s.cleared) std::printf("[Pm1Irq] status clear failed\n");
+        if (s.power) std::printf("[Pm1Irq] power status=0x%02x\n", s.power);
+        usbEvent_ = true;
+    }
+    if (!imuWake_) return;
+    const auto s = readImuWake();
     imuRetry_ = !s.read;
-    if (!s.read || !s.cleared) std::printf("[ImuWake] status %s failed\n", s.read ? "clear" : "read");
+    if (!s.read) std::printf("[ImuWake] status read failed\n");
     else if (s.wrist) std::printf("[ImuWake] wrist\n");
-    return s.wrist;
+    wrist_ = wrist_ || s.wrist;
+}
+bool M5Hal::takeWristWake() {
+    servicePm1Irq();
+    const bool wrist = wrist_;
+    wrist_ = false;
+    return wrist;
+}
+bool M5Hal::takeUsbEvent() {
+    servicePm1Irq();
+    const bool event = usbEvent_;
+    usbEvent_ = false;
+    return event;
 }
 void M5Hal::waitUs(TimeUs delay) {
     // Without the interrupts nothing would end a long wait on a press, so fall
     // back to the 10ms polling the runtime used before work 8-4.
     // The cap only keeps the tick count in range; some deadline always comes first.
     delay = std::min<TimeUs>(delay, inputWake_ ? 3600000000LL : 10000);
+    // An IMU status read still owed leaves its interrupt latched, so no new
+    // edge would end the wait: the next step retries it within a second, as
+    // the one-second VBUS polling used to (ImuWake.h).
+    if (imuRetry_) delay = std::min<TimeUs>(delay, 1000000);
     constexpr TimeUs tickUs = 1000000 / configTICK_RATE_HZ;
     const auto ticks = static_cast<TickType_t>((delay + tickUs - 1) / tickUs);
     rearmInputWake();

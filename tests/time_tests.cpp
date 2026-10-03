@@ -224,6 +224,39 @@ void batteryEstimator() {
     // On USB with the charger idle well below full: paused, not full.
     CHECK(e.update(full,mv(3900))==74);
 }
+void alignment() {
+    // The system clock is set at the RTC's second edge, read once per call.
+    StubHal hal; TimeService service; service.begin(hal);
+    const int64_t second=unixFromCivil(hal.rtc);
+    hal.clockUs=second*1000000+700000; // Gained 0.7s since the last edge.
+    bool stepped=true;
+    CHECK(service.align(0,stepped)==INT64_MAX && !stepped); // Not begun.
+    const int reads=hal.reads, sets=hal.clockSets;
+    service.beginAlign(0);
+    CHECK(service.align(0,stepped)==TimeService::AlignPollUs && !stepped);
+    CHECK(service.align(5000,stepped)==5000+TimeService::AlignPollUs && !stepped);
+    hal.rtc.second=1;
+    CHECK(service.align(10000,stepped)==INT64_MAX && stepped);
+    CHECK(hal.clockUs==(second+1)*1000000 && hal.clockSets==sets+1 && hal.reads==reads+3);
+    CHECK(service.align(15000,stepped)==INT64_MAX && !stepped && hal.reads==reads+3); // Done.
+    // No edge within the window: the clock is left alone.
+    service.beginAlign(20000); service.align(20000,stepped);
+    CHECK(service.align(20000+TimeService::AlignWindowUs+1,stepped)==INT64_MAX && !stepped);
+    CHECK(hal.clockSets==sets+1);
+    // Neither is it on a failed read.
+    service.beginAlign(0); hal.readable=false;
+    CHECK(service.align(0,stepped)==INT64_MAX && !stepped && hal.clockSets==sets+1);
+    // A late read does not take an edge, which may lie that far back; the
+    // next edge read in time does.
+    hal.readable=true;
+    const TimeUs start=30000000, late=start+TimeService::AlignGapUs+1;
+    service.beginAlign(start); service.align(start,stepped);
+    hal.rtc.second=2;
+    CHECK(service.align(late,stepped)==late+TimeService::AlignPollUs && !stepped && hal.clockSets==sets+1);
+    hal.rtc.second=3;
+    CHECK(service.align(late+TimeService::AlignPollUs,stepped)==INT64_MAX && stepped);
+    CHECK(hal.clockUs==(second+3)*1000000 && hal.clockSets==sets+2);
+}
 void runtimeIntegration() {
     StubHal hal; StubRender render; TimeService service; service.begin(hal);
     HomeDataSource data(hal,service);
@@ -241,10 +274,17 @@ void runtimeIntegration() {
     hal.battery={64,false};
     hal.input={false,false,true,100,100}; hal.time+=10000; runtime.step();
     CHECK(hal.wakes==1 && render.draws==draws+1 && hal.batteryReads==2);
+    // The wake aligns the clock with the RTC, polled between frames.
+    const int reads=hal.reads;
+    hal.input={}; hal.time+=TimeService::AlignPollUs; runtime.step();
+    CHECK(hal.reads==reads+1);
+    hal.rtc.second=(hal.rtc.second+1)%60; hal.time+=TimeService::AlignPollUs; runtime.step();
+    const int aligned=hal.reads;
+    hal.time+=TimeService::AlignPollUs; runtime.step(); CHECK(hal.reads==aligned);
 }
 int main() {
     calendar(); jstBoundary(); startup(); manualSave(); saveFailure();
-    displayData(); batteryCurve(); batteryEstimator(); runtimeIntegration();
+    displayData(); batteryCurve(); batteryEstimator(); alignment(); runtimeIntegration();
     std::cout << "PASS: calendar, jst boundary, startup, manual save, save failure, "
-                 "display data, battery curve, battery estimator, runtime integration\n";
+                 "display data, battery curve, battery estimator, rtc alignment, runtime integration\n";
 }

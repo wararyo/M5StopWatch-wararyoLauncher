@@ -37,7 +37,10 @@ struct StubHal : Hal {
     InputSnapshot sampleInput() override { return input; }
     int usbPolls=0;
     UsbState sampleUsb() override { ++usbPolls; return {}; }
-    void setScreenOff(bool) override {}
+    // A woken panel shows its image this long after the wake.
+    TimeUs showsAfter=0,showsAt=0;
+    void setScreenOff(bool off) override { if(!off) showsAt=time+showsAfter; }
+    TimeUs panelShowsAt() const override { return showsAt; }
     void waitUs(TimeUs us) override { waited=us; }
     // A low-level interrupt: pending for as long as anything is pressed.
     bool inputPending() override { return input.a || input.b || input.touching; }
@@ -262,6 +265,28 @@ void runtimeApplies() {
     CHECK(hal.waited<=1000);
     runtime.step(); runtime.wait();
     CHECK(hal.brightness==90 && hal.waited>16000);
+}
+void fadeWaitsForPanel() {
+    // A woken panel that shows only later keeps the level at zero until then,
+    // and the whole fade follows from there.
+    MemoryBackend backend; SettingsStore store; store.begin(backend);
+    StubHal hal; hal.showsAfter=100000; StubRender render; TimeService time; time.begin(hal);
+    DisplayDataSource data;
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
+    application.bindSettings(store,time);
+    runtime.begin(); runtime.step();
+    for (int i=0;i<31;++i) { hal.time+=1000000; runtime.step(); }
+    CHECK(runtime.power().screenOff());
+    hal.input={false,false,true,100,100}; hal.time+=10000; runtime.step();
+    CHECK(!runtime.power().screenOff() && hal.brightness==0);
+    hal.input={}; hal.time+=10000; runtime.step();     // release, 10ms
+    CHECK(hal.brightness==0);
+    hal.time+=80000; runtime.step(); runtime.wait();  // 90ms: dark, but stepped
+    CHECK(hal.brightness==0 && hal.waited<=16000);
+    hal.time+=130000; runtime.step();                  // 220ms: 120ms into the fade
+    CHECK(hal.brightness==58);                         // 90*(1-0.6^2)
+    hal.time+=180000; runtime.step();                  // 400ms: the fade ends
+    CHECK(hal.brightness==90);
 }
 void statisticsAction() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
@@ -656,8 +681,9 @@ void runtimeMenuScroll() {
     CHECK(quietWait()==1000000);
 }
 int main() {
-    storeRecord(); menuAndEditors(); saveAndCancel(); dateSaving(); runtimeApplies();
+    storeRecord(); menuAndEditors(); saveAndCancel(); dateSaving(); runtimeApplies(); fadeWaitsForPanel();
     statisticsAction(); statisticsRequest(); menuRows(); menuList(); menuLabels(); runtimeMenuScroll();
     std::cout << "PASS: settings record, menu/editors, save/cancel, date saving, "
-                 "runtime apply, statistics action/request, menu rows/list/labels, runtime menu scroll\n";
+                 "runtime apply, fade after panel shows, statistics action/request, menu rows/list/labels, "
+                 "runtime menu scroll\n";
 }

@@ -55,4 +55,39 @@ SaveResult TimeService::save(const CivilTime& jstInput) {
     valid_ = true;
     return SaveResult::Saved;
 }
+void TimeService::beginAlign(TimeUs now) {
+    if (!hal_) return;
+    alignUntil_ = now + AlignWindowUs;
+    alignFirst_ = true;
+}
+TimeUs TimeService::align(TimeUs now, bool& stepped) {
+    stepped = false;
+    if (alignUntil_ == INT64_MIN) return INT64_MAX;
+    CivilTime utc{};
+    // A failed or untrusted read leaves the clock as it is; the next wake
+    // tries again.
+    if (now > alignUntil_ || !hal_->readRtc(utc) || !trusted(utc)) {
+        std::printf("[Time] rtc alignment %s\n", now > alignUntil_ ? "timed out" : "read failed");
+        alignUntil_ = INT64_MIN;
+        return INT64_MAX;
+    }
+    const int64_t second = unixFromCivil(utc);
+    // A late read starts the watch again from itself instead.
+    const bool late = now - alignReadAt_ > AlignGapUs;
+    alignReadAt_ = now;
+    if (alignFirst_ || late || second == alignSecond_) {
+        alignFirst_ = false;
+        alignSecond_ = second;
+        return now + AlignPollUs;
+    }
+    // The edge came since the previous read, at most AlignGapUs ago.
+    const int64_t before = hal_->utcClockUs();
+    hal_->setUtcClock(second);
+    valid_ = true;
+    alignUntil_ = INT64_MIN;
+    stepped = true;
+    std::printf("[Time] aligned to rtc: system clock was %+lldms\n",
+                (long long)((before - second * 1000000) / 1000));
+    return INT64_MAX;
+}
 }

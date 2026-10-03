@@ -207,6 +207,10 @@ void M5Hal::waitUs(TimeUs delay) {
     // back to the 10ms polling the runtime used before work 8-4.
     // The cap only keeps the tick count in range; some deadline always comes first.
     delay = std::min<TimeUs>(delay, inputWake_ ? 3600000000LL : 10000);
+    // An IMU status read still owed leaves its interrupt latched, so no new
+    // edge would end the wait: the next step retries it within a second, as
+    // the one-second VBUS polling used to (ImuWake.h).
+    if (imuRetry_) delay = std::min<TimeUs>(delay, 1000000);
     constexpr TimeUs tickUs = 1000000 / configTICK_RATE_HZ;
     const auto ticks = static_cast<TickType_t>((delay + tickUs - 1) / tickUs);
     rearmInputWake();

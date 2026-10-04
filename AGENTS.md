@@ -107,6 +107,7 @@
   [LaunchRegistry](src/host/LaunchRegistry.h) に項目を足す（並び順が一覧の順になる）。
 - `ScreenId`、`ScreenManager`（所有・初期化・`launch()`・ホームでの `exit()`・モデル合成）、`FrameModel`・`FrameComposer`・`HostRenderer` を接続する。Registry への追加だけでは動かない。
 - アイコンは `IconId` と `tools/build_icons.py` の `ICONS` を対応させ、`python tools/build_icons.py` で再生成する。`IconId` の既存の順序は変えない。
+- 画面に出す固定の文字列は [i18n/Strings.h](src/i18n/Strings.h) に日本語と英語の両方を足し、`text::` で参照する（英語版は `m5stopwatch-en`）。
 - 画面に新しい日本語の文字を出すときは、埋め込みフォントの部分集合を作り直す（`tools/build_font.py`。`src/` 内の非ASCII文字を自動で集める）。
   TrueType フォントはリポジトリに含まれないので、ユーザーに用意してもらう。作り直すまで、収録外の文字は `?` で表示される。
 - 文字盤に情報を出す場合は `BackgroundInfoProvider` を実装し、`HostApplication` で `BackgroundInfoHub` に登録する（上限は `BackgroundCapacity` の4つ）。

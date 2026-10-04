@@ -16,6 +16,7 @@
 #include "ui/graphics/Shapes.h"
 #include "features/launcher/LauncherController.h"
 #include "host/LaunchRegistry.h"
+#include "i18n/Strings.h"
 #include <cstring>
 #endif
 namespace launcher {
@@ -315,12 +316,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             for(const auto& entry:LaunchRegistry) covered(entry.name);
             // Every fixed string the launcher can put on screen, so a font
             // subset that missed one fails here rather than on the device.
-            for(const char* text:{"準備中","日時","輝度","消灯時間","情報","戻る","保存","キャンセル",
-                                  "30秒","時刻を保存しました","保存しました","日付が正しくありません",
-                                  "保存に失敗しました","時計を設定できません",
-                                  "検証中","空き","破損","読み取り失敗","非対応","起動","起動中",
-                                  "バージョン","スロット","エラー","起動できませんでした",
-                                  "統計情報を表示"}) covered(text);
+            for(const char* fixed:text::All) covered(fixed);
             // The elapsed time sits in a fixed box and is drawn as one string,
             // so digits of unequal width would shuffle it sideways as it counts.
             {

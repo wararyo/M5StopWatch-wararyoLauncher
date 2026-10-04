@@ -53,7 +53,7 @@ def main():
     global BUILD, MULTIFIRM
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--environment",
-                        choices=("m5stopwatch", "m5stopwatch-diagnostics",
+                        choices=("m5stopwatch", "m5stopwatch-en", "m5stopwatch-diagnostics",
                                  "m5stopwatch-measure", "m5stopwatch-render-check",
                                  "m5stopwatch-drain", "m5stopwatch-charge"),
                         default="m5stopwatch")
@@ -89,6 +89,9 @@ def main():
     image = BUILD / "firmware.bin"
     check_size(image)
     image_bytes = image.read_bytes()
+    # "Date & time" is the English settings title; only the -en image has it.
+    require((b"Date & time" in image_bytes) == (environment == "m5stopwatch-en"),
+            "UI language does not match the selected environment")
     require((b"[RuntimeDiag] enabled" in image_bytes) == (environment == "m5stopwatch-diagnostics"),
             "Runtime overload diagnostics do not match the selected environment")
     require((b"[RenderDiag] synthetic" in image_bytes) == (environment == "m5stopwatch-render-check"),

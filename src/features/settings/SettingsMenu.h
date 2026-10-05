@@ -1,5 +1,6 @@
 #pragma once
 #include "features/settings/SettingsModel.h"
+#include "i18n/Strings.h"
 #include "ui/list/ListLayout.h"
 #include <algorithm>
 #include <array>
@@ -31,12 +32,12 @@ inline ListPlacement settingsMenuPlacement(Viewport v,float scroll) { return ful
 struct SettingsMenuLabels { char text[SettingsMenuCount][40]{}; };
 inline const char* settingsItemName(SettingsItem item) {
     switch (item) {
-    case SettingsItem::DateTime: return "日時";
-    case SettingsItem::Brightness: return "輝度";
-    case SettingsItem::ScreenOff: return "消灯時間";
-    case SettingsItem::Info: return "情報";
-    case SettingsItem::WatchFace: return "文字盤";
-    default: return "戻る";
+    case SettingsItem::DateTime: return text::DateTime;
+    case SettingsItem::Brightness: return text::Brightness;
+    case SettingsItem::ScreenOff: return text::ScreenOff;
+    case SettingsItem::Info: return text::Info;
+    case SettingsItem::WatchFace: return text::WatchFace;
+    default: return text::Back;
     }
 }
 // Rows without icons, all decidable. Input needs only the ids, so it passes
@@ -56,8 +57,11 @@ inline ListRows buildSettingsMenuRows(std::array<ListRow,SettingsMenuCount>& row
         // now?" without opening the editor.
         if (item==SettingsItem::Brightness)
             std::snprintf(text,size,"%s  %d",settingsItemName(item),model->savedBrightness);
-        else if (item==SettingsItem::ScreenOff)
-            std::snprintf(text,size,"%s  %d秒",settingsItemName(item),model->savedScreenOffSec);
+        else if (item==SettingsItem::ScreenOff) {
+            char seconds[16];
+            std::snprintf(seconds,sizeof(seconds),text::SecondsFormat,model->savedScreenOffSec);
+            std::snprintf(text,size,"%s  %s",settingsItemName(item),seconds);
+        }
         else if (item==SettingsItem::WatchFace && model->currentFace>=0 && model->currentFace<model->faceCount &&
                  model->faceNames[model->currentFace])
             std::snprintf(text,size,"%s  %s",settingsItemName(item),model->faceNames[model->currentFace]);
@@ -85,8 +89,8 @@ inline ListRows buildSettingsFaceRows(std::array<ListRow,SettingsFaceRows>& rows
         char* text=labels->text[i];
         const size_t size=sizeof(labels->text[i]);
         // The face that shows says so; choosing is what moves the mark.
-        if (i==faceCount) std::snprintf(text,size,"%s","戻る");
-        else if (i==model->currentFace) std::snprintf(text,size,"%s  使用中",model->faceNames[i] ? model->faceNames[i] : "");
+        if (i==faceCount) std::snprintf(text,size,"%s",text::Back);
+        else if (i==model->currentFace) std::snprintf(text,size,text::InUseFormat,model->faceNames[i] ? model->faceNames[i] : "");
         else std::snprintf(text,size,"%s",model->faceNames[i] ? model->faceNames[i] : "");
         row.label=text;
     }

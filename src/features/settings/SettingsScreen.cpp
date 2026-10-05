@@ -1,4 +1,5 @@
 #include "SettingsScreen.h"
+#include "i18n/Strings.h"
 #include <cstdlib>
 namespace launcher {
 namespace {
@@ -84,18 +85,18 @@ const char* SettingsScreen::confirm(ScreenOutcome& out) {
         const CivilTime jst{model_.fields[0],model_.fields[1],model_.fields[2],
                             model_.fields[3],model_.fields[4],0};
         switch (time_->save(jst)) {
-        case SaveResult::Saved: openView(SettingsView::Menu); return "時刻を保存しました";
-        case SaveResult::Invalid: return "日付が正しくありません";
-        case SaveResult::RtcWriteFailed: return "保存に失敗しました";
-        default: return "時計を設定できません";
+        case SaveResult::Saved: openView(SettingsView::Menu); return text::TimeSaved;
+        case SaveResult::Invalid: return text::InvalidDate;
+        case SaveResult::RtcWriteFailed: return text::SaveFailed;
+        default: return text::ClockUnavailable;
         }
     }
     Settings next=store_->get();
     if (model_.view==SettingsView::Brightness) next.brightness=uint8_t(model_.fields[0]);
     else next.screenOffSec=ScreenOffChoices[model_.fields[0]];
-    if (!store_->save(next)) return "保存に失敗しました";
+    if (!store_->save(next)) return text::SaveFailed;
     openView(SettingsView::Menu);
-    return "保存しました";
+    return text::Saved;
 }
 void SettingsScreen::openItem(RowId id,ScreenOutcome& out) {
     SettingsView view=SettingsView::Menu;
@@ -113,8 +114,8 @@ const char* SettingsScreen::chooseFace(RowId id) {
     }
     // The view stays open: the mark moves to the face now shown.
     switch (faces_->chooseFace(faces_->faceAt(index).id)) {
-    case FaceChoiceResult::SaveFailed: return "保存に失敗しました";
-    case FaceChoiceResult::Failed: return "文字盤を表示できません";
+    case FaceChoiceResult::SaveFailed: return text::SaveFailed;
+    case FaceChoiceResult::Failed: return text::FaceUnavailable;
     default: return nullptr;
     }
 }

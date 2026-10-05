@@ -1,4 +1,5 @@
 #include "ScreenManager.h"
+#include "i18n/Strings.h"
 #include <algorithm>
 namespace launcher {
 FrameModel ScreenManager::model() const {
@@ -45,7 +46,7 @@ bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
     // Reached only when a screen is unavailable because its services were
     // never bound: the input is acknowledged and nothing opens empty. The
     // list itself never advertises a missing target.
-    notify("準備中",now);
+    notify(text::Unavailable,now);
     return true;
 }
 bool ScreenManager::update(TimeUs now) {
@@ -98,7 +99,7 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         const auto face=home_->handle(event);
         homeChanged=face.changed;
         // The face keeps showing its change; only the saving failed.
-        if (face.saveFailed) { notify("保存に失敗しました",now); homeChanged=true; }
+        if (face.saveFailed) { notify(text::SaveFailed,now); homeChanged=true; }
         if (face.request==HomeRequest::OpenAppList) homeChanged=launcher_.openList(now) || homeChanged;
     }
     return out.changed || changed || homeChanged;

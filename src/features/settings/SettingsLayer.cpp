@@ -1,4 +1,5 @@
 #include "SettingsLayer.h"
+#include "i18n/Strings.h"
 #include "storage/Settings.h"
 #include <algorithm>
 #include <cstdio>
@@ -6,10 +7,10 @@
 namespace launcher {
 namespace {
 constexpr uint16_t White=0xf7be,Muted=0xad75,Lime=0xb7e0,Panel=0x2104,Ink=0x0000;
-constexpr const char* Titles[]={"","日時","輝度","消灯時間","情報",""};
+constexpr const char* Titles[]={"",text::DateTime,text::Brightness,text::ScreenOff,text::Info,""};
 // Information's one action. Taking it cannot be undone before a restart, so
 // the label says what it does rather than naming a state to toggle.
-constexpr const char* ActionNames[]={"統計情報を表示"};
+constexpr const char* ActionNames[]={text::ShowStatistics};
 }
 void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
     SettingsGeometry m{{viewport.width,viewport.height},s.view,s.cursor};
@@ -30,7 +31,7 @@ void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
         else if (s.view==SettingsView::Brightness)
             std::snprintf(item.text,sizeof(item.text),"%d",s.fields[i]);
         else
-            std::snprintf(item.text,sizeof(item.text),"%d秒",int(ScreenOffChoices[s.fields[i]]));
+            std::snprintf(item.text,sizeof(item.text),text::SecondsFormat,int(ScreenOffChoices[s.fields[i]]));
     }
     for (int i=0;i<settingsSeparatorCount(s.view);++i) {
         Item& item=add(Separator,settingsSeparatorBox(m,i),i,false);
@@ -49,7 +50,7 @@ void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
     }
     for (int i=0;i<settingsButtonCount(s.view);++i) {
         Item& item=add(Button,settingsButtonBox(m,i),i,s.cursor==fields+actions+i);
-        const char* label=s.view==SettingsView::Info ? "戻る" : i==0 ? "保存" : "キャンセル";
+        const char* label=s.view==SettingsView::Info ? text::Back : i==0 ? text::Save : text::Cancel;
         std::snprintf(item.text,sizeof(item.text),"%s",label);
     }
 }

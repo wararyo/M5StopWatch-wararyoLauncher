@@ -1,4 +1,5 @@
 #include "ExternalLayer.h"
+#include "i18n/Strings.h"
 #include "ui/graphics/Text.h"
 #include <algorithm>
 #include <cstdio>
@@ -9,11 +10,11 @@ constexpr uint16_t White=0xf7be,Muted=0xad75,Lime=0xb7e0,Panel=0x2104,Ink=0x0000
 // the reason is read here (plan.md 5.2 keeps the list to icon and name).
 const char* statusText(SlotStatus status) {
     switch (status) {
-    case SlotStatus::Scanning: return "検証中";
-    case SlotStatus::Empty: return "空き";
-    case SlotStatus::Invalid: return "破損";
-    case SlotStatus::ReadError: return "読み取り失敗";
-    case SlotStatus::Unsupported: return "非対応";
+    case SlotStatus::Scanning: return text::SlotScanning;
+    case SlotStatus::Empty: return text::SlotEmpty;
+    case SlotStatus::Invalid: return text::SlotInvalid;
+    case SlotStatus::ReadError: return text::SlotReadError;
+    case SlotStatus::Unsupported: return text::SlotUnsupported;
     case SlotStatus::Ready: break;
     }
     return "";
@@ -36,32 +37,32 @@ void ExternalLayer::build(Gfx& g,const lgfx::IFont* font,Viewport m,const Extern
     char buffer[96];
     Item& title=add(Title,externalTitleBox(m),0,false);
     if (e.name) std::snprintf(buffer,sizeof(buffer),"%s",e.name);
-    else std::snprintf(buffer,sizeof(buffer),"外部アプリ%d",e.slot);
+    else std::snprintf(buffer,sizeof(buffer),text::ExternalAppFormat,e.slot);
     text(title,buffer);
     Item& slot=add(Line,externalLineBox(m,0),0,false);
-    std::snprintf(buffer,sizeof(buffer),"スロット%d",e.slot);
+    std::snprintf(buffer,sizeof(buffer),text::SlotFormat,e.slot);
     text(slot,buffer);
     Item& state=add(Line,externalLineBox(m,1),1,false);
     if (e.phase==ExternalPhase::BootCommitting)
-        std::snprintf(buffer,sizeof(buffer),"起動中");
+        std::snprintf(buffer,sizeof(buffer),"%s",text::Launching);
     else if (e.status==SlotStatus::Ready)
-        std::snprintf(buffer,sizeof(buffer),"バージョン %s",e.version ? e.version : "-");
+        std::snprintf(buffer,sizeof(buffer),text::VersionFormat,e.version ? e.version : "-");
     else
         std::snprintf(buffer,sizeof(buffer),"%s",statusText(e.status));
     text(state,buffer);
     if (e.phase==ExternalPhase::BootFailed) {
         Item& failure=add(Line,externalLineBox(m,2),2,false);
         failure.alert=true;
-        std::snprintf(buffer,sizeof(buffer),"起動できませんでした %s",e.message ? e.message : "");
+        std::snprintf(buffer,sizeof(buffer),text::LaunchFailedFormat,e.message ? e.message : "");
         text(failure,buffer);
     } else if (e.phase==ExternalPhase::Browsing && e.error!=0) {
         Item& diagnostic=add(Line,externalLineBox(m,2),2,false);
-        std::snprintf(buffer,sizeof(buffer),"エラー 0x%x",unsigned(e.error));
+        std::snprintf(buffer,sizeof(buffer),text::ErrorFormat,unsigned(e.error));
         text(diagnostic,buffer);
     }
     for (int i=0;i<externalButtonCount(e);++i) {
         Item& item=add(Button,externalButtonBox(m,i),i,e.cursor==i);
-        std::snprintf(item.text,sizeof(item.text),"戻る");
+        std::snprintf(item.text,sizeof(item.text),"%s",text::Back);
     }
 }
 void ExternalLayer::plan(FramePlan& frame,Gfx& g) {

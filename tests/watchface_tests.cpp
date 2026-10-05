@@ -8,10 +8,12 @@
 #include "features/home/faces/ForestLayout.h"
 #include "features/home/faces/NoonishBackground.h"
 #include "features/settings/SettingsMenu.h"
+#include "i18n/Strings.h"
 #include "storage/SettingsStore.h"
 #include "storage/WatchPreferences.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -21,6 +23,11 @@
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
 using namespace launcher;
 namespace {
+// A face row marked as shown, as this build's language spells it.
+std::string inUse(const char* name) {
+    char buffer[48]; std::snprintf(buffer,sizeof(buffer),text::InUseFormat,name);
+    return buffer;
+}
 // One NVS namespace in memory: the settings blob under "config" and the
 // records by key, as storage/NvsBackend.cpp keeps them.
 struct MemoryNvs : SettingsBackend, RecordBackend {
@@ -881,8 +888,8 @@ void settingsFaces() {
     CHECK(m.view==SettingsView::WatchFace && m.faces.selection==0 && faces.chosen==0);
     std::array<ListRow,SettingsFaceRows> rows{}; SettingsFaceLabels labels;
     auto built=buildSettingsFaceRows(rows,m.faceCount,&m,&labels);
-    CHECK(built.count==3 && std::strcmp(rows[0].label,"Digital  使用中")==0 && std::strcmp(rows[1].label,"Forest")==0);
-    CHECK(std::strcmp(rows[2].label,"戻る")==0 && rows[2].id==SettingsFaceBack);
+    CHECK(built.count==3 && rows[0].label==inUse("Digital") && std::strcmp(rows[1].label,"Forest")==0);
+    CHECK(std::strcmp(rows[2].label,text::Back)==0 && rows[2].id==SettingsFaceBack);
     // Moving the cursor chooses nothing.
     screens.handle(press(true),now); now+=200000; screens.update(now);
     CHECK(screens.model().settings.faces.selection==1 && faces.chosen==0);
@@ -891,12 +898,12 @@ void settingsFaces() {
     m=screens.model().settings;
     CHECK(faces.chosen==1 && faces.last=="forest" && m.view==SettingsView::WatchFace && m.currentFace==1 && !screens.model().toast);
     built=buildSettingsFaceRows(rows,m.faceCount,&m,&labels);
-    CHECK(std::strcmp(rows[1].label,"Forest  使用中")==0 && std::strcmp(rows[0].label,"Digital")==0);
+    CHECK(rows[1].label==inUse("Forest") && std::strcmp(rows[0].label,"Digital")==0);
     // Failures are said; the view stays.
     faces.next=FaceChoiceResult::SaveFailed; screens.handle(press(false),now);
-    CHECK(screens.model().toast && std::strcmp(screens.model().toast,"保存に失敗しました")==0);
+    CHECK(screens.model().toast && std::strcmp(screens.model().toast,text::SaveFailed)==0);
     faces.next=FaceChoiceResult::Failed; screens.handle(press(false),now);
-    CHECK(std::strcmp(screens.model().toast,"文字盤を表示できません")==0 && screens.model().settings.view==SettingsView::WatchFace);
+    CHECK(std::strcmp(screens.model().toast,text::FaceUnavailable)==0 && screens.model().settings.view==SettingsView::WatchFace);
     faces.next=FaceChoiceResult::Selected;
     // Back returns to the menu on the same row; nothing more is chosen.
     const int chosen=faces.chosen;
@@ -929,20 +936,20 @@ void settingsFaces() {
         const auto rows3=buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
         CHECK(m3.faceCount==4 && rows3.count==5 && std::strcmp(rows[2].label,"Analog")==0);
         CHECK(std::strcmp(rows[3].label,"Noonish")==0);
-        CHECK(std::strcmp(rows[4].label,"戻る")==0 && rows[4].id==SettingsFaceBack);
+        CHECK(std::strcmp(rows[4].label,text::Back)==0 && rows[4].id==SettingsFaceBack);
         for (int i=0;i<2;++i) { s3.handle(press(true),t3); t3+=200000; s3.update(t3); }
         s3.handle(press(false),t3);
         m3=s3.model().settings;
         CHECK(three.last=="analog" && three.current==2 && m3.currentFace==2);
         buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
-        CHECK(std::strcmp(rows[2].label,"Analog  使用中")==0 && std::strcmp(rows[0].label,"Digital")==0);
+        CHECK(rows[2].label==inUse("Analog") && std::strcmp(rows[0].label,"Digital")==0);
         // Noonish, below it, then back at the bottom.
         s3.handle(press(true),t3); t3+=200000; s3.update(t3);
         s3.handle(press(false),t3);
         m3=s3.model().settings;
         CHECK(three.last=="noonish" && three.current==3 && m3.currentFace==3 && m3.faces.selection==3);
         buildSettingsFaceRows(rows,m3.faceCount,&m3,&labels);
-        CHECK(std::strcmp(rows[3].label,"Noonish  使用中")==0 && std::strcmp(rows[2].label,"Analog")==0);
+        CHECK(rows[3].label==inUse("Noonish") && std::strcmp(rows[2].label,"Analog")==0);
         s3.handle(press(true),t3); t3+=200000; s3.update(t3);
         CHECK(s3.model().settings.faces.selection==4);
         s3.handle(press(false),t3);
@@ -960,7 +967,7 @@ void settingsFaces() {
     FakeFaces clock; clock.outcome={true,HomeRequest::None,true};
     TestScreens home2; home2.bindHome(&clock);
     Events hold{}; hold.gesture=Gesture::LongPress; hold.x=234; hold.y=234;
-    CHECK(home2.handle(hold,0) && home2.model().toast && std::strcmp(home2.model().toast,"保存に失敗しました")==0);
+    CHECK(home2.handle(hold,0) && home2.model().toast && std::strcmp(home2.model().toast,text::SaveFailed)==0);
 }
 int main() {
     records(); separation(); variants(); selection(); forestBattery(); forestLayoutRules(); forestPalettes();

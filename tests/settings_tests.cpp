@@ -2,8 +2,10 @@
 #include "TestScreens.h"
 #include "host/LaunchRegistry.h"
 #include "features/settings/SettingsMenu.h"
+#include "i18n/Strings.h"
 #include <array>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -11,6 +13,12 @@
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
 using namespace launcher;
 namespace {
+// Labels as this build's language spells them (i18n/Strings.h).
+std::string menuLabel(const char* name,const std::string& value) { return std::string(name)+"  "+value; }
+std::string seconds(int value) {
+    char buffer[16]; std::snprintf(buffer,sizeof(buffer),text::SecondsFormat,value);
+    return buffer;
+}
 struct MemoryBackend : SettingsBackend {
     uint8_t blob[8]{};
     size_t stored=0;
@@ -175,7 +183,7 @@ void saveAndCancel() {
     CHECK(screens.model().settings.view==SettingsView::Menu);
     CHECK(store.get().brightness==105 && screens.effectiveSettings().brightness==105);
     CHECK(screens.model().settings.savedBrightness==105);
-    CHECK(screens.model().toast && std::strcmp(screens.model().toast,"保存しました")==0);
+    CHECK(screens.model().toast && std::strcmp(screens.model().toast,text::Saved)==0);
     // Home drops an unsaved preview as well.
     screens.handle(press(false),now);
     screens.handle(press(false),now); screens.handle(press(true),now);
@@ -200,14 +208,14 @@ void dateSaving() {
     const Rect save=settingsButtonBox(probe,0);
     screens.handle(tap(save.x+save.w/2,save.y+save.h/2),now);
     CHECK(screens.model().settings.view==SettingsView::DateTime); // Refused.
-    CHECK(screens.model().toast && std::strcmp(screens.model().toast,"日付が正しくありません")==0);
+    CHECK(screens.model().toast && std::strcmp(screens.model().toast,text::InvalidDate)==0);
     // Back to a real date and save for real.
     const Rect down=settingsArrowBox(probe,2,false);
     for (int i=0;i<10;++i) screens.handle(tap(down.x+down.w/2,down.y+down.h/2),now);
     CHECK(screens.model().settings.fields[2]==21);
     screens.handle(tap(save.x+save.w/2,save.y+save.h/2),now);
     CHECK(screens.model().settings.view==SettingsView::Menu);
-    CHECK(screens.model().toast && std::strcmp(screens.model().toast,"時刻を保存しました")==0);
+    CHECK(screens.model().toast && std::strcmp(screens.model().toast,text::TimeSaved)==0);
     CHECK(hal.rtc.year==2026 && hal.rtc.month==9 && hal.rtc.day==20 && hal.rtc.hour==15);
     // An RTC that refuses the write reports it rather than showing success.
     openSettings(screens,now);
@@ -215,7 +223,7 @@ void dateSaving() {
     hal.rtcWritable=false;
     screens.handle(tap(save.x+save.w/2,save.y+save.h/2),now);
     CHECK(screens.model().settings.view==SettingsView::DateTime);
-    CHECK(screens.model().toast && std::strcmp(screens.model().toast,"保存に失敗しました")==0);
+    CHECK(screens.model().toast && std::strcmp(screens.model().toast,text::SaveFailed)==0);
 }
 void runtimeApplies() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
@@ -399,11 +407,13 @@ void menuRows() {
     const ListRows built=buildSettingsMenuRows(rows,&model,&labels);
     CHECK(built.count==6);
     // The watch face row names the face that shows (docs/task10/plan-10-5.md 5).
-    const char* expected[]={"日時","輝度  105","消灯時間  60秒","文字盤  Forest","情報","戻る"};
+    const std::string expected[]={text::DateTime,menuLabel(text::Brightness,"105"),
+                                 menuLabel(text::ScreenOff,seconds(60)),menuLabel(text::WatchFace,"Forest"),
+                                 text::Info,text::Back};
     const SettingsView views[]={SettingsView::DateTime,SettingsView::Brightness,
                                 SettingsView::ScreenOff,SettingsView::WatchFace,SettingsView::Info};
     for (int i=0;i<6;++i) {
-        CHECK(std::strcmp(built[i].label,expected[i])==0);
+        CHECK(built[i].label==expected[i]);
         CHECK(!built[i].icon && built[i].enabled && !built[i].dimmed);
         for (int j=0;j<i;++j) CHECK(built[j].id!=built[i].id);
         // Each row opens its view by id; only the last one leaves instead.
@@ -413,7 +423,7 @@ void menuRows() {
     }
     // Without a face shown the row is just its name.
     model.currentFace=-1; buildSettingsMenuRows(rows,&model,&labels);
-    CHECK(std::strcmp(rows[3].label,"文字盤")==0);
+    CHECK(std::strcmp(rows[3].label,text::WatchFace)==0);
     // Input builds the same ids without labels.
     std::array<ListRow,SettingsMenuCount> ids{};
     buildSettingsMenuRows(ids);
@@ -586,22 +596,22 @@ void menuLabels() {
         return std::string(rows[row].label);
     };
     openSettings(screens,now);
-    CHECK(label(1)=="輝度  90" && label(2)=="消灯時間  30秒");
+    CHECK(label(1)==menuLabel(text::Brightness,"90") && label(2)==menuLabel(text::ScreenOff,seconds(30)));
     // A failed save keeps the editor open with the edit, and the label.
     screens.handle(press(true),now); screens.handle(press(false),now);
     screens.handle(press(false),now); screens.handle(press(true),now); screens.handle(press(false),now);
-    CHECK(screens.model().settings.fields[0]==105 && label(1)=="輝度  90");
+    CHECK(screens.model().settings.fields[0]==105 && label(1)==menuLabel(text::Brightness,"90"));
     backend.writable=false;
     screens.handle(press(true),now); screens.handle(press(false),now); // save
     auto m=screens.model();
     CHECK(m.settings.view==SettingsView::Brightness && m.settings.fields[0]==105);
-    CHECK(m.toast && std::strcmp(m.toast,"保存に失敗しました")==0);
-    CHECK(screens.effectiveSettings().brightness==105 && label(1)=="輝度  90");
+    CHECK(m.toast && std::strcmp(m.toast,text::SaveFailed)==0);
+    CHECK(screens.effectiveSettings().brightness==105 && label(1)==menuLabel(text::Brightness,"90"));
     // The retry succeeds and the label follows, on the row it left from.
     backend.writable=true;
     screens.handle(press(false),now);
     m=screens.model();
-    CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==1 && label(1)=="輝度  105");
+    CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==1 && label(1)==menuLabel(text::Brightness,"105"));
     // Cancel restores the preview and leaves the label alone.
     screens.handle(press(true),now); now+=200000; screens.update(now);
     screens.handle(press(false),now);
@@ -609,7 +619,7 @@ void menuLabels() {
     screens.handle(press(false),now); screens.handle(press(true),now); screens.handle(press(false),now);
     screens.handle(press(true),now); screens.handle(press(true),now); screens.handle(press(false),now);
     m=screens.model();
-    CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==2 && label(2)=="消灯時間  30秒");
+    CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==2 && label(2)==menuLabel(text::ScreenOff,seconds(30)));
     CHECK(screens.effectiveSettings().screenOffSec==30);
 }
 // The runtime draws the menu's scroll from its deadline, stops when it ends,

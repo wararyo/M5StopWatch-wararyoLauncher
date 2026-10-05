@@ -3,6 +3,10 @@
 M5StopWatch 用の、軽くて電池の持つ時計型ランチャーです。  
 標準の UserDemo の代替を目指しているほか、[M5StopWatch-MultiFirm](https://github.com/wararyo/M5StopWatch-MultiFirm) のホストとして、他のファームウェアを最大3つまで共存させ起動する機能も有しています。
 
+> [!NOTE]
+> An English UI build is available: build with `pio run -e m5stopwatch-en` and install `.pio/build/m5stopwatch-en/firmware.bin` in place of `m5stopwatch` in the steps below.
+> 英語表示版は `m5stopwatch-en` 環境でビルドできます。
+
 <table>
   <tr>
     <td><img src="docs/Images/WatchFace/Digital-Info.png" width="200" alt="Digital"></td>
@@ -66,6 +70,7 @@ pio run -e m5stopwatch
 ```
 
 成果物は `.pio/build/m5stopwatch/firmware.bin` です。
+英語表示版は `pio run -e m5stopwatch-en` でビルドし、以降の手順の `m5stopwatch` を `m5stopwatch-en` に読み替えます。
 
 ### 2. MultiFirm ツールの準備
 
@@ -154,8 +159,8 @@ PowerShell がスクリプトの実行を拒否する場合は、先に `Set-Exe
 
 | 目的 | コマンド |
 |---|---|
-| 製品ビルド | `pio run -e m5stopwatch` |
-| PC 上のテスト | `python tools/test_runtime.py`（g++ が必要。Windows では MSYS2 UCRT64 の GCC） |
+| 製品ビルド | `pio run -e m5stopwatch`（英語表示版は `-e m5stopwatch-en`） |
+| PC 上のテスト | `python tools/test_runtime.py`（日本語版・英語版の両方で実行。g++ が必要。Windows では MSYS2 UCRT64 の GCC） |
 | ビルド条件・パーティションの検証 | `python tools/verify_build.py`（本体には接続しない） |
 
 描画性能・ピクセル比較・電池駆動の記録など、検証用のビルド環境は [architecture.md の8章](docs/architecture.md#8-変更後の確認と調査の入口) を参照してください。

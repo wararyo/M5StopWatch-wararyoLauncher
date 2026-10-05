@@ -23,6 +23,7 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 | [ui/list/](../src/ui/list/) | 機能を知らないリスト操作・配置・描画・キャッシュ |
 | [ui/rendering/](../src/ui/rendering/) | `Renderer`、`FramePlan`、矩形・表示領域などの共通描画基盤 |
 | [ui/graphics/](../src/ui/graphics/)、[ui/overlays/](../src/ui/overlays/) | フォント・文字整形・画像型、トースト・統計表示 |
+| [i18n/](../src/i18n/) | 画面に出す固定の文字列。日本語と英語を並べ、ビルド時に選ぶ |
 | [services/](../src/services/) | 画面の寿命から独立した計測・時刻の状態と処理 |
 | [input/](../src/input/)、[power/](../src/power/) | ボタン・タッチの意味イベント化、消灯状態と期限 |
 | [hal/](../src/hal/) | 単調時計、機器I/O、待機・入力割り込みの実装 |
@@ -107,6 +108,7 @@ A+Bの連続600ms長押しは共通のホーム操作で、通常は個別画面
    必要なら `FrameActivity` と診断の分類も追加する。
 5. アイコンを追加する場合は `IconId` と [build_icons.py](../tools/build_icons.py) の `ICONS` を対応させ、資産を再生成する。
    `IconId` は埋め込み画像の索引なので既存順序を変えない。新しい表示文字にはフォントの収録範囲も確認する。
+   画面に出す固定の文字列は [Strings.h](../src/i18n/Strings.h) に日本語と英語の両方を足し、`text::` で参照する。
 6. [CMakeLists.txt](../src/CMakeLists.txt) と [test_runtime.py](../tools/test_runtime.py) のソース一覧を更新し、
    入退場・ホーム・更新期限・サービスの寿命を検証する。描画を追加したら差分描画の診断も増やす。
 
@@ -306,8 +308,8 @@ CPUの待機時間を増やすことがDFSの効果にもつながる。独自�
 
 | 目的 | 入口 |
 |---|---|
-| 状態・操作・期限の回帰 | `python tools/test_runtime.py`。PC上で6スイートをコンパイル・実行 |
-| 製品ビルド | `pio run -e m5stopwatch` |
+| 状態・操作・期限の回帰 | `python tools/test_runtime.py`。PC上で各スイートを日本語版・英語版の両方でコンパイル・実行 |
+| 製品ビルド | `pio run -e m5stopwatch`。英語表示版は `m5stopwatch-en` |
 | 実機の時間計測 | `m5stopwatch-measure`。実データと描画/USB診断 |
 | ピクセル・キャッシュ・文字盤寿命 | `m5stopwatch-render-check`。合成データと描画診断 |
 | 過負荷時のidle確認 | `m5stopwatch-diagnostics`。意図的な40ms負荷を追加 |

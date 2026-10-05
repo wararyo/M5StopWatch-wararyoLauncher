@@ -74,7 +74,8 @@ private:
     uint16_t sky_=0,ground_=0,ink_=0;   // the plain sky and ground, the ink: RGB565
     int paletteHour_=-2;                // none yet
     // The trees' rows as drawn for bandPalette_, bandInfo_ and bandViewport_,
-    // from screen row bandTop_. A failed allocation stays off until begin.
+    // from screen row bandTop_. An allocation that fails or lands outside
+    // PSRAM stays off until begin.
     M5Canvas band_;
     bool bandReady_=false,bandFailed_=false,bandInfo_=false;
     int bandTop_=0;

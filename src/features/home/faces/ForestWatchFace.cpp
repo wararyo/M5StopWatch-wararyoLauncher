@@ -5,6 +5,7 @@
 #include "ui/graphics/Text.h"
 #include "ui/graphics/VlwFont.h"
 #include "ui/graphics/WatchFonts.h"
+#include <esp_memory_utils.h>
 #include <cstdio>
 #include <cstring>
 namespace launcher {
@@ -191,9 +192,14 @@ void ForestWatchFace::prepareBand() {
     if (band_.width()!=w || band_.height()!=h) {
         band_.deleteSprite();
         band_.setPsram(true); band_.setColorDepth(16);
-        if (!band_.createSprite(w,h)) {
+        // M5GFX falls back to internal DMA memory when PSRAM is short, and
+        // that much internal memory is not the band's to take: drawn
+        // directly instead.
+        const bool created=band_.createSprite(w,h)!=nullptr;
+        if (!created || !esp_ptr_external_ram(band_.getBuffer())) {
+            band_.deleteSprite();
             bandFailed_=true; bandReady_=false;
-            std::printf("[WatchFace] forest band allocation failed rows=%d\n",h);
+            std::printf("[WatchFace] forest band allocation failed rows=%d internal=%d\n",h,int(created));
             return;
         }
     }

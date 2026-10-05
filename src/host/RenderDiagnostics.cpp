@@ -463,17 +463,13 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             m.settings.menu=ListState{}; m.settings.menu.selection=0; check("settings-menu-reentry",m,d);
             for(const auto view:{SettingsView::DateTime,SettingsView::Brightness,
                                  SettingsView::ScreenOff,SettingsView::Info}) {
-                m.settings.view=view; m.settings.editing=false;
+                m.settings.view=view;
                 m.settings.fields[0]=view==SettingsView::DateTime ? 2026 :
                     view==SettingsView::Brightness ? 90 : 1;
                 m.settings.fields[1]=9; m.settings.fields[2]=21;
                 m.settings.fields[3]=23; m.settings.fields[4]=59;
                 for(int slot=0;slot<settingsSlotCount(view);++slot) {
                     m.settings.cursor=slot; check("settings-slot",m,d);
-                    if(slot<settingsFieldCount(view)) {
-                        m.settings.editing=true; check("settings-editing",m,d);
-                        m.settings.editing=false;
-                    }
                 }
                 // Information carries the statistics action: its label does not
                 // change when taken, only its colour, so both states are swept.

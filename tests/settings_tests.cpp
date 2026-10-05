@@ -134,25 +134,126 @@ void menuAndEditors() {
     // Row 0 opens the date editor, seeded with the current time.
     screens.handle(press(false),now);
     const auto& s=screens.model().settings;
-    CHECK(s.view==SettingsView::DateTime && s.cursor==0 && !s.editing);
+    CHECK(s.view==SettingsView::DateTime && s.cursor==0);
     CHECK(s.fields[0]==2026 && s.fields[1]==9 && s.fields[2]==21 && s.fields[3]==0 && s.fields[4]==0);
-    // B enters the field, A steps the value, B confirms the field.
+    // B steps the focused field and A moves the focus on (docs/task12/plan.md 1.5).
     screens.handle(press(false),now);
-    CHECK(screens.model().settings.editing);
-    screens.handle(press(true),now);
     CHECK(screens.model().settings.fields[0]==2027 && screens.model().settings.cursor==0);
-    screens.handle(press(false),now);
-    CHECK(!screens.model().settings.editing);
     screens.handle(press(true),now);
-    CHECK(screens.model().settings.cursor==1); // Not editing: A moves on.
+    CHECK(screens.model().settings.cursor==1 && screens.model().settings.fields[0]==2027);
+    screens.handle(press(false),now);
+    CHECK(screens.model().settings.fields[1]==10 && screens.model().settings.cursor==1);
     // The year wraps at the end of the trusted window.
     TestScreens wrapper; wrapper.bind(&store,&time); TimeUs t2=0;
     openSettings(wrapper,t2); wrapper.handle(press(false),t2);
-    wrapper.handle(press(false),t2); // edit the year
-    for (int i=0;i<TimeService::MaxYear-2026;++i) wrapper.handle(press(true),t2);
+    for (int i=0;i<TimeService::MaxYear-2026;++i) wrapper.handle(press(false),t2);
     CHECK(wrapper.model().settings.fields[0]==TimeService::MaxYear);
-    wrapper.handle(press(true),t2);
+    wrapper.handle(press(false),t2);
     CHECK(wrapper.model().settings.fields[0]==TimeService::MinYear);
+}
+// B held on an editor's field steps it again and again; the press belongs to
+// the field it began on (docs/task12/plan.md 1.5, 2.3).
+void holdInEditors() {
+    MemoryBackend backend; SettingsStore store; store.begin(backend);
+    StubHal hal; TimeService time; time.begin(hal);
+    TestScreens screens; screens.bind(&store,&time);
+    TimeUs now=0;
+    auto holdB=[&](bool down) {
+        Events e{}; e.holdChanged=true; e.hold=down ? Hold::B : Hold::None; e.holdSince=now;
+        return e;
+    };
+    auto releaseB=[&](TimeUs since) {
+        Events e{}; e.decide=true; e.pressUs=now-since; e.holdChanged=true; return e;
+    };
+    auto advance=[&](TimeUs to) { now=to; screens.update(now); };
+    auto year=[&]() { return screens.model().settings.fields[0]; };
+    openSettings(screens,now);
+    screens.handle(press(false),now);              // the date editor, 2026
+    // A short press steps once, on the release.
+    TimeUs since=now;
+    screens.handle(holdB(true),now);
+    CHECK(screens.nextUpdate()==now+HoldRepeat::DelayUs && year()==2026);
+    now+=200000; screens.handle(releaseB(since),now);
+    CHECK(year()==2027 && screens.nextUpdate()==INT64_MAX);
+    // Held: a step at 500ms, then one each 100ms, and the release adds none.
+    since=now; screens.handle(holdB(true),now);
+    advance(since+HoldRepeat::DelayUs-1);
+    CHECK(year()==2027);
+    advance(since+HoldRepeat::DelayUs);
+    CHECK(year()==2028 && screens.nextUpdate()==since+HoldRepeat::DelayUs+HoldRepeat::PeriodUs);
+    advance(since+HoldRepeat::DelayUs+HoldRepeat::PeriodUs);
+    CHECK(year()==2029);
+    // A stalled loop adds one step, not the ones it missed.
+    advance(since+HoldRepeat::DelayUs+5*HoldRepeat::PeriodUs);
+    CHECK(year()==2030 && screens.nextUpdate()==now+HoldRepeat::PeriodUs);
+    screens.handle(releaseB(since),now);
+    CHECK(year()==2030 && screens.nextUpdate()==INT64_MAX);
+    // A joining makes a chord: the hold ends with no release, and nothing steps.
+    since=now; screens.handle(holdB(true),now);
+    screens.handle(holdB(false),now+100000);
+    advance(since+HoldRepeat::DelayUs*2);
+    CHECK(year()==2030 && screens.nextUpdate()==INT64_MAX);
+    // A tap that moves the focus spends the press: no repeat, and its release
+    // steps neither field.
+    const auto frame=screens.model();
+    const SettingsGeometry probe{{frame.viewport.width,frame.viewport.height},frame.settings.view,frame.settings.cursor};
+    const Rect month=settingsFieldBox(probe,1);
+    since=now; screens.handle(holdB(true),now);
+    screens.handle(tap(month.x+month.w/2,month.y+month.h/2),now+100000);
+    CHECK(screens.model().settings.cursor==1 && screens.nextUpdate()==INT64_MAX);
+    advance(since+HoldRepeat::DelayUs*2);
+    screens.handle(releaseB(since),now);
+    CHECK(year()==2030 && screens.model().settings.fields[1]==9);
+    // On a button nothing repeats, and the release carries it out as before:
+    // a long press of cancel still cancels.
+    while (screens.model().settings.cursor!=settingsSlotCount(SettingsView::DateTime)-1)
+        screens.handle(press(true),now);
+    since=now; screens.handle(holdB(true),now);
+    CHECK(screens.nextUpdate()==INT64_MAX);
+    now+=2000000; screens.handle(releaseB(since),now);
+    CHECK(screens.model().settings.view==SettingsView::Menu);
+    // A press held while a tap saves the editor does not open a menu row on
+    // its release.
+    screens.handle(press(true),now); screens.handle(press(false),now);
+    CHECK(screens.model().settings.view==SettingsView::Brightness);
+    const auto bright=screens.model();
+    const SettingsGeometry brightProbe{{bright.viewport.width,bright.viewport.height},bright.settings.view,bright.settings.cursor};
+    const Rect save=settingsButtonBox(brightProbe,0);
+    since=now; screens.handle(holdB(true),now);
+    screens.handle(tap(save.x+save.w/2,save.y+save.h/2),now+100000);
+    CHECK(screens.model().settings.view==SettingsView::Menu);
+    now+=300000; screens.handle(releaseB(since),now);
+    CHECK(screens.model().settings.view==SettingsView::Menu && screens.model().screen==ScreenId::Settings);
+    // The next press in the menu decides as usual.
+    since=now; screens.handle(holdB(true),now);
+    now+=100000; screens.handle(releaseB(since),now);
+    CHECK(screens.model().settings.view==SettingsView::Brightness);
+    // Leaving drops a hold: nothing keeps a deadline behind the clock.
+    screens.handle(holdB(true),now);
+    Events home{}; home.home=true; screens.handle(home,now);
+    CHECK(screens.model().screen==ScreenId::Home && screens.nextUpdate()==INT64_MAX);
+}
+// The same through the real input: B held on a field, sampled every input
+// period, steps it without the runtime polling the screen.
+void heldInput() {
+    MemoryBackend backend; SettingsStore store; store.begin(backend);
+    StubHal hal; TimeService time; time.begin(hal);
+    TestScreens screens; screens.bind(&store,&time);
+    InputController input;
+    TimeUs now=0;
+    openSettings(screens,now);
+    screens.handle(press(false),now);              // the date editor, 2026
+    // As the runtime forwards it (HostRuntime::step).
+    auto sample=[&](InputSnapshot raw) {
+        const auto e=input.update(now,raw);
+        if (e.home || e.next || e.decide || e.holdChanged || e.gesture!=Gesture::None) screens.handle(e,now);
+        if (now>=screens.nextUpdate()) screens.update(now);
+    };
+    const TimeUs start=now;
+    for (; now<=start+1000000; now+=10000) sample({false,true});
+    sample({});
+    // Steps at 500, 600, 700, 800, 900 and 1000ms, none on the release.
+    CHECK(screens.model().settings.fields[0]==2032);
 }
 void saveAndCancel() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
@@ -164,10 +265,9 @@ void saveAndCancel() {
     screens.handle(press(true),now); screens.handle(press(false),now);
     CHECK(screens.model().settings.view==SettingsView::Brightness);
     CHECK(screens.effectiveSettings().brightness==90);
-    screens.handle(press(false),now); screens.handle(press(true),now);
+    screens.handle(press(false),now);             // step the level
     CHECK(screens.model().settings.fields[0]==105 && screens.effectiveSettings().brightness==105);
     CHECK(screens.model().settings.savedBrightness==90); // The menu label still reflects storage.
-    screens.handle(press(false),now);             // leave the field
     screens.handle(press(true),now);              // -> save
     screens.handle(press(true),now);              // -> cancel
     screens.handle(press(false),now);             // cancel
@@ -176,7 +276,6 @@ void saveAndCancel() {
     // Same edit, confirmed this time.
     screens.handle(press(false),now);             // menu row 1 is still focused
     CHECK(screens.model().settings.view==SettingsView::Brightness);
-    screens.handle(press(false),now); screens.handle(press(true),now);
     screens.handle(press(false),now);
     screens.handle(press(true),now);              // -> save
     screens.handle(press(false),now);
@@ -186,7 +285,7 @@ void saveAndCancel() {
     CHECK(screens.model().toast && std::strcmp(screens.model().toast,text::Saved)==0);
     // Home drops an unsaved preview as well.
     screens.handle(press(false),now);
-    screens.handle(press(false),now); screens.handle(press(true),now);
+    screens.handle(press(false),now);
     CHECK(screens.effectiveSettings().brightness==120);
     Events home{}; home.home=true;
     screens.handle(home,now);
@@ -599,7 +698,7 @@ void menuLabels() {
     CHECK(label(1)==menuLabel(text::Brightness,"90") && label(2)==menuLabel(text::ScreenOff,seconds(30)));
     // A failed save keeps the editor open with the edit, and the label.
     screens.handle(press(true),now); screens.handle(press(false),now);
-    screens.handle(press(false),now); screens.handle(press(true),now); screens.handle(press(false),now);
+    screens.handle(press(false),now);
     CHECK(screens.model().settings.fields[0]==105 && label(1)==menuLabel(text::Brightness,"90"));
     backend.writable=false;
     screens.handle(press(true),now); screens.handle(press(false),now); // save
@@ -616,7 +715,7 @@ void menuLabels() {
     screens.handle(press(true),now); now+=200000; screens.update(now);
     screens.handle(press(false),now);
     CHECK(screens.model().settings.view==SettingsView::ScreenOff);
-    screens.handle(press(false),now); screens.handle(press(true),now); screens.handle(press(false),now);
+    screens.handle(press(false),now);
     screens.handle(press(true),now); screens.handle(press(true),now); screens.handle(press(false),now);
     m=screens.model();
     CHECK(m.settings.view==SettingsView::Menu && m.settings.menu.selection==2 && label(2)==menuLabel(text::ScreenOff,seconds(30)));
@@ -691,9 +790,9 @@ void runtimeMenuScroll() {
     CHECK(quietWait()==1000000);
 }
 int main() {
-    storeRecord(); menuAndEditors(); saveAndCancel(); dateSaving(); runtimeApplies(); fadeWaitsForPanel();
+    storeRecord(); menuAndEditors(); holdInEditors(); heldInput(); saveAndCancel(); dateSaving(); runtimeApplies(); fadeWaitsForPanel();
     statisticsAction(); statisticsRequest(); menuRows(); menuList(); menuLabels(); runtimeMenuScroll();
-    std::cout << "PASS: settings record, menu/editors, save/cancel, date saving, "
+    std::cout << "PASS: settings record, menu/editors, held B, save/cancel, date saving, "
                  "runtime apply, fade after panel shows, statistics action/request, menu rows/list/labels, "
                  "runtime menu scroll\n";
 }

@@ -25,7 +25,9 @@ void HostRuntime::step() {
         const auto e = input_.update(now, raw, wasOff && raw.touching, screens_.homeAtRest());
         // Release edges also count as activity. Process home before screen events.
         power_.update(now, e.activity, screens_.active());
-        if (e.home || e.next || e.decide || e.gesture != Gesture::None) {
+        // A hold that starts or ends is passed on as well: a screen that
+        // repeats or fills while a button is held times it from there.
+        if (e.home || e.next || e.decide || e.holdChanged || e.gesture != Gesture::None) {
             // A long press changes the clock's own deadline (seconds shown or
             // not); the redraw below takes the new one in this same step.
             const bool changed = screens_.handle(e, now);

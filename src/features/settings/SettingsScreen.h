@@ -4,6 +4,7 @@
 #include "storage/SettingsStore.h"
 #include "features/settings/SettingsLayout.h"
 #include "ui/list/ListController.h"
+#include "input/HoldRepeat.h"
 #include "features/settings/SettingsMenu.h"
 #include "features/home/HomeInteraction.h"
 #include <array>
@@ -31,15 +32,18 @@ public:
     }
     bool available() const override { return store_ && time_; }
     // A new visit starts at the top, wherever the last one scrolled to.
-    void enter(TimeUs) override { menu_.reset(); faceList_.reset(); openView(SettingsView::Menu); }
+    void enter(TimeUs) override { menu_.reset(); faceList_.reset(); openView(SettingsView::Menu); hold_=HoldRepeat{}; }
     // Leaving drops the unsaved edit, and with it the brightness preview,
     // because the preview is derived from the open view rather than stored.
     // The menu stops too, so nothing of settings keeps a deadline.
-    void exit() override { menu_.reset(); faceList_.reset(); openView(SettingsView::Menu); }
+    void exit() override { menu_.reset(); faceList_.reset(); openView(SettingsView::Menu); hold_=HoldRepeat{}; }
     ScreenOutcome handle(const Events& e,TimeUs now) override;
-    // Only the lists move on their own, and only while they scroll.
-    TimeUs nextUpdate() const override { const auto* l=shownList(); return l ? l->nextUpdate() : INT64_MAX; }
-    bool tick(TimeUs now) override { auto* l=shownList(); return l && l->update(now); }
+    // The lists move on their own while they scroll; an editor's value steps
+    // while B is held on it.
+    TimeUs nextUpdate() const override {
+        const auto* l=shownList(); return l ? l->nextUpdate() : hold_.nextUpdate();
+    }
+    bool tick(TimeUs now) override;
     bool active() const override { const auto* l=shownList(); return l && l->active(); }
     SettingsModel model() const {
         auto copy=model_;
@@ -84,5 +88,7 @@ private:
     ListController faceList_;
     std::array<ListRow,SettingsFaceRows> faceRows_{};
     HomeControlPort* faces_=nullptr;
+    // B held on an editor's field steps it (docs/task12/plan.md 1.5).
+    HoldRepeat hold_;
 };
 }

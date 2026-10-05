@@ -42,7 +42,7 @@ private:
         Rect box{};
         Kind kind=Title;
         int index=0;
-        bool selected=false,editing=false;
+        bool selected=false;
         // An action already taken. Its text does not change, so this has to
         // reach the fingerprint or the colour change would not repaint.
         bool done=false;

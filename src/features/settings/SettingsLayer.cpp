@@ -25,7 +25,6 @@ void SettingsLayer::build(Viewport viewport,const SettingsModel& s,bool stats) {
     const int fields=settingsFieldCount(s.view);
     for (int i=0;i<fields;++i) {
         Item& item=add(Field,settingsFieldBox(m,i),i,i==s.cursor);
-        item.editing=item.selected && s.editing;
         if (s.view==SettingsView::DateTime)
             std::snprintf(item.text,sizeof(item.text),i==0 ? "%04d" : "%02d",s.fields[i]);
         else if (s.view==SettingsView::Brightness)
@@ -93,8 +92,7 @@ void SettingsLayer::plan(FramePlan& frame,Gfx& g) {
         if (used) {
             const auto& item=items_[i];
             hash=hashString(item.text,hashValue(uint32_t(item.kind),0x9e3779b9u));
-            hash=hashValue(uint32_t(item.selected)|(uint32_t(item.editing)<<1)|
-                           (uint32_t(item.done)<<2),hash);
+            hash=hashValue(uint32_t(item.selected)|(uint32_t(item.done)<<2),hash);
         }
         frame.add(elements_[i],used ? items_[i].box : Rect{},hash);
     }
@@ -127,10 +125,7 @@ void SettingsLayer::paint(Gfx& g,const PaintContext& context) {
             g.fillTriangle(cx,bottom,cx-arrowW/2,bottom-arrowH,cx+arrowW/2,bottom-arrowH,
                            item.selected ? Lime : Muted);
             const Rect value=settingsValueBox(m,item.index);
-            if (item.editing) {
-                g.fillRoundRect(value.x,value.y,value.w,value.h,offsetPx(m,10),Panel);
-                g.setTextColor(Lime,Panel);
-            } else g.setTextColor(colour,Ink);
+            g.setTextColor(colour,Ink);
             g.setTextDatum(middle_center);
             g.drawString(item.text,value.x+value.w/2,value.y+value.h/2);
             break;

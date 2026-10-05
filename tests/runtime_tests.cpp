@@ -94,6 +94,93 @@ void buttons() {
     e = shortChord.update(599000, {});
     CHECK(!e.home && !e.next && !e.decide);
 }
+// Input reports a button held on its own and how long a press lasted; what
+// that means is the screen's (docs/task12/plan.md 2.3).
+void holds() {
+    InputController c;
+    auto e = c.update(0, {true});
+    CHECK(e.holdChanged && e.hold == Hold::A && e.holdSince == 0 && !e.next);
+    e = c.update(10000, {true});
+    CHECK(!e.holdChanged && e.hold == Hold::A && e.holdSince == 0);
+    e = c.update(599000, {});
+    CHECK(e.next && e.pressUs == 599000 && e.holdChanged && e.hold == Hold::None);
+    c.update(1000000, {false, true});
+    e = c.update(1600000, {});
+    CHECK(e.decide && e.pressUs == 600000 && e.holdChanged);
+    // The other button joining ends the hold, and the chord releases nothing.
+    e = c.update(2000000, {false, true});
+    CHECK(e.hold == Hold::B && e.holdSince == 2000000);
+    e = c.update(2300000, {true, true});
+    CHECK(e.holdChanged && e.hold == Hold::None);
+    e = c.update(2400000, {false, true});
+    CHECK(!e.holdChanged && e.hold == Hold::None); // Still the same chord.
+    e = c.update(2500000, {});
+    CHECK(!e.next && !e.decide && !e.holdChanged);
+    // A hold that outlasts 600ms is not home, and its release still reports.
+    c.update(3000000, {true});
+    CHECK(!c.update(3700000, {true}).home);
+    e = c.update(4000000, {});
+    CHECK(e.next && e.pressUs == 1000000);
+    // A held past 600ms and then B: home is timed from the chord, not from A.
+    c.update(5000000, {true});
+    c.update(5700000, {true, true});
+    CHECK(!c.update(6299000, {true, true}).home);
+    e = c.update(6300000, {true, true});
+    CHECK(e.home && e.hold == Hold::None);
+    // One released while the other goes down: the release and the new hold.
+    c.update(7000000, {});
+    c.update(7100000, {true});
+    e = c.update(7200000, {false, true});
+    CHECK(e.next && e.pressUs == 100000 && e.holdChanged && e.hold == Hold::B && e.holdSince == 7200000);
+    c.update(7300000, {});
+    // A tap reports how long the finger was down.
+    c.update(8000000, {false, false, true, 100, 100});
+    e = c.update(8650000, {});
+    CHECK(e.gesture == Gesture::Tap && e.touchUs == 650000);
+}
+// What is held when a screen is replaced under it is spent until let go
+// (docs/task12/plan.md 2.4).
+void discardHeld() {
+    InputController c;
+    // A release in the very sample after the discard decides nothing.
+    c.update(0, {false, true});
+    c.discardHeld();
+    auto e = c.update(10000, {});
+    CHECK(!e.decide && e.holdChanged && e.hold == Hold::None);
+    // A press after the discard is new.
+    c.update(20000, {false, true});
+    CHECK(c.update(30000, {}).decide);
+    // A hold ends at the next sample; nothing of it comes back while held.
+    c.update(40000, {true});
+    c.discardHeld();
+    e = c.update(50000, {true});
+    CHECK(e.holdChanged && e.hold == Hold::None);
+    CHECK(c.update(60000, {true}).hold == Hold::None);
+    // The other button joining the spent one makes no home.
+    for (TimeUs t = 70000; t <= 1000000; t += 10000) CHECK(!c.update(t, {true, true}).home);
+    e = c.update(1010000, {});
+    CHECK(!e.next && !e.decide && !e.home);
+    // Nor does a chord already timing.
+    c.update(1100000, {true, true});
+    c.update(1500000, {true, true});
+    c.discardHeld();
+    CHECK(!c.update(1800000, {true, true}).home);
+    c.update(1900000, {});
+    c.update(2000000, {true, true});
+    CHECK(c.update(2600000, {true, true}).home); // Pressed again, it is home.
+    c.update(2700000, {});
+    // A touch: no tap, no drag end, until the finger lifts and lands again.
+    c.update(3000000, {false, false, true, 100, 100});
+    c.discardHeld();
+    CHECK(c.update(3010000, {false, false, true, 100, 150}).gesture == Gesture::None);
+    CHECK(c.update(3020000, {}).gesture == Gesture::None);
+    c.update(3030000, {false, false, true, 100, 100});
+    CHECK(c.update(3040000, {}).gesture == Gesture::Tap);
+    // Nothing held: nothing to spend.
+    c.discardHeld();
+    c.update(3100000, {true});
+    CHECK(c.update(3200000, {}).next);
+}
 void touch() {
     InputController c;
     c.update(0, {false, false, true, 100, 100});
@@ -536,8 +623,8 @@ void simultaneousHomeInputs() {
     }
 }
 int main() {
-    buttons(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep(); wristWake(); usbEvents(); statusLed();
+    buttons(); holds(); discardHeld(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep(); wristWake(); usbEvents(); statusLed();
     overload(); longPress(); homeGestures(); simultaneousHomeInputs();
-    std::cout << "PASS: buttons, touch, power, screens, runtime/registry, interrupts, light sleep, wrist wake, usb events, status led, overload/early-wake, "
+    std::cout << "PASS: buttons, holds, discard, touch, power, screens, runtime/registry, interrupts, light sleep, wrist wake, usb events, status led, overload/early-wake, "
                  "long press, home gestures\n";
 }

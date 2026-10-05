@@ -143,7 +143,7 @@ class BackdropFace final : public WatchFace {
 public:
     const char* id() const override { return "test-backdrop"; }
     void listBackgroundForTest(uint16_t color) { list_=color; }
-    uint16_t listBackground() const override { return list_; }
+    uint16_t listBackground(const WatchData&) const override { return list_; }
     bool begin(Gfx&,bool) override { for(auto& e:elements_) e={}; planned_=false; return true; }
     void end() override {}
     void plan(FramePlan& f,Gfx& g,const WatchEnvironment& env,const WatchData& d) override {
@@ -885,6 +885,12 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
                     fm.launcher.transition=p; check("forest-transition",fm,fd);
                 }
+                // The list on the hour's ground: the hour turning under it,
+                // fully and half raised, the rows and their names following.
+                fm.launcher.transition=1;
+                for(int hour:{23,5,12,18}) { fd.localTime.tm_hour=hour; check("forest-list-hour",fm,fd); }
+                fm.launcher.transition=0.5f;
+                for(int hour:{19,9}) { fd.localTime.tm_hour=hour; check("forest-list-hour-mid",fm,fd); }
                 // The scenery moving under a half raised list.
                 fm.launcher.transition=0.5f; fd.background.count=0; fd.batteryPercent=82;
                 check("forest-info-gone-under-list",fm,fd);
@@ -1466,6 +1472,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 shoot("forest-mixed",sm,scene);
                 scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
                 slide("forest-transition",0.45f);
+                // The list fully up on each part of the day's ground.
+                for(int hour:{12,6,18,22}) {
+                    char name[24]; std::snprintf(name,sizeof(name),"forest-list-%02d",hour);
+                    scene.localTime.tm_hour=hour; slide(name,1.0f);
+                }
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 // Work 11-2: Analog, like the reference pictures (6:00:00 on
                 // the 20th, the dot shown) and around them.

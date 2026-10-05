@@ -410,6 +410,14 @@ void forestPalettes() {
     c.update(d); CHECK(c.hour()==19);
     d.timeValid=false; c.update(d); CHECK(c.hour()==-1);
     d.timeValid=true; d.localTime.tm_hour=24; c.update(d); CHECK(c.hour()==-1);
+    // The list lies on the hour's plain ground under the row, noon's while
+    // the time is unknown, and blends between the keys like the scenery.
+    CHECK(forestListBackground(12)==forest::rgb565(forest::Day.groundBottom));
+    CHECK(forestListBackground(2)==forest::rgb565(forest::Night.groundBottom));
+    CHECK(forestListBackground(-1)==forestListBackground(12));
+    CHECK(forestListBackground(17)==forest::rgb565(forest::mix(forest::Day.groundBottom,forest::Dusk.groundBottom,0.5f)));
+    CHECK(forestListBackground(forestHour(d))==forestListBackground(-1));
+    d.localTime.tm_hour=19; CHECK(forestListBackground(forestHour(d))==forestListBackground(19));
 }
 namespace {
 WatchData clockAt(int hour,int minute,int second,int day=20,TimeUs subsecond=0) {

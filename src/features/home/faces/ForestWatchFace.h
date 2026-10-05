@@ -36,6 +36,9 @@ public:
     TimeUs nextUpdate(TimeUs now,const WatchData& data) const override { return control_.nextUpdate(now,data); }
     HomeOutcome handle(const HomeEvent& e) override { return control_.handle(e); }
     BackgroundInterest backgroundInterest(const BackgroundSnapshot& s) const override { return control_.backgroundInterest(s); }
+    // The frame's own hour: a list open across the hour takes the new ground
+    // with the next frame drawn.
+    uint16_t listBackground(const WatchData& d) const override { return forestListBackground(forestHour(d)); }
     TimeVariant variant() const { return control_.variant(); }
     const ForestLayout& layout() const { return layout_; }
     int cachedParts() const { return digits_.cached(); }

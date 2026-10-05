@@ -50,6 +50,7 @@ public:
     virtual BackgroundInterest backgroundInterest(const BackgroundSnapshot&) const { return {}; }
     // The colour the app list is laid on over this face (RGB565). The list's
     // text keeps its own colours, so a face picks a background they read on.
-    virtual uint16_t listBackground() const { return 0x0000; }
+    // Asked before plan() with the frame's data, so it may follow the time.
+    virtual uint16_t listBackground(const WatchData&) const { return 0x0000; }
 };
 }

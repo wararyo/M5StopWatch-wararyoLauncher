@@ -170,6 +170,14 @@ inline ForestLayout forestLayout(const Viewport& v,TimeVariant variant,bool info
     l.row=infoRow(v,int(l.top+377*l.scale),10);
     return l;
 }
+// The hour the palette follows, -1 while the time is unknown.
+inline int forestHour(const WatchData& d) {
+    const int h=d.localTime.tm_hour;
+    return d.timeValid && h>=0 && h<24 ? h : -1;
+}
+// The list over Forest lies on the hour's plain ground under the row, the
+// darkest of the ground's gradient.
+inline uint16_t forestListBackground(int hour) { return forest::rgb565(forestPalette(hour).groundBottom); }
 // Forest's behaviour without its drawing: the variant (kept in Forest's own
 // record), the battery rule, which layout applies, the hour its colours follow
 // and when to draw again. A tap means nothing on Forest: the list opens with
@@ -182,8 +190,7 @@ public:
     void update(const WatchData& d) {
         items_=std::min<int>(d.background.count,ForestMaxItems);
         battery_=infoBatteryShown(d.batteryPercent,d.charging,d.chargingKnown,battery_);
-        const int h=d.localTime.tm_hour;
-        hour_=d.timeValid && h>=0 && h<24 ? h : -1;
+        hour_=forestHour(d);
     }
     bool batteryShown() const { return battery_; }
     int items() const { return items_; }

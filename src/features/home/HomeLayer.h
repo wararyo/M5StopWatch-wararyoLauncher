@@ -51,7 +51,7 @@ public:
     BackgroundInterest backgroundInterest(const WatchData& data) const {
         return face_ ? face_->backgroundInterest(data.background) : BackgroundInterest{};
     }
-    uint16_t listBackground() const { return face_ ? face_->listBackground() : 0; }
+    uint16_t listBackground() const { return face_ ? face_->listBackground(data_) : 0; }
     const DigitalWatchFace& digital() const { return digital_; }
     const ForestWatchFace& forest() const { return forest_; }
     const AnalogWatchFace& analog() const { return analog_; }

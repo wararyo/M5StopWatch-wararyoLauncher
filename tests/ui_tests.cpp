@@ -303,11 +303,11 @@ void composition() {
         CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)==1);
         CHECK(c.settings==(screen==ScreenId::Settings) && c.external==(screen==ScreenId::External));
     }
-    // Back to front: the clock, the list's background and rows, the screens
-    // that cover it, and the notice over everything. Each layer exactly once.
-    CHECK(FrameLayerCount==7);
-    CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppListBackground &&
-          FrameOrder[2]==FrameLayer::AppList);
+    // Back to front: the clock, the list's rows on the frame's base, the
+    // screens that cover it, and the notice over everything. Each layer
+    // exactly once.
+    CHECK(FrameLayerCount==6);
+    CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppList);
     CHECK(FrameOrder[FrameLayerCount-1]==FrameLayer::Toast);
     for (int i=0;i<FrameLayerCount;++i) for (int j=0;j<i;++j) CHECK(FrameOrder[i]!=FrameOrder[j]);
     // Another screen is a full repaint; anything within the same screen is
@@ -657,16 +657,8 @@ void damage() {
     CHECK(!narrowed.clip(probe,{0,300,468,20}) && probe.calls==2);
     CHECK(!context.within({}).clip(probe,screen) && probe.calls==2);
     narrowed.restore(probe); CHECK((probe.clip==Rect{100,100,100,60}));
-    // The list's background: the band its edge swept, all of it for a new
-    // colour, nothing when neither moved.
+    // The list's cover and the clock's clip split the panel at the edge.
     const Viewport v{468,468};
-    const Rect half=appListCover(v,0.5f),more=appListCover(v,0.75f);
-    CHECK((appListCoverChange(half,0,more,0)==Rect{0,more.y,468,half.y-more.y}));
-    CHECK((appListCoverChange(more,0,half,0)==Rect{0,more.y,468,half.y-more.y}));
-    CHECK(appListCoverChange(half,0,half,0).empty());
-    CHECK(appListCoverChange(half,0,half,0x1234)==half);
-    CHECK(appListCoverChange(half,0,more,0x1234)==more);
-    CHECK(appListCoverChange({},0,half,0)==half && appListCoverChange(half,0,{},0)==half);
     CHECK(appListCover(v,0).empty() && appListCover(v,1)==screen && appListUncovered(v,1).empty());
 }
 // Work 10-2: the clock's taps and long presses belong to the watch face.

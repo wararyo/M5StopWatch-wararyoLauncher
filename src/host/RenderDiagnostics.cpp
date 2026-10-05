@@ -1308,6 +1308,10 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 run("list-scroll",pm,60,scroll);
                 renderer.selectFace(backdrop.id());
                 run("backdrop-list-scroll",pm,60,scroll);
+                // On Forest's ground, which is the frame's base too.
+                renderer.selectFace("forest");
+                run("forest-list-scroll",pm,60,scroll);
+                renderer.selectFace(backdrop.id());
                 pm.screen=ScreenId::Home; pm.launcher.transition=0; pm.launcher.list.scroll=0;
                 run("backdrop-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
                 run("backdrop-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });

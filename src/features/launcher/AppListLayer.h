@@ -11,8 +11,8 @@ class AppListLayer final : public RenderLayer {
 public:
     void begin(const lgfx::IFont* font) { view_.begin(font); }
     // Hidden, the list still registers its slots empty, so whatever it painted
-    // last is erased. `background` is what AppListBackgroundLayer lays under
-    // the rows this frame.
+    // last is erased. `background` is the frame's base under the rows: the
+    // selected face's list background.
     void prepare(Viewport viewport,const AppListModel& model,bool visible,uint16_t background) {
         viewport_=viewport; model_=model; visible_=visible; background_=background;
     }

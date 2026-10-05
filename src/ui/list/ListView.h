@@ -26,8 +26,8 @@ namespace launcher {
 // Both live as long as the view and only ever occupy the slots, so they are
 // bounded by ListVisibleSlots; a hidden list keeps them for its return.
 //
-// The view draws no background. Its owner restores it (black is the
-// Renderer's base) and says which colour it is, so the names are drawn and
+// The view draws no background. The Renderer restores it (the frame's base,
+// RenderLayer::background) and the owner says which colour it is, so the names are drawn and
 // cached against it; the circles blend their edges with what is already on
 // the panel.
 class ListView {

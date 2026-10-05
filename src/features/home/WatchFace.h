@@ -27,14 +27,15 @@ public:
     // how it moves while the list slides over it is its own choice, and only
     // the uncovered clip is the system's. A background whose extent or colour
     // changes is declared with FramePlan::damage, and so is the band of a
-    // background other than the Renderer's black that the list's edge moved
-    // over: the list's black changes nothing there of its own.
+    // background other than listBackground() that the list's edge moved over:
+    // the list itself is the frame's base and changes nothing there.
     virtual void plan(FramePlan&,Gfx&,const WatchEnvironment&,const WatchData&)=0;
     // Draws what reaches the context, its background first. The context is
     // already narrowed to the uncovered clip.
     virtual void paint(Gfx&,const PaintContext&)=0;
     // Where paint covers every pixel with its own opaque background, after
-    // plan: the black base is not restored there. Empty for a face on black.
+    // plan: the base is not restored there. Empty for a face on its
+    // listBackground().
     virtual Rect opaqueArea() const { return {}; }
     // The face's own deadline (clock ticks and the like). Background labels
     // have their own deadlines; the runtime combines them with backgroundInterest.
@@ -51,6 +52,11 @@ public:
     // The colour the app list is laid on over this face (RGB565). The list's
     // text keeps its own colours, so a face picks a background they read on.
     // Asked before plan() with the frame's data, so it may follow the time.
+    // It is also the frame's base under the clock (Renderer::setBase): what
+    // the face's uncovered part shows wherever paint draws nothing, and what
+    // erases an element's old box. So it is the face's own empty colour, or the
+    // face paints opaque wherever it shows (opaqueArea). A new colour repaints
+    // the whole frame.
     virtual uint16_t listBackground(const WatchData&) const { return 0x0000; }
 };
 }

@@ -21,7 +21,6 @@ bool HostRenderer::begin(bool disableCache,WatchPreferences* store) {
 RenderLayer* HostRenderer::layer(FrameLayer id) {
     switch(id) {
     case FrameLayer::Home: return &home_;
-    case FrameLayer::AppListBackground: return &appListBackground_;
     case FrameLayer::AppList: return &appList_;
     case FrameLayer::Settings: return &settings_;
     case FrameLayer::External: return &external_;
@@ -37,9 +36,16 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     // Every layer's input is fixed here, before anything plans, and stays
     // untouched until the frame has been painted.
     home_.prepare(c.home,watch);
-    // The selected face chooses what the list is laid on; nothing else uses it.
+    // What the frame lies on: under the clock and the list, the colour the
+    // selected face lays the list on (a face shows that colour wherever it
+    // does not paint); under another screen, that screen's own.
     const uint16_t listBackground=home_.listBackground();
-    appListBackground_.prepare(c.viewport,m.launcher.transition,c.list,listBackground);
+    uint16_t base=DefaultBase;
+    if(c.list) base=listBackground;
+    else if(c.settings) base=settings_.background();
+    else if(c.external) base=external_.background();
+    else if(c.stopwatch) base=stopwatch_.background();
+    renderer_.setBase(base);
     appList_.prepare(c.viewport,m.launcher,c.list,listBackground);
     settings_.prepare(c.viewport,m.settings,c.settings,m.stats);
     external_.prepare(c.viewport,m.external,c.external);

@@ -6,9 +6,10 @@
 namespace launcher {
 // The layers of a frame, back to front. The statistics chip is not among them:
 // it is painted after all of them, outside the plan (ui/overlays/StatsOverlay.h).
-enum class FrameLayer : uint8_t { Home, AppListBackground, AppList, Settings, External, Stopwatch, Toast };
+// The list's background is no layer: it is the frame's base (HostRenderer::draw).
+enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Toast };
 inline constexpr FrameLayer FrameOrder[]={
-    FrameLayer::Home,FrameLayer::AppListBackground,FrameLayer::AppList,FrameLayer::Settings,
+    FrameLayer::Home,FrameLayer::AppList,FrameLayer::Settings,
     FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Toast};
 inline constexpr int FrameLayerCount=int(sizeof(FrameOrder)/sizeof(FrameOrder[0]));
 // Where each part of a frame goes, derived from the frame model alone. The
@@ -22,8 +23,7 @@ struct FrameComposition {
     // clock is on screen.
     WatchEnvironment home{};
     // Which layers show. A hidden list still registers its slots empty, so it
-    // erases what it drew; a closed screen registers nothing at all. The
-    // list's background shows with the list.
+    // erases what it drew; a closed screen registers nothing at all.
     bool list=false,settings=false,external=false,stopwatch=false;
     // A different screen than the frame before, set by FrameComposer. Layers
     // that planned nothing then have no history to erase with, and layers that

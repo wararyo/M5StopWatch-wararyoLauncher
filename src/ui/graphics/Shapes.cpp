@@ -26,6 +26,10 @@ void drawWideLineClipped(Gfx& g,float ax,float ay,float bx,float by,float r,uint
     }
 }
 void fillSmoothTriangleClipped(Gfx& g,float x0,float y0,float x1,float y1,float x2,float y2,uint16_t color) {
+    fillSmoothTriangleClipped(g,x0,y0,x1,y1,x2,y2,
+        [](const void* c,int) { return *static_cast<const uint16_t*>(c); },&color);
+}
+void fillSmoothTriangleClipped(Gfx& g,float x0,float y0,float x1,float y1,float x2,float y2,RowColor rowColor,const void* context) {
     // Each edge as a*x + b*y + c: the signed distance of a point, positive
     // inside. A pixel's coverage is its distance to the nearest edge plus a
     // half, clamped to 0..1.
@@ -67,6 +71,7 @@ void fillSmoothTriangleClipped(Gfx& g,float x0,float y0,float x1,float y1,float 
             else { anyHi=std::min(anyHi,a); fullHi=std::min(fullHi,f); }
         }
         if (none) continue;
+        const uint16_t color=rowColor(context,y);
         const int from=std::max(clipLeft,int(std::floor(anyLo))),to=std::min(clipRight,int(std::ceil(anyHi)));
         // Strictly inside the solid bounds, so a run never holds a pixel the
         // per-pixel test would blend.

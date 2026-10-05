@@ -872,6 +872,10 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 for(int s=0;s<3;++s) { ++fd.localTime.tm_sec; check("forest-second-tick",fm,fd); }
                 fd.localTime.tm_min=59; fd.localTime.tm_sec=59; check("forest-minute-edge",fm,fd);
                 fd.localTime.tm_hour=23; check("forest-hour-edge",fm,fd);
+                // Each hour's palette repaints the whole face: before dawn,
+                // the keys, hours between them and across midnight
+                // (docs/forest-gradient/plan.md 4).
+                for(int hour:{5,6,7,12,17,19,2,23}) { fd.localTime.tm_hour=hour; check("forest-palette",fm,fd); }
                 items(2); fd.batteryPercent=5; check("forest-seconds-info",fm,fd);
                 fd.timeValid=false; check("forest-seconds-unknown",fm,fd);
                 fd.timeValid=true;
@@ -1444,6 +1448,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("forest-info",sm,scene);
+                // The provisional palettes through the day (docs/forest-gradient/plan.md 4).
+                for(int hour:{5,6,7,17,18,19,22}) {
+                    char name[24]; std::snprintf(name,sizeof(name),"forest-hour-%02d",hour);
+                    scene.localTime.tm_hour=hour; shoot(name,sm,scene);
+                }
                 renderer.handle(hold);
                 scene=sampleData(); shoot("forest-seconds",sm,scene);
                 scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);

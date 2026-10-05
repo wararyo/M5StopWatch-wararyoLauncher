@@ -280,6 +280,7 @@ void forestBattery() {
 }
 // Every part inside the round panel, the time on plain sky and the row on
 // plain ground in both layouts and variants, the scenery moved as a whole.
+namespace { bool near(float a,float b,float tolerance=1e-3f) { return std::abs(a-b)<=tolerance; } }
 void forestLayoutRules() {
     for (int side:{466,468}) {
         const Viewport v{side,side};
@@ -301,10 +302,16 @@ void forestLayoutRules() {
                 const bool seconds=variant==TimeVariant::HourMinuteSecond;
                 for (const Rect& box:{l.time.hour,l.time.minute,l.time.second}) {
                     if (box.empty()) continue;
-                    CHECK(inside(box) && box.y+box.h<l.groundTop);
-                    // No tree reaches the time: its apex is below the box.
-                    for (const auto& t:l.trees)
-                        if (box.x<t.rx+1 && t.lx-1<box.x+box.w) CHECK(box.y+box.h<t.ay-1);
+                    // On plain sky: every row's centre above the sky's gradient.
+                    CHECK(inside(box) && box.y+box.h<=l.skyFadeTop);
+                    // No tree reaches the time: the highest it comes under the
+                    // box, its apex or its side where the box ends short of
+                    // the apex, is below the box.
+                    for (const auto& t:l.trees) {
+                        if (!(box.x<t.rx+1 && t.lx-1<box.x+box.w)) continue;
+                        const float dx=std::max({0.0f,float(box.x)-t.ax,t.ax-float(box.x+box.w)});
+                        CHECK(box.y+box.h<t.ay+dx*(t.by-t.ay)/((t.rx-t.lx)/2)-1);
+                    }
                 }
                 CHECK(l.time.hour.x+l.time.hour.w==l.time.minute.x);
                 if (seconds) CHECK(l.time.minute.x+l.time.minute.w==l.time.second.x);
@@ -316,7 +323,8 @@ void forestLayoutRules() {
                 CHECK(placeInfoRow(l.row,widths,3,groups)==3);
                 for (const auto& g:groups) {
                     const Rect padded{g.x-2,g.y-2,g.w+4,g.h+4};
-                    CHECK(inside(padded) && padded.y>l.groundTop);
+                    // On plain ground: below the ground's gradient.
+                    CHECK(inside(padded) && padded.y>=l.groundFadeBottom);
                     for (const auto& t:l.trees) if (padded.x<t.rx+1 && t.lx-1<padded.x+padded.w) CHECK(padded.y>t.by+1);
                 }
                 CHECK(groups[0].x+3*limit+2*l.row.groupGap==groups[2].x+groups[2].w);
@@ -337,17 +345,71 @@ void forestLayoutRules() {
                     infoGroupLimits(l.row,one,1,limits);
                     CHECK(limits[0]==l.row.width);
                 }
-                // Reference spacing at 466: centred on 367.
-                if (side==466) CHECK(l.row.y==367 && l.row.iconSize==28 && l.row.groupGap==28);
+                // Reference spacing at 466: centred on 377.
+                if (side==466) CHECK(l.row.y==377 && l.row.iconSize==28 && l.row.groupGap==28);
             }
-        // The trees keep their shape: 3.9px down for every pixel across.
+        // The trees keep their shape, and the higher a base the further back.
         const auto l=forestLayout(v,TimeVariant::HourMinute,false);
+        const auto withInfo=forestLayout(v,TimeVariant::HourMinute,true);
         for (size_t i=0;i<ForestTrees.size();++i) {
             const auto& t=l.trees[i];
-            CHECK(std::abs((t.by-t.ay)/((t.rx-t.lx)/2)-ForestTreeSlope)<0.01f);
+            const auto& r=ForestTrees[i];
+            CHECK(near(t.by-t.ay,(r.baseY-r.apexY)*l.scale,1e-3f) && near(t.rx-t.lx,2*r.half*l.scale,1e-3f));
+            CHECK(near(t.ay-withInfo.trees[i].ay,ForestInfoShift*l.scale,1e-3f) && t.depth==withInfo.trees[i].depth);
+            for (const auto& u:l.trees) if (u.by<t.by) CHECK(u.depth>t.depth);
         }
-        if (side==466) CHECK(l.groundTop==372 && std::abs(l.trees[6].ay-272)<0.01f);
+        CHECK(near(l.skyFadeTop-withInfo.skyFadeTop,ForestInfoShift*l.scale,1e-3f));
+        CHECK(near(l.groundFadeBottom-withInfo.groundFadeBottom,ForestInfoShift*l.scale,1e-3f));
+        // Reference rows at 466: the far trees take the most haze, the nearest none.
+        if (side==466) {
+            CHECK(l.groundTop==372 && withInfo.groundTop==292 && near(withInfo.trees[5].ay,186));
+            CHECK(near(withInfo.skyFadeTop,192.5f) && near(withInfo.groundFadeBottom,341));
+            CHECK(near(forest::haze(withInfo.trees[0],forest::Day),0.7f*42/40) && forest::haze(withInfo.trees[17],forest::Day)==0);
+        }
     }
+}
+// Forest's colours (docs/forest-gradient/plan.md 4): the hourly palette and
+// the gradients drawn from it.
+void forestPalettes() {
+    using forest::hex;
+    auto same=[](ForestColor a,ForestColor b) { return near(a.r,b.r) && near(a.g,b.g) && near(a.b,b.b); };
+    // The keys themselves, the day held between its two keys, noon while unknown.
+    CHECK(forestPalette(4)==forest::Night && forestPalette(6)==forest::Dawn && forestPalette(18)==forest::Dusk);
+    for (int h=9;h<=16;++h) CHECK(forestPalette(h)==forest::Day);
+    CHECK(forestPalette(-1)==forest::Day && forestPalette(24)==forest::Day);
+    // From dawn to the day a third per hour, from the day to dusk half...
+    CHECK(same(forestPalette(7).skyTop,forest::mix(forest::Dawn.skyTop,forest::Day.skyTop,1.0f/3)));
+    CHECK(near(forestPalette(17).haze,(forest::Day.haze+forest::Dusk.haze)/2));
+    // ...and across midnight: two keys, 18 and 6, twelve hours apart either way.
+    ForestPalette a{},b{};
+    a.skyTop=hex(0x000000); b.skyTop=hex(0xffffff);
+    const std::array<ForestPaletteKey,2> keys{{{6,a},{18,b}}};
+    CHECK(same(forestPaletteAt(keys,0).skyTop,{127.5f,127.5f,127.5f}));
+    CHECK(same(forestPaletteAt(keys,21).skyTop,{191.25f,191.25f,191.25f}));
+    CHECK(forestPaletteAt(keys,6)==a && forestPaletteAt(keys,18)==b);
+    const std::array<ForestPaletteKey,1> one{{{3,b}}};
+    CHECK(forestPaletteAt(one,0)==b && forestPaletteAt(one,23)==b);
+    // RGB565 rounds to the nearest step.
+    CHECK(forest::rgb565(hex(0xffffff))==0xffff && forest::rgb565(hex(0x000000))==0);
+    CHECK(forest::rgb565(hex(0x46c9e6))==0x4e5c);
+    // The gradients end in their plain colours exactly, so the time and the
+    // row drawn over those colours meet the scenery without a seam.
+    const auto l=forestLayout({466,466},TimeVariant::HourMinute,true);
+    const auto& p=forest::Day;
+    CHECK(same(forest::sky(l,p,l.skyFadeTop-0.5f),p.skyTop) && same(forest::sky(l,p,l.skyFadeBottom+0.5f),p.skyBottom));
+    CHECK(same(forest::ground(l,p,l.groundFadeBottom+0.5f),p.groundBottom) && same(forest::ground(l,p,l.groundFadeTop),p.groundTop));
+    // A near tree is its own colour; a far one leans to the sky of its rows.
+    const auto& nearTree=l.trees[17];
+    CHECK(same(forest::tree(l,p,nearTree,nearTree.by),p.treeBottom));
+    const auto& farTree=l.trees[0];
+    const float y=(farTree.ay+farTree.by)/2;
+    const ForestColor own=forest::mix(p.treeTop,p.treeBottom,0.5f);
+    CHECK(same(forest::tree(l,p,farTree,y),forest::mix(own,forest::sky(l,p,y),forest::haze(farTree,p))));
+    // The control's hour: the time's, or none while it is unknown.
+    ForestControl c; WatchData d; d.timeValid=true; d.localTime.tm_hour=19;
+    c.update(d); CHECK(c.hour()==19);
+    d.timeValid=false; c.update(d); CHECK(c.hour()==-1);
+    d.timeValid=true; d.localTime.tm_hour=24; c.update(d); CHECK(c.hour()==-1);
 }
 namespace {
 WatchData clockAt(int hour,int minute,int second,int day=20,TimeUs subsecond=0) {
@@ -356,7 +418,6 @@ WatchData clockAt(int hour,int minute,int second,int day=20,TimeUs subsecond=0) 
     d.subsecondUs=subsecond;
     return d;
 }
-bool near(float a,float b,float tolerance=1e-3f) { return std::abs(a-b)<=tolerance; }
 bool near(AnalogPoint a,AnalogPoint b) { return near(a.x,b.x) && near(a.y,b.y); }
 bool sameStroke(const AnalogStroke& a,const AnalogStroke& b) { return near(a.a,b.a) && near(a.b,b.b) && a.r==b.r; }
 std::string dateText(const AnalogTime& t) { char text[3]; formatAnalogDate(t,text); return text; }
@@ -894,8 +955,8 @@ void settingsFaces() {
     CHECK(home2.handle(hold,0) && home2.model().toast && std::strcmp(home2.model().toast,"保存に失敗しました")==0);
 }
 int main() {
-    records(); separation(); variants(); selection(); forestBattery(); forestLayoutRules();
+    records(); separation(); variants(); selection(); forestBattery(); forestLayoutRules(); forestPalettes();
     analogTimeRules(); analogLayoutRules(); analogControlRules(); noonishBackgroundRules(); settingsFaces();
-    std::cout<<"PASS: watch face records, record separation, variants, selection, forest battery, "
+    std::cout<<"PASS: watch face records, record separation, variants, selection, forest battery, forest palettes, "
                "forest layout, analog time, analog layout, analog control, noonish background, settings face choice (four faces)\n";
 }

@@ -40,6 +40,12 @@ public:
     // starts a boot, so a result arriving after home is harmless (plan.md 8.2).
     void setSlots(const SlotCatalog& slots) { slots_=slots; }
     bool handle(const Events& e,TimeUs now);
+    // Brings `id` forward over whatever is shown, as an attention request asks
+    // (host/AttentionSource.h). What was shown is left as home leaves it: an
+    // open screen exits, dropping its unsaved edit, and a list or a drag is
+    // let go. Only the built-in screens that need no choice of their own can
+    // be presented; false for the rest, which leaves everything as it was.
+    bool present(ScreenId id,TimeUs now);
     bool update(TimeUs now);
     // Issued by the runtime once the committing frame has been painted.
     bool commitPendingBoot() { return external_.commitPendingBoot(); }
@@ -56,6 +62,9 @@ public:
     // hidden list's motion never keeps settings awake or drawing.
     TimeUs nextUpdate() const;
     bool active() const { return active_ ? active_->active() : launcher_.active(); }
+    // Whether the open screen is in a stretch nothing may interrupt (a boot
+    // commit, plan.md 8.2).
+    bool exclusive() const { return active_ && active_->exclusive(); }
 private:
     FrameActivity activity() const;
     ScreenId screen() const { return active_ ? activeId_ : launcher_.listShown() ? ScreenId::AppList : ScreenId::Home; }
@@ -63,6 +72,8 @@ private:
     // the input is acknowledged with a notice when there is none to enter.
     bool launch(const LaunchEntry* entry,TimeUs now);
     bool open(Screen& screen,ScreenId id,TimeUs now);
+    // Every screen left and the launcher back at rest on the clock.
+    void leaveAll();
     void notify(const char* notice,TimeUs now) { toast_=notice; toastUntil_=now+1400000; }
     RuntimeSettings& runtime_;
     SettingsScreen settings_;

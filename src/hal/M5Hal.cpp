@@ -59,6 +59,31 @@ bool M5Hal::setStatusLed(bool on) {
     std::printf("[Power] status_led=%s%s\n", on ? "on" : "off", ok ? "" : " FAILED");
     return ok;
 }
+bool M5Hal::setVibration(uint8_t level) {
+    if (M5.getBoard() != m5::board_t::board_M5StopWatch) return false;
+    // M5IOE1 PWM1 drives the motor on IO9, set up as an output by M5.begin():
+    // PWM1_DUTY is 12 bits at 0x1B/0x1C, with the enable in bit 7 of the high
+    // byte (as M5.Power.setVibration writes it). That call cannot be used
+    // here: M5IOE1 sleeps after a second of quiet I2C (beginIoe1IdleSleep),
+    // an access that wakes it fails, and the call neither reports nor retries
+    // it. So the duty is written, read back, and written again once the
+    // failed access has woken the chip, about 2ms later.
+    constexpr uint8_t Ioe1 = 0x4F, Pwm1Duty = 0x1B;
+    const uint16_t duty = uint16_t(uint32_t(level) * 0x0FFFu / 255u);
+    const uint8_t bytes[2] = {uint8_t(duty & 0xFF), uint8_t(level ? ((duty >> 8) & 0x0F) | 0x80 : 0)};
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        uint8_t readBack[2]{};
+        if (M5.In_I2C.writeRegister(Ioe1, Pwm1Duty, bytes, sizeof(bytes), 100000) &&
+            M5.In_I2C.readRegister(Ioe1, Pwm1Duty, readBack, sizeof(readBack), 100000) &&
+            readBack[0] == bytes[0] && readBack[1] == bytes[1]) {
+            if (attempt) std::printf("[Vibration] level=%u after %d retries\n", unsigned(level), attempt);
+            return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(3));
+    }
+    std::printf("[Vibration] level=%u FAILED\n", unsigned(level));
+    return false;
+}
 namespace {
 // M5GFX draws through a framebuffer panel whose setSleep() is empty, so
 // M5.Display.sleep() only zeroes the level and the CO5300 behind it keeps

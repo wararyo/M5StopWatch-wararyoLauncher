@@ -12,6 +12,9 @@ void HostRuntime::begin() {
 void HostRuntime::step() {
     const TimeUs now = hal_.now();
     const bool wasOff = power_.screenOff();
+    // Before the input: a press that arrives with a timer's expiry cannot
+    // pause or dismiss what has already run out (docs/task12/plan.md 2.4).
+    attend(now);
     // Asked every pass so a notification is consumed even when input is due
     // anyway. It only brings a read forward while nothing is being followed:
     // the touch driver skips its I2C read when asked again within 10ms of a
@@ -97,6 +100,10 @@ void HostRuntime::step() {
         if (wasOff) data_.panelWoke(now);
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
+    // Again after the input, so a request it ended (a dismissal) lets go of
+    // the panel and the motor in this same step.
+    attend(now);
+    applyVibration(now);
     // A clock that moved is drawn again, which also takes its new deadlines.
     bool moved = false;
     nextService_ = data_.service(now, moved);
@@ -147,6 +154,38 @@ void HostRuntime::step() {
     // strand the commit, because the screen itself takes no input until it ends.
     if (screens_.commitPendingBoot()) dirty_ = true;
 }
+void HostRuntime::attend(TimeUs now) {
+    TimeUs hold = 0;
+    int level = 0;
+    for (int i = 0; i < attentionCount_; ++i) {
+        auto& source = *attention_[i];
+        auto request = source.attention(now);
+        if (!request.active) { attended_[i] = false; continue; }
+        if (!attended_[i]) {
+            // A boot commit cannot be interrupted (plan.md 8.2). If it lands,
+            // the shutdown ends the request; if it fails, it starts after.
+            if (screens_.exclusive()) continue;
+            attended_[i] = true;
+            // Whatever is held was meant for what was shown before.
+            input_.discardHeld();
+            // A dark panel lights as for a press.
+            power_.update(now, true, screens_.active());
+            if (request.present) screens_.present(request.screen, now);
+            source.attended(now);
+            request = source.attention(now); // As started: its hold and motor.
+            dirty_ = true;
+        }
+        hold = std::max(hold, request.holdUntil);
+        level = std::max<int>(level, request.vibration);
+    }
+    power_.holdUntil(hold);
+    vibration_ = level;
+}
+void HostRuntime::applyVibration(TimeUs now) {
+    if (vibration_ == appliedVibration_ || now < vibrationRetry_) return;
+    if (hal_.setVibration(uint8_t(vibration_))) appliedVibration_ = vibration_;
+    else vibrationRetry_ = now + VibrationRetryUs;
+}
 bool HostRuntime::sleepAllowed() const {
     return power_.screenOff() && power_.usb.vbusValid && !power_.usb.powered();
 }
@@ -164,7 +203,10 @@ void HostRuntime::wait(TimeUs also) {
     // postpone unsampled input forever under continuous processing overruns.
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
-    auto deadline = std::min({nextInput_, power_.deadline(), nextService_, also});
+    // The attention sources and the motor are waited for with the panel dark too.
+    auto deadline = std::min({nextInput_, power_.deadline(), nextService_, also,
+                              nextVibration()});
+    for (int i = 0; i < attentionCount_; ++i) deadline = std::min(deadline, attention_[i]->nextAttention());
     if (usbPolled(now)) deadline = std::min(deadline, nextUsb_);
     if (!power_.screenOff()) {
         deadline = std::min(deadline, std::min(screens_.nextUpdate(), nextDisplay_));

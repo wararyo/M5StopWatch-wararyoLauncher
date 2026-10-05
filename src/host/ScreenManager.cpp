@@ -49,6 +49,24 @@ bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
     notify(text::Unavailable,now);
     return true;
 }
+void ScreenManager::leaveAll() {
+    toast_=nullptr; toastUntil_=INT64_MAX;
+    launcher_.home();
+    settings_.exit(); external_.exit(); stopwatchScreen_.exit(); active_=nullptr;
+}
+bool ScreenManager::present(ScreenId id,TimeUs now) {
+    Screen* target=nullptr;
+    switch (id) {
+    case ScreenId::Settings: target=&settings_; break;
+    case ScreenId::Stopwatch: target=&stopwatchScreen_; break;
+    case ScreenId::Home: break;
+    // The list and the external detail show a choice the request cannot make.
+    default: return false;
+    }
+    if (target && !target->available()) return false;
+    leaveAll();
+    return !target || open(*target,id,now);
+}
 bool ScreenManager::update(TimeUs now) {
     bool changed=false;
     // The runtime's own display deadline is unset while an app screen covers
@@ -69,9 +87,8 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
     // itself is suppressed until the API answers (plan.md 8.2 step 3).
     if (active_ && active_->exclusive()) return false;
     if (e.home) {
-        ++homeCount_; toast_=nullptr; toastUntil_=INT64_MAX;
-        launcher_.home();
-        settings_.exit(); external_.exit(); stopwatchScreen_.exit(); active_=nullptr;
+        ++homeCount_;
+        leaveAll();
         return true;
     }
     const bool changed=update(now);

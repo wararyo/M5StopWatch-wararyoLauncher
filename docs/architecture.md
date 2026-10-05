@@ -37,9 +37,10 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 
 ### 所有権と寿命
 
-[HostApplication](../src/host/HostApplication.h) は `StopwatchService`、`RuntimeSettings`、`HostShutdown`、
+[HostApplication](../src/host/HostApplication.h) は `StopwatchService`、`TimerService`、`TimerPreferences`、`RuntimeSettings`、`HostShutdown`、
 `ScreenManager`、`HostRuntime` を所有する。宣言順に構築し、借用側のRuntime・画面が先に破棄される。
 `ScreenManager` は具体的な画面と `LauncherController` を所有するが、計測サービスは借りる。
+`TimerAttention` もここで所有し、`HostRuntime` に注意の要求元として登録する（2.1）。`HostShutdown` は外部起動の確定時にストップウォッチを止め、タイマーと振動も止める。
 
 `main.cpp` はHAL、`HostRenderer`、時刻・設定・スロットのサービス、`HomeDataSource` を生成して注入する。
 `HostRenderer` は各描画レイヤーと文字盤管理を所有する。大きい描画オブジェクトと `HostApplication` は
@@ -49,13 +50,35 @@ staticに置き、8KiBのUIタスクスタックを圧迫しない。新しい�
 
 [HostRuntime](../src/host/HostRuntime.cpp) の `step()` → `wait()` を繰り返す。
 
-1. 単調時刻を取得し、必要ならHALから入力を読む。`InputController` が `Events` に変換する。
+1. 単調時刻を取得し、入力より先に注意の要求元へ尋ねる。始まった要求があれば点灯し、画面を前に出す（2.1）。
+   必要ならHALから入力を読む。`InputController` が `Events` に変換する。
 2. 消灯状態を更新し、イベントを `ScreenManager` に渡す。
 3. スロット検査の公開結果を取り込み、期限が来たUSB状態を取得する。
 4. 点灯中は表示中の画面・アニメーション・通知の期限を処理する。
 5. 状態変更または表示期限があれば `FrameModel` と `WatchData` を作り、`HostRenderer` に渡す。
 6. 起動確定の保留要求を処理する。「起動中」の描画より後に実行する。
 7. 最も早い次回期限まで、通知で中断可能な待機に入る。
+
+### 2.1 注意の要求（満了したタイマーなど）
+
+機能が装着者の注意を求める仕組み。契約は [AttentionSource](../src/host/AttentionSource.h)。
+機能側が自分のサービスを見て「今の要求」（`AttentionRequest`）を返し、ホストはどの要求元にも同じ規則で応える。
+現在の要求元はタイマーだけで、[TimerAttention](../src/features/timer/TimerAttention.h) が `TimerService` を見て要求を作る。
+サービス自身は画面や振動を知らない（`StopwatchBackgroundInfo` が計測サービスと文字盤の間に立つのと同じ分け方）。
+
+- 要求は毎回その時点の全体を表す。ホストは各stepで、始まっている要求の点灯の保持（`holdUntil`）と振動の強さを、
+  そのまま `PowerManager::holdUntil()` とモーターへ反映する（複数あれば保持は遅い方、振動は強い方）。
+  要求元が要求をやめれば、点灯の保持も振動も自然に外れ、消灯は最後の入力から数える通常の規則に戻る。終わりを別に通知する仕組みはない。
+- 要求が始まったときだけ、ホストは入力より先に、押下中の操作を捨て（`InputController::discardHeld()`）、消灯中なら点灯し、
+  指定の画面を `ScreenManager::present()` で前に出し、`attended()` で開始時刻を伝える。
+  そのため、満了と同じ周期のリリースが一時停止や解除に使われることはない。外部起動の確定中（`exclusive()`）は始めない。
+- `present()` は、表示中の画面をホームと同じように退場させてから（未保存の編集は破棄）、指定の画面を開く。
+- 要求元は「次に尋ねてほしい時刻」（`nextAttention()`）を返し、ホストは消灯中もその時刻を待つ（light sleepからの起床にも使う）。
+  ホストは各stepの入力の前と後に要求を尋ねるので、入力による解除はその同じstepで反映される。
+- タイマーの要求: 鳴っている間は要求し、始まってから1分間は点灯を保ち、振動は
+  [TimerVibration.h](../src/features/timer/TimerVibration.h) の純関数が開始からの経過時間で決める。
+  `TimerService` は単調時刻だけで残り時間を数え、日時の設定やRTCへの合わせ直しの影響を受けない。
+- 振動の書き込みに失敗したら50ms後に再試行する。要求がなくなった後の停止も同じく再試行する。
 
 ここには二段階の変更判定がある。Runtimeの `dirty_` は「モデルを再評価する必要がある」という意味であり、
 液晶転送を確定しない。再評価後に `FramePlan` が実際のピクセル変更を判定し、変更がなければ描画・転送を省く。
@@ -105,6 +128,8 @@ A+Bの連続600ms長押しは共通のホーム操作で、通常は個別画面
 
 1. `features/<name>/` に `Screen`、表示用 `Model`、`Layout`、`Layer` を作る。
    計測のように画面外でも継続する状態はサービスへ分け、`HostApplication` 等から注入する。
+   満了の通知のように画面の外から装着者の注意を求める場合は、機能側に `AttentionSource` を実装し、
+   `HostApplication` が所有して `HostRuntime::bindAttention()` で登録する（2.1）。サービス自身には画面や振動を持たせない。
 2. `LaunchTargetId` と `LaunchRegistry` に項目を追加する。既存IDの数値を変えず、配列の位置から起動先を推測しない。
    現在のenumは暗黙連番なので途中挿入を避けるか、既存値を明示して維持する。
 3. `ScreenId` と `ScreenManager` の所有メンバー・初期化・`launch()`・モデル合成を追加する。
@@ -242,6 +267,8 @@ Forestのグラデーションは縦方向に限り、各行の色は行の位�
   ストップウォッチの経過時間（`esp_timer`）は同じ誤差を持つが、合わせ直さない。
 - **計測:** `StopwatchService` は開始時刻と累積値から経過時間を求め、画面の更新回数に依存しない。
   ホーム移動・消灯でも計測は続く。表示中の実行状態だけ25ms（40Hz）の表示期限を持つ。
+- **タイマーの前回値:** `TimerPreferences` が `launcher` 名前空間のキー `timer` に、正規化後の合計秒数を版付きで保存する。
+  開始時に、最後に保存できた値と違うときだけ書く。キー `timer` は `reservedRecordKey()` で文字盤から使えない。
 - **設定:** `SettingsStore` は値の検証とレコード化、`NvsBackend` は保存を担当する。
   保存成功後に現在値を更新し、失敗時は前の値を維持する。未知のスキーマは勝手に上書きしない。
 - **輝度プレビュー:** 編集中の値から実効値を返し、Runtimeが適用する。キャンセル・ホームで編集を終了すると保存値へ戻る。
@@ -255,6 +282,11 @@ Forestのグラデーションは縦方向に限り、各行の色は行の位�
 light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、消灯中かつVBUSの読み取りがUSB給電なしを示すときだけ
 `HostRuntime` が `Hal::setLightSleepAllowed()` で許す。パネルのsleep後に許可し、パネルを起こす前に取り消す。
 起床は入力の割り込み（A・B・タッチINT）、M5PM1のIRQ（手首・USB給電の変化）と期限による。
+
+振動モーターはM5IOE1のPWM1（IO9）で駆動する。M5IOE1はI2Cが1秒静かだと眠り、眠っている間の自身へのアクセスは失敗して起こすだけになる。
+そのため `M5Hal::setVibration()` はM5Unifiedの `setVibration()` を使わず、デューティを書いて読み戻し、合わなければ3ms待って最大3回まで書き直す。
+実機では、弱い振動の長い休止の後の書き込みが1回目で失敗し、2回目で成功することを確認した（作業12-2）。
+1回の振動は1秒未満にしてあるので、止める書き込みは起きているM5IOE1に届く。
 
 緑の状態LEDは充電中だけ点灯する。M5PM1は起動時に点灯させるため、`HostRuntime` がVBUS読み取りと同時に
 充電状態（M5PM1 G2 = CHG_STAT）を読み、変化したときだけ `Hal::setStatusLed()` で `PWR_CFG (0x06)` のbit4を切り替える。
@@ -270,11 +302,12 @@ light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、�
 | 電池情報 | `HomeDataSource` が描画経路で最大30秒ごとに取得。消灯中は取得しない。残量は `BatteryEstimator` が実測の放電カーブから求め、充電中は電圧から充電による上昇分44mVを引く。充電の開始・停止から1分は、その直前1分以内に読んだ値を保つ（消灯前の古い値は保たず読み直す） |
 | リストアニメーション | 動作中は16ms間隔を要求。補間はフレーム数ではなく経過時間で計算 |
 | ストップウォッチ | 表示中・計測中のみ25ms。非表示でも計測の状態は保持 |
+| 注意の要求 | 要求元の `nextAttention()`。タイマーは計時中の満了時刻と、通知中の振動の区切り（最短200ms）。消灯中も待つ。振動の書き込み失敗時は50ms後に再試行 |
 | 押し続け | 値の欄でBが単独で押されている間だけ、500ms後から100ms間隔（`HoldRepeat`）。遅れた分は追いかけない |
 | 消灯 | 最終入力から設定時間。初期値30秒、選択肢15/30/60/180秒 |
 | 復帰フェード | 復帰から300msだけ16ms間隔。描画は伴わない |
 
-`HostRuntime::wait()` は入力・USB・消灯・表示中の画面・時計の期限と、呼び出し側の期限（計測ビルドの記録）の最小値まで待つ。
+`HostRuntime::wait()` は入力・USB・消灯・表示中の画面・時計・注意の要求元の期限と、呼び出し側の期限（計測ビルドの記録）の最小値まで待つ。
 消灯中は画面更新とその期限を待機対象から外す。過負荷で期限を超えても最低1msの待機を要求し、
 HALでtickへ切り上げてidleタスクに実行機会を与える。遅れた全フレームを追いかけて再生しない。
 新機能は「毎ループ描画する」のではなく、状態変更と `nextUpdate()` で更新を要求する。

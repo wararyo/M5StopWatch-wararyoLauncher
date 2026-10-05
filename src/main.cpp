@@ -164,6 +164,10 @@ extern "C" void app_main() {
     application.bindSlots(slots);
     application.bindHome(renderer);
     application.setInfo(app->project_name, app->version, esp_get_idf_version());
+#ifndef LAUNCHER_RENDER_DIAGNOSTICS
+    // Like the faces' records: the render check leaves storage alone.
+    application.bindRecords(nvs);
+#endif
     auto& runtime = application.runtime();
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);

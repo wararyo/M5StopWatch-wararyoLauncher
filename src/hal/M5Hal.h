@@ -16,6 +16,7 @@ public:
     void setLightSleepAllowed(bool allowed) override;
     TimeUs panelShowsAt() const override { return panelShowsAt_; }
     bool setStatusLed(bool on) override;
+    bool setVibration(uint8_t level) override;
     // Call on the UI task: it is the task the interrupts notify. Sets up the
     // IMU's wrist-wear wake-up and M5PM1's IRQ output first, since that line
     // is one of them.

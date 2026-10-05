@@ -4,6 +4,7 @@
 #include "host/RenderPort.h"
 #include "features/home/DisplayDataSource.h"
 #include "features/background/BackgroundInfoHub.h"
+#include "host/AttentionSource.h"
 #include <algorithm>
 namespace launcher {
 // The single UI task's loop: input, power, deadlines, slot results and when to
@@ -20,6 +21,14 @@ public:
     HostRuntime(const HostRuntime&) = delete;
     HostRuntime& operator=(const HostRuntime&) = delete;
     void bindSlots(SlotService& slots) { slots_=&slots; screens_.bindSlots(&slots); }
+    // A feature that may ask for the wearer's attention (host/AttentionSource.h).
+    // Asked every step before input and waited for with the panel dark too.
+    // Sources are asked in registration order, so when several start in the
+    // same step the last one's screen is what stays shown. False when full.
+    bool bindAttention(AttentionSource& source) {
+        if (attentionCount_ >= AttentionCapacity) return false;
+        attention_[attentionCount_++] = &source; return true;
+    }
     void begin();
     void step();
     // `also` is a deadline of the caller's own, such as an instrument's.
@@ -35,6 +44,10 @@ private:
     DisplayDataSource& data_;
     BackgroundInfoHub* background_;
     SlotService* slots_=nullptr;
+    static constexpr int AttentionCapacity = 4;
+    AttentionSource* attention_[AttentionCapacity]{};
+    bool attended_[AttentionCapacity]{}; // Started, and still asking.
+    int attentionCount_ = 0;
     InputController input_;
     ScreenManager& screens_;
     PowerManager power_;
@@ -57,6 +70,19 @@ private:
     int brightness_ = Settings{}.brightness; // The level to reach, from the last draw.
     int appliedBrightness_ = -1; // Forced re-apply after every wake.
     void applyBrightness(TimeUs now);
+    // Asks every source, starts the requests that began, and reflects the
+    // started ones: the panel hold and the motor level are what they ask now.
+    void attend(TimeUs now);
+    // Sets the motor to the level the requests want, retrying a write that
+    // did not land.
+    void applyVibration(TimeUs now);
+    // The level the requests want and the one the motor was last set to. They
+    // differ only until a write lands; a failed one is retried shortly, even
+    // once nothing asks any more, so a motor is never left running.
+    int vibration_ = 0, appliedVibration_ = 0;
+    TimeUs vibrationRetry_ = 0;
+    static constexpr TimeUs VibrationRetryUs = 50000;
+    TimeUs nextVibration() const { return vibration_ != appliedVibration_ ? vibrationRetry_ : INT64_MAX; }
     bool dirty_ = true;
     bool scanRequested_ = false; // The scan starts behind the first frame.
 };

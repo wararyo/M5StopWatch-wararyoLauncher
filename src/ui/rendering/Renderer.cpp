@@ -19,14 +19,14 @@ bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay) 
         // The base, except where the back-most layer paints opaque anyway:
         // up to four bands around that rectangle.
         const Rect opaque=count>0 ? intersect(layers[0]->opaqueArea(),area) : Rect{};
-        if (opaque.empty()) display_.fillRect(area.x,area.y,area.w,area.h,Base);
+        if (opaque.empty()) display_.fillRect(area.x,area.y,area.w,area.h,base_);
         else {
             const int right=area.x+area.w,bottom=area.y+area.h;
             const int oRight=opaque.x+opaque.w,oBottom=opaque.y+opaque.h;
-            if (opaque.y>area.y) display_.fillRect(area.x,area.y,area.w,opaque.y-area.y,Base);
-            if (bottom>oBottom) display_.fillRect(area.x,oBottom,area.w,bottom-oBottom,Base);
-            if (opaque.x>area.x) display_.fillRect(area.x,opaque.y,opaque.x-area.x,opaque.h,Base);
-            if (right>oRight) display_.fillRect(oRight,opaque.y,right-oRight,opaque.h,Base);
+            if (opaque.y>area.y) display_.fillRect(area.x,area.y,area.w,opaque.y-area.y,base_);
+            if (bottom>oBottom) display_.fillRect(area.x,oBottom,area.w,bottom-oBottom,base_);
+            if (opaque.x>area.x) display_.fillRect(area.x,opaque.y,opaque.x-area.x,opaque.h,base_);
+            if (right>oRight) display_.fillRect(oRight,opaque.y,right-oRight,opaque.h,base_);
         }
         for(int i=0;i<count;++i) { context.restore(display_); layers[i]->paint(display_,context); }
         // Last of all, and outside the plan: the overlay owns its rectangle

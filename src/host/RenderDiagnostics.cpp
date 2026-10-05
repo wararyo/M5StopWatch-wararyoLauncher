@@ -143,7 +143,7 @@ class BackdropFace final : public WatchFace {
 public:
     const char* id() const override { return "test-backdrop"; }
     void listBackgroundForTest(uint16_t color) { list_=color; }
-    uint16_t listBackground() const override { return list_; }
+    uint16_t listBackground(const WatchData&) const override { return list_; }
     bool begin(Gfx&,bool) override { for(auto& e:elements_) e={}; planned_=false; return true; }
     void end() override {}
     void plan(FramePlan& f,Gfx& g,const WatchEnvironment& env,const WatchData& d) override {
@@ -872,6 +872,10 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 for(int s=0;s<3;++s) { ++fd.localTime.tm_sec; check("forest-second-tick",fm,fd); }
                 fd.localTime.tm_min=59; fd.localTime.tm_sec=59; check("forest-minute-edge",fm,fd);
                 fd.localTime.tm_hour=23; check("forest-hour-edge",fm,fd);
+                // Each hour's palette repaints the whole face: before dawn,
+                // the keys, hours between them and across midnight
+                // (docs/forest-gradient/plan.md 4).
+                for(int hour:{5,6,7,12,17,19,2,23}) { fd.localTime.tm_hour=hour; check("forest-palette",fm,fd); }
                 items(2); fd.batteryPercent=5; check("forest-seconds-info",fm,fd);
                 fd.timeValid=false; check("forest-seconds-unknown",fm,fd);
                 fd.timeValid=true;
@@ -881,6 +885,12 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 for(const float p:{0.004f,0.02f,0.25f,0.5f,0.75f,0.98f,1.0f,0.7f,0.3f,0.6f,0.05f,0.0f}) {
                     fm.launcher.transition=p; check("forest-transition",fm,fd);
                 }
+                // The list on the hour's ground: the hour turning under it,
+                // fully and half raised, the rows and their names following.
+                fm.launcher.transition=1;
+                for(int hour:{23,5,12,18}) { fd.localTime.tm_hour=hour; check("forest-list-hour",fm,fd); }
+                fm.launcher.transition=0.5f;
+                for(int hour:{19,9}) { fd.localTime.tm_hour=hour; check("forest-list-hour-mid",fm,fd); }
                 // The scenery moving under a half raised list.
                 fm.launcher.transition=0.5f; fd.background.count=0; fd.batteryPercent=82;
                 check("forest-info-gone-under-list",fm,fd);
@@ -1298,6 +1308,10 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 run("list-scroll",pm,60,scroll);
                 renderer.selectFace(backdrop.id());
                 run("backdrop-list-scroll",pm,60,scroll);
+                // On Forest's ground, which is the frame's base too.
+                renderer.selectFace("forest");
+                run("forest-list-scroll",pm,60,scroll);
+                renderer.selectFace(backdrop.id());
                 pm.screen=ScreenId::Home; pm.launcher.transition=0; pm.launcher.list.scroll=0;
                 run("backdrop-minute",pm,30,[&](int i) { frame.localTime.tm_min=i%60; });
                 run("backdrop-transition",pm,40,[&](int i) { pm.launcher.transition=float(i<20 ? i : 39-i)/20; });
@@ -1444,6 +1458,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("forest-info",sm,scene);
+                // The provisional palettes through the day (docs/forest-gradient/plan.md 4).
+                for(int hour:{5,6,7,17,18,19,22}) {
+                    char name[24]; std::snprintf(name,sizeof(name),"forest-hour-%02d",hour);
+                    scene.localTime.tm_hour=hour; shoot(name,sm,scene);
+                }
                 renderer.handle(hold);
                 scene=sampleData(); shoot("forest-seconds",sm,scene);
                 scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
@@ -1457,6 +1476,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 shoot("forest-mixed",sm,scene);
                 scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
                 slide("forest-transition",0.45f);
+                // The list fully up on each part of the day's ground.
+                for(int hour:{12,6,18,22}) {
+                    char name[24]; std::snprintf(name,sizeof(name),"forest-list-%02d",hour);
+                    scene.localTime.tm_hour=hour; slide(name,1.0f);
+                }
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 // Work 11-2: Analog, like the reference pictures (6:00:00 on
                 // the 20th, the dot shown) and around them.

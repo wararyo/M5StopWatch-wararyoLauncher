@@ -16,7 +16,8 @@ struct InfoRow {
     int iconSize=0,batteryWidth=0,batteryHeight=0,iconGap=0,groupGap=0;
     int width=0;            // the most the whole row may use
 };
-inline InfoRow infoRow(const Viewport& v,int y) {
+// `margin` is the room kept from the rim, in reference pixels.
+inline InfoRow infoRow(const Viewport& v,int y,float margin=12) {
     const float scale=float(std::min(v.width,v.height))/InfoRowReference;
     auto px=[&](float reference) { return int(reference*scale); };
     InfoRow r;
@@ -27,7 +28,7 @@ inline InfoRow infoRow(const Viewport& v,int y) {
     // keeping a margin from the rim.
     const float radius=std::min(v.width,v.height)/2.0f;
     const float far=std::abs(y+r.iconSize/2.0f-v.height/2.0f);
-    r.width=std::max(0,int(2*std::sqrt(std::max(0.0f,radius*radius-far*far)))-2*px(12));
+    r.width=std::max(0,int(2*std::sqrt(std::max(0.0f,radius*radius-far*far)))-2*px(margin));
     return r;
 }
 // `widths` are each group's width (icon, gap, label); returns how many were

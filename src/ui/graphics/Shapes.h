@@ -15,4 +15,8 @@ void drawWideLineClipped(Gfx& g,float ax,float ay,float bx,float by,float r,uint
 // same as one drawn whole. Rows are filled as runs where fully covered, so a
 // large shape costs a few blended pixels per edge and row.
 void fillSmoothTriangleClipped(Gfx& g,float x0,float y0,float x1,float y1,float x2,float y2,uint16_t color);
+// The same with a colour for each row, asked once per row the triangle
+// covers: a gradient down the screen, edges included.
+using RowColor=uint16_t(*)(const void* context,int y);
+void fillSmoothTriangleClipped(Gfx& g,float x0,float y0,float x1,float y1,float x2,float y2,RowColor color,const void* context);
 }

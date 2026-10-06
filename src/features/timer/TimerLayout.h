@@ -25,7 +25,16 @@ inline Rect timerKeyBox(const Viewport& m,int digit) {
     const int column=(digit-1)%3,row=(digit-1)/3;
     return timerBox(m,55+104*column,173+64*row,96,56);
 }
+// Where a finger lands on a key. The tall 0 is narrow and sits near the bezel,
+// so it takes touches from as far again to its right, up to the glass edge;
+// the others take what they show.
+inline Rect timerKeyHitBox(const Viewport& m,int digit) {
+    return digit==0 ? timerBox(m,367,173,96,184) : timerKeyBox(m,digit);
+}
 inline Rect timerSetBox(const Viewport& m) { return timerBox(m,153,381,160,44); }
+// SET is low and thin above the bezel, so it takes touches from as far again
+// below it as it is tall; what it shows stays the same.
+inline Rect timerSetHitBox(const Viewport& m) { return timerBox(m,153,381,160,88); }
 
 // Countdown: the hourglass, RESET and PAUSE, then the time.
 inline Rect timerCountdownButtonBox(const Viewport& m,int index) { return timerBox(m,index==0 ? 82 : 243,119,141,70); }
@@ -44,8 +53,8 @@ inline TimerHit hitTimer(const Viewport& m,TimerView view,int x,int y) {
     switch (view) {
     case TimerView::Setup:
         for (int i=0;i<TimerFieldCount;++i) if (timerFieldBox(m,i).contains(x,y)) return {TimerHit::Field,i};
-        for (int d=0;d<10;++d) if (timerKeyBox(m,d).contains(x,y)) return {TimerHit::Key,d};
-        if (timerSetBox(m).contains(x,y)) return {TimerHit::Set};
+        for (int d=0;d<10;++d) if (timerKeyHitBox(m,d).contains(x,y)) return {TimerHit::Key,d};
+        if (timerSetHitBox(m).contains(x,y)) return {TimerHit::Set};
         break;
     case TimerView::Countdown:
         if (timerCountdownButtonBox(m,0).contains(x,y)) return {TimerHit::Reset};

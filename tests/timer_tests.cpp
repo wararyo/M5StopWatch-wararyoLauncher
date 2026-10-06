@@ -492,6 +492,20 @@ void setsUp() {
     r.b(); CHECK(r.t().fields[1]==76);               // Over 59 it counts on to 99.
     r.tap(timerKeyBox(m,9)); r.tap(timerKeyBox(m,9)); r.b();
     CHECK(r.t().fields[1]==0);
+    // The tall 0 takes touches from as far again to its right as it is wide,
+    // and no further; what it shows stays the same.
+    const Rect zero=timerKeyBox(m,0),zeroHit=timerKeyHitBox(m,0);
+    CHECK(zeroHit.x==zero.x && zeroHit.y==zero.y && zeroHit.h==zero.h && zeroHit.w>=2*zero.w-1 && zeroHit.w<=2*zero.w+1);
+    CHECK(zeroHit.x+zeroHit.w<=m.width);
+    CHECK(hitTimer(m,TimerView::Setup,zero.x+zero.w+zero.w/2,zero.y+zero.h/2).kind==TimerHit::Key);
+    CHECK(hitTimer(m,TimerView::Setup,zero.x+zero.w+zero.w/2,zero.y+zero.h/2).index==0);
+    CHECK(hitTimer(m,TimerView::Setup,zeroHit.x+zeroHit.w,zero.y+zero.h/2).kind==TimerHit::None);
+    for (int d=1;d<10;++d) CHECK(timerKeyHitBox(m,d)==timerKeyBox(m,d));
+    // So does SET, below it.
+    const Rect set=timerSetBox(m),setHit=timerSetHitBox(m);
+    CHECK(setHit.x==set.x && setHit.y==set.y && setHit.w==set.w && setHit.h>=2*set.h-1 && setHit.h<=2*set.h+1);
+    CHECK(hitTimer(m,TimerView::Setup,set.x+set.w/2,set.y+set.h+set.h/2).kind==TimerHit::Set);
+    CHECK(hitTimer(m,TimerView::Setup,set.x+set.w/2,setHit.y+setHit.h).kind==TimerHit::None);
     // A tap focuses a field; with SET focused the keys do nothing.
     r.tap(timerFieldBox(m,2)); CHECK(r.t().focus==2);
     r.tap(timerKeyBox(m,0)); r.tap(timerKeyBox(m,6)); r.tap(timerKeyBox(m,0));

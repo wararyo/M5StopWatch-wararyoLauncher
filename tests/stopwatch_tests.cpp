@@ -66,6 +66,33 @@ void accumulatesAcrossPauses() {
     CHECK(sw.elapsed(1000+99*Second)==0);
 }
 
+// What the clock gained in the dark comes off a measurement that ran through
+// it (services/ClockFollower.h).
+void takesCorrections() {
+    StopwatchService sw;
+    sw.start(0);
+    sw.alignmentBegun(600*Second);
+    sw.clockCorrected(4*Second);
+    CHECK(sw.elapsed(600*Second)==596*Second);
+    sw.clockCorrected(4*Second);                 // Once per alignment.
+    CHECK(sw.elapsed(600*Second)==596*Second);
+    // Stopped since it began: the total shrinks instead.
+    sw.alignmentBegun(1200*Second); sw.stop(1200*Second+500000);
+    sw.clockCorrected(Second);
+    CHECK(sw.elapsed(2000*Second)==1195*Second+500000);
+    // Stopped when it began: the dark it gained in was not measured.
+    sw.alignmentBegun(3000*Second); sw.clockCorrected(Second);
+    CHECK(sw.elapsed(3000*Second)==1195*Second+500000);
+    // Reset since it began: none of it is the next measurement's.
+    sw.start(3000*Second); sw.alignmentBegun(3001*Second); sw.reset(); sw.start(3002*Second);
+    sw.clockCorrected(Second);
+    CHECK(sw.elapsed(3003*Second)==Second);
+    // A total smaller than the correction ends at zero.
+    StopwatchService brief; brief.start(0); brief.alignmentBegun(0); brief.stop(100000);
+    brief.clockCorrected(Second);
+    CHECK(brief.elapsed(Second)==0);
+}
+
 void lapsOnlyWhileRunning() {
     StopwatchService sw;
     sw.lap(Second);
@@ -251,9 +278,51 @@ void runtimeStopsFramesWhileBlanked() {
     CHECK(render.last.stopwatch.state==StopwatchState::Running);
     CHECK(render.last.stopwatch.elapsedUs>=31*Second);
 }
+
+// The runtime hands what the wake's alignment found to a measurement that ran
+// through the dark, and the screen shows it at once.
+void runtimeCorrectsTheMeasurement() {
+    struct GainingData : DisplayDataSource {
+        TimeUs edgeAt=INT64_MAX,gain=0;
+        int alignments=0;
+        void alignClock(TimeUs now) override { ++alignments; edgeAt=now+5000; }
+        TimeUs service(TimeUs now,ClockAlignment& a) override {
+            a={};
+            if (edgeAt==INT64_MAX) return INT64_MAX;
+            if (now<edgeAt) return edgeAt;
+            edgeAt=INT64_MAX; a.stepped=true;
+            // The boot's alignment measures nothing.
+            if (alignments>1) { a.measured=true; a.gainUs=gain; }
+            return INT64_MAX;
+        }
+    } data;
+    StubHal hal; StubRender render;
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
+    runtime.begin();
+    hal.time=1000; runtime.step();
+    auto pressButton=[&](bool a) {
+        (a ? hal.input.a : hal.input.b)=true; hal.time+=20000; runtime.step();
+        (a ? hal.input.a : hal.input.b)=false; hal.time+=20000; runtime.step();
+        hal.time+=200000; runtime.step();
+    };
+    pressButton(true);                           // clock -> list, row 0
+    pressButton(false);                          // open the stopwatch
+    pressButton(false);                          // start
+    CHECK(runtime.model().stopwatch.state==StopwatchState::Running);
+    hal.time+=31*Second; runtime.step();
+    CHECK(runtime.power().screenOff());
+    hal.time+=600*Second; runtime.step();
+    hal.input.touching=true; hal.time+=20000; runtime.step();
+    CHECK(!runtime.power().screenOff() && data.alignments==2);
+    const TimeUs woke=hal.time,measured=application.stopwatch().elapsed(woke);
+    data.gain=3*Second; hal.input.touching=false; hal.time+=5000; runtime.step();
+    CHECK(application.stopwatch().elapsed(woke)==measured-3*Second);
+    CHECK(render.last.stopwatch.elapsedUs==application.stopwatch().elapsed(hal.time));
+}
 }
 int main() {
     accumulatesAcrossPauses();
+    takesCorrections();
     lapsOnlyWhileRunning();
     formatsAndCapsTheDisplay();
     buttonsFollowTheState();
@@ -262,6 +331,7 @@ int main() {
     homeKeepsMeasuringAndTheListOpensIt();
     managerDrivesTheScreensOwnDeadline();
     runtimeStopsFramesWhileBlanked();
+    runtimeCorrectsTheMeasurement();
     std::cout << "stopwatch tests passed\n";
     return 0;
 }

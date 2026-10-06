@@ -241,33 +241,57 @@ void alignment() {
     StubHal hal; TimeService service; service.begin(hal);
     const int64_t second=unixFromCivil(hal.rtc);
     hal.clockUs=second*1000000+700000; // Gained 0.7s since the last edge.
-    bool stepped=true;
-    CHECK(service.align(0,stepped)==INT64_MAX && !stepped); // Not begun.
+    ClockAlignment a; a.stepped=true;
+    CHECK(service.align(0,a)==INT64_MAX && !a.stepped); // Not begun.
     const int reads=hal.reads, sets=hal.clockSets;
     service.beginAlign(0);
-    CHECK(service.align(0,stepped)==TimeService::AlignPollUs && !stepped);
-    CHECK(service.align(5000,stepped)==5000+TimeService::AlignPollUs && !stepped);
+    CHECK(service.align(0,a)==TimeService::AlignPollUs && !a.stepped);
+    CHECK(service.align(5000,a)==5000+TimeService::AlignPollUs && !a.stepped);
     hal.rtc.second=1;
-    CHECK(service.align(10000,stepped)==INT64_MAX && stepped);
+    CHECK(service.align(10000,a)==INT64_MAX && a.stepped);
     CHECK(hal.clockUs==(second+1)*1000000 && hal.clockSets==sets+1 && hal.reads==reads+3);
-    CHECK(service.align(15000,stepped)==INT64_MAX && !stepped && hal.reads==reads+3); // Done.
+    // Set at boot, the clock was anywhere within its second: that is no drift.
+    CHECK(!a.measured && a.gainUs==0);
+    CHECK(service.align(15000,a)==INT64_MAX && !a.stepped && hal.reads==reads+3); // Done.
     // No edge within the window: the clock is left alone.
-    service.beginAlign(20000); service.align(20000,stepped);
-    CHECK(service.align(20000+TimeService::AlignWindowUs+1,stepped)==INT64_MAX && !stepped);
+    service.beginAlign(20000); service.align(20000,a);
+    CHECK(service.align(20000+TimeService::AlignWindowUs+1,a)==INT64_MAX && !a.stepped);
     CHECK(hal.clockSets==sets+1);
     // Neither is it on a failed read.
     service.beginAlign(0); hal.readable=false;
-    CHECK(service.align(0,stepped)==INT64_MAX && !stepped && hal.clockSets==sets+1);
+    CHECK(service.align(0,a)==INT64_MAX && !a.stepped && hal.clockSets==sets+1);
     // A late read does not take an edge, which may lie that far back; the
-    // next edge read in time does.
+    // next edge read in time does. Set at an edge last time, the clock now
+    // tells what it gained since.
     hal.readable=true;
     const TimeUs start=30000000, late=start+TimeService::AlignGapUs+1;
-    service.beginAlign(start); service.align(start,stepped);
+    service.beginAlign(start); service.align(start,a);
     hal.rtc.second=2;
-    CHECK(service.align(late,stepped)==late+TimeService::AlignPollUs && !stepped && hal.clockSets==sets+1);
-    hal.rtc.second=3;
-    CHECK(service.align(late+TimeService::AlignPollUs,stepped)==INT64_MAX && stepped);
+    CHECK(service.align(late,a)==late+TimeService::AlignPollUs && !a.stepped && hal.clockSets==sets+1);
+    hal.rtc.second=3; hal.clockUs=(second+3)*1000000+225000;
+    CHECK(service.align(late+TimeService::AlignPollUs,a)==INT64_MAX && a.stepped);
     CHECK(hal.clockUs==(second+3)*1000000 && hal.clockSets==sets+2);
+    CHECK(a.measured && a.gainUs==225000);
+    // Only the next second is an edge: a read two on is a misread or a gap,
+    // and the watch starts again from it.
+    service.beginAlign(40000000); service.align(40000000,a);
+    hal.rtc.second=5;
+    CHECK(service.align(40005000,a)==40010000 && !a.stepped && hal.clockSets==sets+2);
+    hal.rtc.second=6; hal.clockUs=(second+6)*1000000-40000; // Behind this time.
+    CHECK(service.align(40010000,a)==INT64_MAX && a.stepped && a.measured && a.gainUs==-40000);
+    // Set by hand, the clock is again anywhere within its second. The next
+    // call aligns it unasked, measuring nothing, and drift is measured again
+    // from there.
+    CHECK(service.save({2026,9,21,0,30,0})==SaveResult::Saved);
+    const int64_t saved=unixFromCivil(hal.rtc);
+    const int before=hal.reads;
+    CHECK(service.align(50000000,a)==50000000+TimeService::AlignPollUs && hal.reads==before+1);
+    hal.rtc.second=1; hal.clockUs=saved*1000000+600000;
+    CHECK(service.align(50005000,a)==INT64_MAX && a.stepped && !a.measured);
+    CHECK(service.align(50010000,a)==INT64_MAX && hal.reads==before+2); // Once.
+    service.beginAlign(60000000); service.align(60000000,a);
+    hal.rtc.second=2; hal.clockUs=(saved+2)*1000000+90000;
+    CHECK(service.align(60005000,a)==INT64_MAX && a.measured && a.gainUs==90000);
 }
 void runtimeIntegration() {
     StubHal hal; StubRender render; TimeService service; service.begin(hal);

@@ -24,6 +24,9 @@ public:
     ScreenOutcome handle(const Events& e,TimeUs now) override;
     TimeUs nextUpdate() const override { return next_; }
     bool tick(TimeUs now) override;
+    // A measurement stopped since the alignment began shrank, and no frame
+    // is due for it.
+    bool clockCorrected(TimeUs now) override { if (!available()) return false; sample(now); return true; }
     const StopwatchModel& model() const { return model_; }
 private:
     void sample(TimeUs now);

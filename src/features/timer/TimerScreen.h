@@ -29,6 +29,8 @@ public:
     ScreenOutcome handle(const Events& e,TimeUs now) override;
     TimeUs nextUpdate() const override;
     bool tick(TimeUs now) override;
+    // The countdown's end may have moved, and with it when the second changes.
+    bool clockCorrected(TimeUs now) override;
     TimeUs holdPanelUntil() const override;
     uint8_t vibration() const override { return vibration_; }
     const TimerModel& model() const { return model_; }

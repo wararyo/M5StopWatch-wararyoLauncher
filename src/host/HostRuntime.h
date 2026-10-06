@@ -29,6 +29,13 @@ public:
         if (attentionCount_ >= AttentionCapacity) return false;
         attention_[attentionCount_++] = &source; return true;
     }
+    // A service that counts through the dark (services/ClockFollower.h). The
+    // clock is aligned with the RTC when it asks, with the panel dark too, and
+    // it is handed what every alignment finds. False when full.
+    bool bindClockFollower(ClockFollower& follower) {
+        if (followerCount_ >= FollowerCapacity) return false;
+        followers_[followerCount_++] = &follower; return true;
+    }
     void begin();
     void step();
     // `also` is a deadline of the caller's own, such as an instrument's.
@@ -48,6 +55,13 @@ private:
     AttentionSource* attention_[AttentionCapacity]{};
     bool attended_[AttentionCapacity]{}; // Started, and still asking.
     int attentionCount_ = 0;
+    static constexpr int FollowerCapacity = 4;
+    ClockFollower* followers_[FollowerCapacity]{};
+    int followerCount_ = 0;
+    // Begins aligning the clock with the RTC, and tells every follower so.
+    void alignClock(TimeUs now);
+    // The earliest any follower wants the clock aligned.
+    TimeUs alignmentDue() const;
     InputController input_;
     ScreenManager& screens_;
     PowerManager power_;

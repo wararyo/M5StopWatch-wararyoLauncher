@@ -94,6 +94,11 @@ bool TimerScreen::tick(TimeUs now) {
     sample(now);
     return true;
 }
+bool TimerScreen::clockCorrected(TimeUs now) {
+    if (!available() || model_.view==TimerView::Setup) return false;
+    sample(now);
+    return true;
+}
 void TimerScreen::resetByHold() {
     // Reset while still held (2026-10-06): the setup comes back the moment
     // the fill completes, not when the wearer lets go.

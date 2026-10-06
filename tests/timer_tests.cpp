@@ -14,7 +14,7 @@
 #define CHECK(x) do { if (!(x)) { std::cerr << __LINE__ << ": " #x "\n"; std::exit(1); } } while (false)
 using namespace launcher;
 namespace {
-constexpr TimeUs Second=1000000;
+constexpr TimeUs Second=1000000,Minute=60*Second,Hour=60*Minute;
 struct FakeHal : Hal, RenderPort, DisplayDataSource {
     TimeUs time=0,waited=0;
     InputSnapshot input{};
@@ -47,6 +47,33 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
         levels.push_back(level);
         if (motorWrites) motor=level;
         return motorWrites;
+    }
+};
+// A monotonic clock that gains `ppm` while light sleep is allowed, as the
+// device's does on its RC oscillator, and a data source that aligns it as
+// TimeService does: the edge comes a poll after the alignment begins, and
+// tells what was gained since the last one. The boot alignment measures
+// nothing.
+struct DriftingHal : FakeHal {
+    TimeUs ppm=7500;            // 9s in 20 minutes, as seen on 2026-10-06.
+    TimeUs gained=0,gainedAtEdge=-1;
+    TimeUs edgeAt=INT64_MAX;
+    int alignments=0;
+    void waitUs(TimeUs delay) override {
+        FakeHal::waitUs(delay);
+        if (lightSleep) gained+=delay*ppm/(1000000+ppm);
+    }
+    // What a crystal would read, from the same origin.
+    TimeUs real() const { return time-gained; }
+    void alignClock(TimeUs now) override { ++alignments; edgeAt=now+TimeService::AlignPollUs; }
+    TimeUs service(TimeUs now,ClockAlignment& a) override {
+        a={};
+        if (edgeAt==INT64_MAX) return INT64_MAX;
+        if (now<edgeAt) return edgeAt;
+        a.stepped=true;
+        if (gainedAtEdge>=0) { a.measured=true; a.gainUs=gained-gainedAtEdge; }
+        gainedAtEdge=gained; edgeAt=INT64_MAX;
+        return INT64_MAX;
     }
 };
 // The timer's own record, kept in memory.
@@ -128,6 +155,75 @@ void ignoresTheDate() {
     CHECK(time.save({2027,1,1,12,0,0})==SaveResult::Saved);
     CHECK(t.remaining(60*Second)==540*Second && t.deadline()==600*Second);
 }
+// Where a running timer has the clock aligned (docs/task12/plan.md 2.1), as
+// what is left then, each alignment begun when it is due, `late` after.
+std::vector<TimeUs> alignmentsFor(int32_t seconds,TimeUs late=0) {
+    TimerService t; t.start(0,seconds);
+    std::vector<TimeUs> left;
+    while (t.alignmentDue()!=INT64_MAX) {
+        left.push_back(t.deadline()-t.alignmentDue());
+        t.alignmentBegun(t.alignmentDue()+late);
+    }
+    return left;
+}
+void plansAlignments() {
+    using V=std::vector<TimeUs>;
+    CHECK(timerAlignmentLeft(2*Hour)==Hour && timerAlignmentLeft(2*Hour-1)==10*Minute);
+    CHECK(timerAlignmentLeft(20*Minute)==10*Minute && timerAlignmentLeft(20*Minute-1)==Minute);
+    CHECK(timerAlignmentLeft(2*Minute)==Minute && timerAlignmentLeft(2*Minute-1)==0);
+    // From two hours on, an hour on; from 20 minutes, ten before; from two,
+    // one before.
+    CHECK(alignmentsFor(3*3600)==(V{2*Hour,Hour,10*Minute,Minute}));
+    CHECK(alignmentsFor(2*3600+59*60)==(V{Hour+59*Minute,10*Minute,Minute}));
+    CHECK(alignmentsFor(2*3600+5*60)==(V{Hour+5*Minute,10*Minute,Minute}));
+    CHECK(alignmentsFor(3600+59*60)==(V{10*Minute,Minute}));
+    CHECK(alignmentsFor(20*60)==(V{10*Minute,Minute}));
+    CHECK(alignmentsFor(120)==(V{Minute}));
+    CHECK(alignmentsFor(119).empty());
+    // Begun late, an alignment is still the one planned.
+    CHECK(alignmentsFor(3*3600,10000)==(V{2*Hour,Hour,10*Minute,Minute}));
+    // The longest: every hour down to 1:59:59, then the last two.
+    const auto longest=alignmentsFor(TimerMaxSeconds);
+    CHECK(longest.size()==100 && longest.front()==TimeUs(TimerMaxSeconds)*Second-Hour);
+    CHECK(longest[97]==Hour+59*Minute+59*Second && longest[98]==10*Minute);
+    // Begun early (the panel came on), from what is left then. Paused, none;
+    // resumed, planned again.
+    TimerService t; t.start(0,3*3600);
+    t.alignmentBegun(30*Minute);
+    CHECK(t.alignmentDue()==30*Minute+Hour);
+    CHECK(t.pause(40*Minute) && t.alignmentDue()==INT64_MAX);
+    CHECK(t.resume(50*Minute) && t.alignmentDue()==50*Minute+Hour);
+    // Run out, none.
+    CHECK(t.expire(t.deadline()) && t.alignmentDue()==INT64_MAX);
+}
+// What the clock gained in the dark belongs to whatever was counting when the
+// alignment began.
+void takesCorrections() {
+    TimerService t; t.start(0,1200);
+    t.alignmentBegun(600*Second);
+    t.clockCorrected(4500000);
+    CHECK(t.deadline()==1204500000 && t.remaining(600*Second)==604500000);
+    CHECK(t.alignmentDue()==t.deadline()-Minute);  // The plan moves with the end.
+    t.clockCorrected(4500000);                       // Once per alignment.
+    CHECK(t.deadline()==1204500000);
+    // Paused since it began: what is left takes it.
+    t.alignmentBegun(700*Second); CHECK(t.pause(700*Second+500000));
+    const TimeUs left=t.remaining(0);
+    t.clockCorrected(300000); CHECK(t.remaining(0)==left+300000);
+    // Paused when it began: the dark it gained in was not counted.
+    t.alignmentBegun(800*Second); t.clockCorrected(5*Second); CHECK(t.remaining(0)==left+300000);
+    // Started, or reset, since it began: none of it is the new count's.
+    TimerService u; u.alignmentBegun(0); CHECK(u.start(100000,60));
+    u.clockCorrected(Second); CHECK(u.deadline()==100000+60*Second);
+    u.alignmentBegun(Second); CHECK(u.reset() && u.start(2*Second,60));
+    u.clockCorrected(Second); CHECK(u.deadline()==62*Second);
+    // Ringing, the count up stays from the end it rang at.
+    CHECK(u.expire(62*Second)); u.alignmentBegun(62*Second); u.clockCorrected(Second);
+    CHECK(u.expiredAt()==62*Second && u.overrun(63*Second)==Second);
+    // Behind, a paused remainder is never used up.
+    TimerService v; CHECK(v.start(0,1)); v.alignmentBegun(0); CHECK(v.pause(500000));
+    v.clockCorrected(-Second); CHECK(v.remaining(0)==1);
+}
 void vibrates() {
     // Weak and sparse, then denser, then strong, for one minute.
     auto at=[](double seconds) { return timerVibration(TimeUs(seconds*Second)); };
@@ -191,12 +287,12 @@ void remembers() {
 }
 
 // The runtime around a timer: built like the device's.
-struct Rig {
-    FakeHal hal;
+template<class H> struct RigOf {
+    H hal;
     HostApplication app{hal,hal,hal,468,468};
     HostRuntime& runtime=app.runtime();
     TimerService& timer=app.timer();
-    Rig() { runtime.begin(); runtime.step(); }
+    RigOf() { runtime.begin(); runtime.step(); }
     void at(TimeUs t) { hal.time=t; runtime.step(); }
     // Steps at the input period over [from, to], as a held button is followed.
     void follow(TimeUs from,TimeUs to) { for (TimeUs t=from;t<=to;t+=10000) at(t); }
@@ -209,6 +305,7 @@ struct Rig {
     ScreenId screen() { return runtime.model().screen; }
     TimerModel shown() { return runtime.model().timer; }
 };
+using Rig=RigOf<FakeHal>;
 void alertsWhileDark() {
     Rig r; r.hal.events=true; r.hal.usb={true,0,false};   // On battery.
     CHECK(r.timer.start(r.hal.time,60));
@@ -247,6 +344,70 @@ void alertsWhileDark() {
     r.hal.input={false,false,true,234,234}; r.at(end+400*Second);
     r.hal.input={}; r.at(end+400*Second+10000);
     CHECK(r.screen()==ScreenId::Timer && r.shown().view==TimerView::Ringing && r.hal.motor==0);
+}
+// On battery and dark, a 20-minute timer wakes ten minutes and one minute
+// before its end to align the clock, without lighting the panel, and rings
+// early only by what the last minute gained (docs/task12/plan.md 2.1).
+void alignsWhileDark() {
+    RigOf<DriftingHal> r; r.hal.events=true; r.hal.usb={true,0,false};
+    const TimeUs start=r.hal.time;
+    CHECK(r.timer.start(start,1200));
+    r.at(31*Second); r.at(32*Second);
+    CHECK(r.runtime.power().screenOff() && r.hal.lightSleep);
+    const int alignments=r.hal.alignments;
+    r.runtime.wait();
+    CHECK(r.hal.time==start+600*Second);
+    r.runtime.step();
+    CHECK(r.hal.alignments==alignments+1 && r.hal.wakes==0 && r.hal.lightSleep);
+    // A poll later the edge tells what the dark added, and the end moves by it.
+    const TimeUs end=r.timer.deadline();
+    r.runtime.wait(); CHECK(r.hal.time==start+600*Second+TimeService::AlignPollUs);
+    r.runtime.step();
+    CHECK(r.hal.gained>4*Second && r.timer.deadline()==end+r.hal.gained);
+    CHECK(r.timer.alignmentDue()==r.timer.deadline()-Minute);
+    r.runtime.wait(); CHECK(r.hal.time==r.timer.deadline()-Minute);
+    r.runtime.step(); r.runtime.wait(); r.runtime.step();
+    CHECK(r.hal.alignments==alignments+2 && r.hal.wakes==0 && r.hal.lightSleep);
+    // Uncorrected it would ring 9s early; now by about half a second.
+    r.runtime.wait(); CHECK(r.hal.time==r.timer.deadline());
+    r.runtime.step();
+    CHECK(r.timer.state()==TimerState::Ringing && r.hal.wakes==1);
+    const TimeUs early=start+1200*Second-r.hal.real();
+    CHECK(early>=0 && early<500000);
+}
+// The panel coming on aligns the clock too, and the next alignment is planned
+// from there.
+void replansOnWake() {
+    Rig r; r.hal.events=true; r.hal.usb={true,0,false};
+    const TimeUs start=r.hal.time;
+    CHECK(r.timer.start(start,3*3600) && r.timer.alignmentDue()==start+Hour);
+    r.at(31*Second); r.at(32*Second);
+    CHECK(r.runtime.power().screenOff());
+    r.hal.input={false,false,true,234,234}; r.at(start+30*Minute);
+    r.hal.input={}; r.at(start+30*Minute+10000);
+    CHECK(!r.runtime.power().screenOff() && r.timer.alignmentDue()==start+90*Minute);
+    r.at(start+31*Minute);
+    CHECK(r.runtime.power().screenOff());
+    r.runtime.wait(); CHECK(r.hal.time==start+90*Minute);
+    r.runtime.step();
+    CHECK(r.timer.alignmentDue()==r.timer.deadline()-10*Minute && r.hal.wakes==1);
+}
+// A countdown on screen shows the corrected end as soon as it is known, and
+// times its next second from it.
+void showsTheCorrection() {
+    RigOf<DriftingHal> r; r.hal.events=true; r.hal.usb={true,0,false};
+    const TimeUs start=r.hal.time;
+    CHECK(r.timer.start(start,3600) && r.app.screens().present(ScreenId::Timer,start));
+    r.at(31*Second);
+    CHECK(r.runtime.power().screenOff() && r.hal.lightSleep);
+    r.runtime.wait(start+6*Minute); CHECK(r.hal.time==start+6*Minute);
+    r.hal.input={false,false,true,234,234}; r.at(start+6*Minute);
+    const int before=r.shown().seconds;
+    CHECK(r.shown().view==TimerView::Countdown && before==3600-6*60);
+    r.hal.input={}; r.at(start+6*Minute+TimeService::AlignPollUs);
+    CHECK(r.timer.deadline()==start+3600*Second+r.hal.gained);
+    CHECK(r.shown().seconds==timerShownRemaining(r.timer.remaining(r.hal.time)) && r.shown().seconds>before+1);
+    CHECK(r.app.screens().nextUpdate()==r.timer.deadline()-TimeUs(r.shown().seconds-1)*Second);
 }
 // Dismissed early, the motor stops and the timeout runs from the input that
 // dismissed it, not from the alert's end. The setup comes back with the length
@@ -677,11 +838,13 @@ void ringsOnScreen() {
 }
 }
 int main() {
-    normalizes(); countsDown(); ignoresTheDate(); vibrates(); remembers();
-    alertsWhileDark(); dismissEndsTheAlert(); retriesTheMotor(); expiryBeforeInput(); externalBoot();
+    normalizes(); countsDown(); ignoresTheDate(); plansAlignments(); takesCorrections(); vibrates(); remembers();
+    alertsWhileDark(); alignsWhileDark(); replansOnWake(); showsTheCorrection();
+    dismissEndsTheAlert(); retriesTheMotor(); expiryBeforeInput(); externalBoot();
     attentionContract(); presenting();
     setsUp(); setupEdges(); countsDownOnScreen(); resetsByTouch(); ringsOnScreen();
-    std::cout << "PASS: normalize, countdown, date independence, vibration pattern, last length record, "
-                 "alert while dark, dismiss, motor retry, expiry before input, external boot, "
+    std::cout << "PASS: normalize, countdown, date independence, alignment plan, clock corrections, "
+                 "vibration pattern, last length record, alert while dark, alignment while dark, "
+                 "replan on wake, corrected countdown, dismiss, motor retry, expiry before input, external boot, "
                  "attention contract, presenting, setup, setup edges, countdown screen, touch reset, ringing screen\n";
 }

@@ -52,6 +52,9 @@ public:
     // be presented; false for the rest, which leaves everything as it was.
     bool present(ScreenId id,TimeUs now);
     bool update(TimeUs now);
+    // The open screen re-samples what it measures (host/Screen.h). A hidden
+    // one samples afresh when it is entered.
+    bool clockCorrected(TimeUs now) { return active_ && active_->clockCorrected(now); }
     // Issued by the runtime once the committing frame has been painted.
     bool commitPendingBoot() { return external_.commitPendingBoot(); }
     // The frame as the app composes it from each feature's model. The settings

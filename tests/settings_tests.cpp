@@ -748,6 +748,7 @@ void runtimeMenuScroll() {
         runtime.wait(); return hal.waited;
     };
     click(true); idle(300000);                       // clock -> list, stopwatch row
+    click(true); idle(300000);                       // timer row
     click(true); idle(300000);                       // settings row
     click(false); idle(300000);
     CHECK(runtime.model().screen==ScreenId::Settings);

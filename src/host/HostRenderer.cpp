@@ -1,5 +1,6 @@
 #include "HostRenderer.h"
 #include "ui/graphics/VlwFont.h"
+#include "ui/graphics/WatchFonts.h"
 #include <esp_timer.h>
 #ifdef LAUNCHER_RENDER_METRICS
 #include "host/RenderDiagnostics.h"
@@ -10,6 +11,7 @@ bool HostRenderer::begin(bool disableCache,WatchPreferences* store) {
     if(const auto* embedded=vlwFont()) nameFont_=embedded;
     appList_.begin(nameFont_); settings_.begin(nameFont_); external_.begin(nameFont_);
     stopwatch_.begin(nameFont_); toast_.begin(nameFont_);
+    timer_.begin(nameFont_,watchTextFont(),timerDigitGlyphs());
     // M5GFX addresses this panel as 468 rows, but a transfer whose window
     // reaches rows 466 and 467 has its first two rows spoiled on the panel
     // (black lines left by the list's edge, docs/task10/10-5-validation.md).
@@ -25,6 +27,7 @@ RenderLayer* HostRenderer::layer(FrameLayer id) {
     case FrameLayer::Settings: return &settings_;
     case FrameLayer::External: return &external_;
     case FrameLayer::Stopwatch: return &stopwatch_;
+    case FrameLayer::Timer: return &timer_;
     case FrameLayer::Toast: return &toast_;
     }
     return nullptr;
@@ -45,11 +48,13 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     else if(c.settings) base=settings_.background();
     else if(c.external) base=external_.background();
     else if(c.stopwatch) base=stopwatch_.background();
+    else if(c.timer) base=timer_.background();
     renderer_.setBase(base);
     appList_.prepare(c.viewport,m.launcher,c.list,listBackground);
     settings_.prepare(c.viewport,m.settings,c.settings,m.stats);
     external_.prepare(c.viewport,m.external,c.external);
     stopwatch_.prepare(c.viewport,m.stopwatch,c.stopwatch);
+    timer_.prepare(c.viewport,m.timer,c.timer);
     toast_.prepare(c.viewport,m.toast);
     RenderLayer* layers[FrameLayerCount];
     for(int i=0;i<FrameLayerCount;++i) layers[i]=layer(FrameOrder[i]);

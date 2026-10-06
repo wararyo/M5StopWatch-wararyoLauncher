@@ -51,6 +51,11 @@ SlotCatalog scanning() {
     return c;
 }
 
+// The list row of a launch target, wherever the registry puts it.
+int rowOf(LaunchTargetId id) {
+    for (int i=0;i<int(LaunchRegistry.size());++i) if (LaunchRegistry[i].id==id) return i;
+    return -1;
+}
 void listShowsNamesAndDimming() {
     TestScreens s;
     s.setSlots(scanning());
@@ -68,12 +73,14 @@ void listShowsNamesAndDimming() {
     slots.set(3,SlotStatus::Invalid,nullptr,nullptr,0x105);
     s.setSlots(slots.catalog);
     m=s.model();
-    CHECK(std::string(m.launcher.names[2])=="KantanPlay");
-    CHECK(!m.launcher.rowDimmed[2]);
-    CHECK(m.launcher.names[3]==nullptr && m.launcher.rowDimmed[3]);
-    CHECK(m.launcher.names[4]==nullptr && m.launcher.rowDimmed[4]);
+    const int first=rowOf(LaunchTargetId::External1);
+    CHECK(std::string(m.launcher.names[first])=="KantanPlay");
+    CHECK(!m.launcher.rowDimmed[first]);
+    CHECK(m.launcher.names[first+1]==nullptr && m.launcher.rowDimmed[first+1]);
+    CHECK(m.launcher.names[first+2]==nullptr && m.launcher.rowDimmed[first+2]);
     // Built-in rows are never dimmed by a slot result.
-    CHECK(!m.launcher.rowDimmed[0] && !m.launcher.rowDimmed[1]);
+    for (int i=0;i<int(LaunchRegistry.size());++i)
+        if (LaunchRegistry[i].kind==TargetKind::Builtin) CHECK(!m.launcher.rowDimmed[i]);
 }
 
 void unsupportedLayoutDisablesEveryExternalRow() {
@@ -274,8 +281,8 @@ void homeDuringScanKeepsResultsHarmless() {
     s.setSlots(slots.catalog);
     const auto m=s.model();
     CHECK(m.screen==ScreenId::Home);
-    CHECK(std::string(m.launcher.names[2])=="KantanPlay");
-    CHECK(!m.launcher.rowDimmed[2]);
+    CHECK(std::string(m.launcher.names[rowOf(LaunchTargetId::External1)])=="KantanPlay");
+    CHECK(!m.launcher.rowDimmed[rowOf(LaunchTargetId::External1)]);
     CHECK(slots.bootRequests==0);
     CHECK(!s.commitPendingBoot());
 }
@@ -325,8 +332,9 @@ void runtimeScansBehindTheFirstFrameAndPollsResults() {
     // A result reaches the list on the next pass without any extra wakeup.
     slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
     hal.time+=20000; runtime.step();
-    CHECK(std::string(render.last.launcher.names[2])=="KantanPlay");
-    CHECK(!render.last.launcher.rowDimmed[2] && render.last.launcher.rowDimmed[3]);
+    const int first=rowOf(LaunchTargetId::External1);
+    CHECK(std::string(render.last.launcher.names[first])=="KantanPlay");
+    CHECK(!render.last.launcher.rowDimmed[first] && render.last.launcher.rowDimmed[first+1]);
 }
 
 void runtimeIssuesTheBootAfterPaintingTheCommitFrame() {

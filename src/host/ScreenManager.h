@@ -3,6 +3,7 @@
 #include "features/external/ExternalAppScreen.h"
 #include "features/settings/SettingsScreen.h"
 #include "features/stopwatch/StopwatchScreen.h"
+#include "features/timer/TimerScreen.h"
 #include "host/FrameModel.h"
 #include "host/EffectiveSettings.h"
 #include "features/launcher/AppListRows.h"
@@ -20,6 +21,7 @@ public:
         :runtime_(runtime),viewport_{width,height},launcher_(viewport_) {
         settings_.resize(width,height); external_.resize(width,height);
         stopwatchScreen_.resize(width,height); stopwatchScreen_.bind(&stopwatch);
+        timerScreen_.resize(width,height);
     }
     ScreenManager(const ScreenManager&)=delete;
     ScreenManager& operator=(const ScreenManager&)=delete;
@@ -27,6 +29,9 @@ public:
     // as the unimplemented entries do. Nothing else in the launcher changes.
     void bind(SettingsStore* store,TimeService* time) { settings_.bind(store,time); }
     void bindSlots(SlotService* slots) { external_.bind(slots,&slots_); }
+    // The timer and its last length. Without them the timer entry is
+    // unavailable, as an unimplemented one is.
+    void bindTimer(TimerService* timer,TimerPreferences* preferences) { timerScreen_.bind(timer,preferences); }
     // The clock layer's input, and the faces settings chooses from. Without it
     // a tap on the clock does nothing, the list is still reached by A/B and
     // the swipe up, and settings offers no face to choose.
@@ -65,6 +70,9 @@ public:
     // Whether the open screen is in a stretch nothing may interrupt (a boot
     // commit, plan.md 8.2).
     bool exclusive() const { return active_ && active_->exclusive(); }
+    // What the shown screen asks of the panel and the motor (host/Screen.h).
+    TimeUs holdPanelUntil() const { return active_ ? active_->holdPanelUntil() : 0; }
+    uint8_t vibration() const { return active_ ? active_->vibration() : 0; }
 private:
     FrameActivity activity() const;
     ScreenId screen() const { return active_ ? activeId_ : launcher_.listShown() ? ScreenId::AppList : ScreenId::Home; }
@@ -79,6 +87,7 @@ private:
     SettingsScreen settings_;
     ExternalAppScreen external_;
     StopwatchScreen stopwatchScreen_;
+    TimerScreen timerScreen_;
     SlotCatalog slots_{};
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.

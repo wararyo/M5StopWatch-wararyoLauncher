@@ -2,6 +2,8 @@
 #include "TestScreens.h"
 #include "host/LaunchRegistry.h"
 #include "features/timer/TimerVibration.h"
+#include "features/timer/TimerLayout.h"
+#include "i18n/Strings.h"
 #include "multifirm/FakeSlotService.h"
 #include "services/TimeService.h"
 #include <cstdlib>
@@ -188,7 +190,7 @@ void remembers() {
     CHECK(faces.saveFace("timer",payload,1)==PrefResult::Invalid);
 }
 
-// The runtime around a running timer: built like the device's.
+// The runtime around a timer: built like the device's.
 struct Rig {
     FakeHal hal;
     HostApplication app{hal,hal,hal,468,468};
@@ -198,6 +200,14 @@ struct Rig {
     void at(TimeUs t) { hal.time=t; runtime.step(); }
     // Steps at the input period over [from, to], as a held button is followed.
     void follow(TimeUs from,TimeUs to) { for (TimeUs t=from;t<=to;t+=10000) at(t); }
+    // A button pressed for `held`, released, and the loop left to settle.
+    void press(bool a,TimeUs held=20000) {
+        (a ? hal.input.a : hal.input.b)=true; follow(hal.time+10000,hal.time+held);
+        (a ? hal.input.a : hal.input.b)=false; at(hal.time+10000);
+        at(hal.time+200000);
+    }
+    ScreenId screen() { return runtime.model().screen; }
+    TimerModel shown() { return runtime.model().timer; }
 };
 void alertsWhileDark() {
     Rig r; r.hal.events=true; r.hal.usb={true,0,false};   // On battery.
@@ -209,39 +219,56 @@ void alertsWhileDark() {
     r.runtime.wait();
     CHECK(r.hal.time==end);
     r.runtime.step();
-    CHECK(r.timer.state()==TimerState::Ringing && r.app.timerAttention().alerting(r.hal.time));
+    // The timer screen comes forward, ringing, and is the alert.
+    CHECK(r.timer.state()==TimerState::Ringing && r.screen()==ScreenId::Timer);
+    CHECK(r.shown().view==TimerView::Ringing && r.shown().seconds==0);
     CHECK(!r.runtime.power().screenOff() && r.hal.wakes==1 && !r.hal.lightSleep);
     CHECK(r.hal.motor==VibrationWeak);
-    // The motor follows its pattern on the runtime's own deadlines.
-    // The panel's fade wakes the loop as well, so the motor is followed by step.
-    r.runtime.wait(); CHECK(r.hal.time<=end+200000);
+    // The motor follows the pattern on the screen's deadlines. The panel's
+    // fade wakes the loop as well, so it is followed by step.
     r.at(end+200000-1); CHECK(r.hal.motor==VibrationWeak);
     r.at(end+200000); CHECK(r.hal.motor==0);
+    r.at(end+Second); CHECK(r.shown().seconds==1);
     r.at(end+2*Second-1); CHECK(r.hal.motor==0);
-    r.at(end+2*Second); CHECK(r.hal.motor==VibrationWeak);
+    r.at(end+2*Second); CHECK(r.hal.motor==VibrationWeak && r.shown().seconds==2);
     // Lit for the whole minute, rests included, though nothing is pressed.
     for (TimeUs t=end+3*Second;t<end+60*Second;t+=3*Second) { r.at(t); CHECK(!r.runtime.power().screenOff()); }
     r.at(end+60*Second);
-    CHECK(r.hal.motor==0 && !r.app.timerAttention().alerting(r.hal.time) && r.timer.state()==TimerState::Ringing);
+    CHECK(r.hal.motor==0 && r.timer.state()==TimerState::Ringing && r.shown().seconds==60);
     // Then the usual timeout, counted from the end of the alert.
     r.at(end+90*Second-1); CHECK(!r.runtime.power().screenOff());
     r.at(end+90*Second); CHECK(r.runtime.power().screenOff() && r.hal.sleeps==2);
-    // Still ringing: nothing restarts the alert.
+    // Still ringing: nothing restarts the alert, and the dark screen asks for
+    // no frames.
     const auto writes=r.hal.levels.size();
     r.at(end+200*Second); CHECK(r.hal.levels.size()==writes && r.runtime.power().screenOff());
+    r.hal.time=end+300*Second; r.runtime.wait(); CHECK(r.hal.waited>Second);
+    // Woken by a touch (spent on the wake), it still rings, quietly.
+    r.hal.input={false,false,true,234,234}; r.at(end+400*Second);
+    r.hal.input={}; r.at(end+400*Second+10000);
+    CHECK(r.screen()==ScreenId::Timer && r.shown().view==TimerView::Ringing && r.hal.motor==0);
 }
 // Dismissed early, the motor stops and the timeout runs from the input that
-// dismissed it, not from the alert's end.
+// dismissed it, not from the alert's end. The setup comes back with the length
+// last started.
 void dismissEndsTheAlert() {
     Rig r;
     CHECK(r.timer.start(r.hal.time,5));
     r.at(5*Second);
-    CHECK(r.app.timerAttention().alerting(r.hal.time) && r.hal.motor==VibrationWeak);
+    CHECK(r.hal.motor==VibrationWeak);
     r.hal.input.a=true; r.at(10*Second);
-    r.hal.input.a=false; r.timer.dismiss(); r.at(10*Second+10000);
-    CHECK(!r.app.timerAttention().alerting(r.hal.time) && r.hal.motor==0);
+    r.hal.input.a=false; r.at(10*Second+10000);
+    CHECK(r.timer.state()==TimerState::Idle && r.hal.motor==0);
+    CHECK(r.screen()==ScreenId::Timer && r.shown().view==TimerView::Setup);
     r.at(40*Second); CHECK(!r.runtime.power().screenOff());
     r.at(40*Second+10000); CHECK(r.runtime.power().screenOff());
+    // Home dismisses it too, and leaves for the clock.
+    Rig h;
+    CHECK(h.timer.start(h.hal.time,5));
+    h.at(5*Second);
+    h.hal.input.a=h.hal.input.b=true; h.follow(6*Second,7*Second);
+    h.hal.input.a=h.hal.input.b=false; h.at(7*Second+10000);
+    CHECK(h.screen()==ScreenId::Home && h.timer.state()==TimerState::Idle && h.hal.motor==0);
 }
 // A write that does not land is sent again, during the alert and after it.
 void retriesTheMotor() {
@@ -250,15 +277,16 @@ void retriesTheMotor() {
     r.hal.motorWrites=false;
     r.at(5*Second);
     CHECK(r.hal.motor==0 && r.hal.levels.size()==1);
-    r.runtime.wait(); CHECK(r.hal.time==5*Second+50000);
-    r.hal.motorWrites=true; r.runtime.step();
+    r.at(5*Second+49000); CHECK(r.hal.levels.size()==1);
+    r.at(5*Second+50000); CHECK(r.hal.levels.size()==2);
+    r.hal.motorWrites=true; r.at(5*Second+100000);
     CHECK(r.hal.motor==VibrationWeak);
-    // Stopping fails at first too: it is retried after the timer is gone.
+    // Stopping fails at first too: it is retried after the alert is gone.
     r.hal.motorWrites=false;
-    r.timer.dismiss(); r.at(5*Second+100000);
-    CHECK(r.hal.levels.back()==0 && r.hal.motor==VibrationWeak);
-    r.runtime.wait(); CHECK(r.hal.time==5*Second+150000);
-    r.hal.motorWrites=true; r.runtime.step();
+    r.hal.input.b=true; r.at(5*Second+110000);
+    r.hal.input.b=false; r.at(5*Second+120000);
+    CHECK(r.timer.state()==TimerState::Idle && r.hal.levels.back()==0 && r.hal.motor==VibrationWeak);
+    r.hal.motorWrites=true; r.at(5*Second+170000);
     CHECK(r.hal.motor==0);
     const auto writes=r.hal.levels.size();           // Nothing left to retry.
     r.at(r.hal.time+Second); r.at(r.hal.time+Second);
@@ -267,86 +295,74 @@ void retriesTheMotor() {
 // The expiry is settled before the input of the same step: a release that
 // arrives with it reaches nothing (docs/task12/plan.md 2.4).
 void expiryBeforeInput() {
-    // B released in the step the timer runs out, on the list: no launch.
+    // B released in the step the timer runs out, on the list: no launch, and
+    // the alert it brings forward is not dismissed by it.
     {
         Rig r;
-        r.hal.input.a=true; r.at(10000);
-        r.hal.input.a=false; r.at(20000);
-        r.at(400000);
-        CHECK(r.runtime.model().screen==ScreenId::AppList);
+        r.press(true);
+        CHECK(r.screen()==ScreenId::AppList);
         CHECK(r.timer.start(r.hal.time,2));
         const TimeUs end=r.timer.deadline();
         r.hal.input.b=true; r.follow(end-300000,end-10000);
         r.hal.input.b=false; r.at(end);
+        CHECK(r.timer.state()==TimerState::Ringing && r.screen()==ScreenId::Timer);
+        r.at(end+10000);
         CHECK(r.timer.state()==TimerState::Ringing);
-        CHECK(r.runtime.model().screen==ScreenId::AppList);
-        // The next press is new and works.
-        r.hal.input.a=true; r.at(end+100000);
-        r.hal.input.a=false; r.at(end+110000);
-        r.at(end+400000);
-        CHECK(r.runtime.model().launcher.list.selection==1);
+        // The next press is new and dismisses.
+        r.press(false);
+        CHECK(r.timer.state()==TimerState::Idle && r.shown().view==TimerView::Setup);
     }
     // A+B held across the expiry: no home from that hold.
     {
         Rig r;
-        r.hal.input.a=true; r.at(10000);
-        r.hal.input.a=false; r.at(20000);
-        r.at(400000);
+        r.press(true);
         CHECK(r.timer.start(r.hal.time,1));
         const TimeUs end=r.timer.deadline();
         r.hal.input.a=r.hal.input.b=true; r.follow(end-200000,end+1000000);
-        CHECK(r.runtime.model().screen==ScreenId::AppList && r.runtime.model().homeCount==0);
+        CHECK(r.screen()==ScreenId::Timer && r.runtime.model().homeCount==0);
+        CHECK(r.timer.state()==TimerState::Ringing);
         r.hal.input.a=r.hal.input.b=false; r.at(end+1010000);
         // Pressed again, it is home.
         r.hal.input.a=r.hal.input.b=true; r.follow(end+1100000,end+1800000);
-        CHECK(r.runtime.model().screen==ScreenId::Home && r.runtime.model().homeCount==1);
+        CHECK(r.screen()==ScreenId::Home && r.runtime.model().homeCount==1);
     }
-    // A paused press does not land on a timer that already ran out: the
+    // A pause that arrives late does not land on a timer that ran out: the
     // service refuses, whatever the caller.
     {
         TimerService t; t.start(0,1);
         CHECK(!t.pause(Second) && t.expire(Second));
     }
 }
-// An external boot ends the timer and the motor, ringing or not; a boot that
-// fails leaves both alone (docs/task12/plan.md 1, 2.4).
+// An external boot ends the timer and the motor; a boot that fails leaves the
+// timer alone (docs/task12/plan.md 1, 2.4).
 void externalBoot() {
     for (bool succeeds:{true,false}) {
         Rig r;
         FakeSlotService slots; slots.set(1,SlotStatus::Ready,"KantanPlay","1.2.0");
         slots.bootSucceeds=succeeds;
         r.app.bindSlots(slots);
-        CHECK(r.timer.start(r.hal.time,1));
-        r.at(Second);
-        CHECK(r.timer.state()==TimerState::Ringing && r.hal.motor==VibrationWeak);
-        auto press=[&](bool a) {
-            (a ? r.hal.input.a : r.hal.input.b)=true; r.at(r.hal.time+20000);
-            (a ? r.hal.input.a : r.hal.input.b)=false; r.at(r.hal.time+20000);
-            r.at(r.hal.time+200000);
-        };
-        press(true);
-        while (LaunchRegistry[r.runtime.model().launcher.list.selection].id!=LaunchTargetId::External1) press(true);
-        press(false);
+        CHECK(r.timer.start(r.hal.time,600));
+        r.press(true);
+        while (LaunchRegistry[r.runtime.model().launcher.list.selection].id!=LaunchTargetId::External1) r.press(true);
+        r.press(false);
         CHECK(slots.bootRequests==1);
         if (succeeds) CHECK(r.timer.state()==TimerState::Idle && r.hal.levels.back()==0);
-        else CHECK(r.timer.state()==TimerState::Ringing && r.app.timerAttention().alerting(r.hal.time));
+        else CHECK(r.timer.state()==TimerState::Running);
     }
-    // A running timer is stopped as well.
+    // Ringing as well, with the motor running.
     TimerService timer; StopwatchService stopwatch; FakeHal hal;
     HostShutdown shutdown(stopwatch,timer,hal);
-    timer.start(0,60);
+    timer.start(0,1); timer.expire(Second);
     shutdown.onBootCommitted();
     CHECK(timer.state()==TimerState::Idle && hal.levels.size()==1 && hal.levels[0]==0);
 }
-}
-// The host side alone, with sources of the test's own: what any feature that
+// The host side alone, with a source of the test's own: what any feature that
 // asks for attention gets (host/AttentionSource.h).
 struct FakeSource : AttentionSource {
     AttentionRequest request{};
-    TimeUs started=-1, next=INT64_MAX;
-    int asked=0, starts=0;
+    TimeUs next=INT64_MAX;
+    int asked=0;
     AttentionRequest attention(TimeUs) override { ++asked; return request; }
-    void attended(TimeUs now) override { started=now; ++starts; }
     TimeUs nextAttention() const override { return next; }
 };
 void attentionContract() {
@@ -359,45 +375,32 @@ void attentionContract() {
     source.next=100*Second;
     r.runtime.wait(); CHECK(r.hal.time<=100*Second);
     // Started before the input: B held from before is spent, the panel
-    // lights, the screen is presented and the source learns when.
+    // lights and the screen is presented.
     r.hal.input.b=true; r.at(99*Second);
-    source.request.active=true; source.request.present=true; source.request.screen=ScreenId::Stopwatch;
-    source.request.holdUntil=200*Second; source.request.vibration=77;
+    source.request={true,true,ScreenId::Stopwatch};
     source.next=INT64_MAX;
     r.hal.input.b=false; r.at(100*Second);
-    CHECK(source.starts==1 && source.started==100*Second);
-    CHECK(!r.runtime.power().screenOff() && r.runtime.model().screen==ScreenId::Stopwatch);
+    CHECK(!r.runtime.power().screenOff() && r.screen()==ScreenId::Stopwatch);
     CHECK(r.app.stopwatch().state()==StopwatchState::Reset); // The release started nothing.
-    CHECK(r.hal.motor==77);
-    // Started once; the hold and the motor follow what it asks now.
-    source.request.vibration=0; r.at(101*Second);
-    CHECK(source.starts==1 && r.hal.motor==0);
-    r.at(229*Second); CHECK(!r.runtime.power().screenOff()); // Held, then the timeout.
-    r.at(230*Second); CHECK(r.runtime.power().screenOff());
-    // Ending the request lets the panel time out from the last input, and a
-    // new request starts again.
-    source.request.active=false; r.at(231*Second);
-    source.request={}; source.request.active=true; source.request.vibration=50;
-    r.at(232*Second);
-    CHECK(source.starts==2 && !r.runtime.power().screenOff() && r.hal.motor==50);
-    source.request.active=false;
-    r.hal.input.a=true; r.at(233*Second); r.hal.input.a=false; r.at(233*Second+10000);
-    CHECK(r.hal.motor==0);
-    r.at(263*Second); CHECK(!r.runtime.power().screenOff());
-    r.at(263*Second+10000); CHECK(r.runtime.power().screenOff());
-    // Two at once: the stronger motor and the later hold win.
-    FakeSource other;
-    CHECK(r.runtime.bindAttention(other));
-    source.request={}; source.request.active=true; source.request.vibration=40; source.request.holdUntil=300*Second;
-    other.request={}; other.request.active=true; other.request.vibration=90; other.request.holdUntil=280*Second;
-    r.at(270*Second);
-    CHECK(r.hal.motor==90);
-    other.request.active=false; r.at(271*Second);
-    CHECK(r.hal.motor==40);
-    r.at(329*Second); CHECK(!r.runtime.power().screenOff());
+    // Started once: a request that goes on is not presented again.
+    r.press(true);                                        // LAP: nothing in Reset, but handled.
+    r.hal.input.a=r.hal.input.b=true; r.follow(r.hal.time+10000,r.hal.time+700000);
+    r.hal.input.a=r.hal.input.b=false; r.at(r.hal.time+10000);
+    CHECK(r.screen()==ScreenId::Home);
+    r.at(r.hal.time+Second);
+    CHECK(r.screen()==ScreenId::Home);
+    // Ended and asked again: it starts again.
+    source.request.active=false; r.at(r.hal.time+Second);
+    source.request.active=true; r.at(r.hal.time+Second);
+    CHECK(r.screen()==ScreenId::Stopwatch);
+    // A request that does not present only lights the panel.
+    source.request={}; r.at(r.hal.time+Second);
+    r.at(r.hal.time+40*Second); CHECK(r.runtime.power().screenOff());
+    source.request={true,false,ScreenId::Home}; r.at(r.hal.time+Second);
+    CHECK(!r.runtime.power().screenOff() && r.screen()==ScreenId::Stopwatch);
     // Capacity: four sources in all, the timer's among them.
-    FakeSource third, fourth;
-    CHECK(r.runtime.bindAttention(third) && !r.runtime.bindAttention(fourth));
+    FakeSource other,third,fourth;
+    CHECK(r.runtime.bindAttention(other) && r.runtime.bindAttention(third) && !r.runtime.bindAttention(fourth));
 }
 // Presenting leaves what was shown as home does.
 void presenting() {
@@ -416,12 +419,235 @@ void presenting() {
     CHECK(!screens.present(ScreenId::Settings,now) && screens.model().screen==ScreenId::Stopwatch);
     CHECK(screens.present(ScreenId::Home,now) && screens.model().screen==ScreenId::Home);
     CHECK(screens.model().homeCount==0); // Not a home press.
+    // The countdown shown when the timer rings: entered again, not left, so
+    // the alert is not dismissed on its way in.
+    screens.timer.start(now,5);
+    CHECK(screens.present(ScreenId::Timer,now) && screens.model().timer.view==TimerView::Countdown);
+    screens.timer.expire(now+5*Second);
+    CHECK(screens.present(ScreenId::Timer,now+5*Second));
+    CHECK(screens.model().timer.view==TimerView::Ringing && screens.timer.state()==TimerState::Ringing);
+    CHECK(screens.vibration()==VibrationWeak && screens.holdPanelUntil()==now+5*Second+TimerNoticeUs);
+}
+
+// The screen on its own (docs/task12/plan.md 1.1-1.3), driven like the list
+// drives it.
+struct TimerRig {
+    MemoryRecords records;
+    TestScreens screens;
+    TimeUs now=0;
+    TimerRig(int32_t last=TimerPreferences::DefaultSeconds) {
+        if (last!=TimerPreferences::DefaultSeconds) {
+            uint8_t record[TimerPreferences::RecordBytes];
+            TimerPreferences::encode(last,record);
+            records.records["timer"].assign(record,record+sizeof(record));
+        }
+        screens.timerPreferences.bind(&records);
+        screens.timerPreferences.load();
+        open();
+    }
+    // From home, through the list, as the wearer opens it.
+    void open() {
+        Events home{}; home.home=true; screens.handle(home,now); now+=1000;
+        Events next{}; next.next=true;
+        screens.handle(next,now); now+=200000; screens.update(now);
+        while (LaunchRegistry[screens.model().launcher.list.selection].id!=LaunchTargetId::Timer) {
+            screens.handle(next,now); now+=200000; screens.update(now);
+        }
+        Events decide{}; decide.decide=true;
+        screens.handle(decide,now); now+=1000;
+        CHECK(screens.model().screen==ScreenId::Timer);
+    }
+    const TimerModel& t() { model=screens.model().timer; return model; }
+    TimerModel model{};
+    void a(TimeUs held=100000) { Events e{}; e.next=true; e.pressUs=held; screens.handle(e,now); }
+    void b() { Events e{}; e.decide=true; e.pressUs=100000; screens.handle(e,now); }
+    void tap(const Rect& box,TimeUs held=100000) {
+        Events e{}; e.gesture=Gesture::Tap; e.x=box.x+box.w/2; e.y=box.y+box.h/2; e.touchUs=held;
+        screens.handle(e,now);
+    }
+    void touch(const Rect& box) {
+        Events e{}; e.gesture=Gesture::TouchStart; e.x=box.x+box.w/2; e.y=box.y+box.h/2;
+        screens.handle(e,now);
+    }
+    void hold(Hold h) { Events e{}; e.holdChanged=true; e.hold=h; e.holdSince=now; screens.handle(e,now); }
+    void advance(TimeUs to) { now=to; if (now>=screens.nextUpdate()) screens.update(now); }
+    Viewport m() { return screens.viewport(); }
+};
+void setsUp() {
+    TimerRig r;
+    // Opened idle: the setup, from the default length, the minutes focused.
+    CHECK(r.t().view==TimerView::Setup && r.t().fields[0]==0 && r.t().fields[1]==3 && r.t().fields[2]==0);
+    CHECK(r.t().focus==1);
+    // A moves the focus through the fields to SET and round.
+    for (int i=1;i<=4;++i) { r.a(); CHECK(r.t().focus==(1+i)%TimerFocusCount); }
+    // B steps a field: minutes and seconds 59 back to 0, hours 99 back to 0.
+    const Viewport m=r.m();
+    r.tap(timerFieldBox(m,0)); r.b(); CHECK(r.t().fields[0]==1);
+    r.a(); for (int i=0;i<56;++i) r.b();
+    CHECK(r.t().fields[1]==59);
+    r.b(); CHECK(r.t().fields[1]==0);
+    // Keys type into the focused field from the right.
+    r.tap(timerKeyBox(m,7)); r.tap(timerKeyBox(m,5));
+    CHECK(r.t().fields[1]==75);
+    r.b(); CHECK(r.t().fields[1]==76);               // Over 59 it counts on to 99.
+    r.tap(timerKeyBox(m,9)); r.tap(timerKeyBox(m,9)); r.b();
+    CHECK(r.t().fields[1]==0);
+    // A tap focuses a field; with SET focused the keys do nothing.
+    r.tap(timerFieldBox(m,2)); CHECK(r.t().focus==2);
+    r.tap(timerKeyBox(m,0)); r.tap(timerKeyBox(m,6)); r.tap(timerKeyBox(m,0));
+    CHECK(r.t().fields[2]==60);
+    r.a(); CHECK(r.t().focus==TimerFocusSet);
+    r.tap(timerKeyBox(m,4)); CHECK(r.t().fields[0]==1 && r.t().fields[1]==0 && r.t().fields[2]==60);
+    // B on SET starts, carried: 01:00:60 is 01:01:00, shown as such, and kept.
+    r.b();
+    CHECK(r.screens.timer.state()==TimerState::Running && r.screens.timer.duration()==3660);
+    CHECK(r.t().view==TimerView::Countdown && r.t().seconds==3660);
+    CHECK(r.records.writes==1 && r.screens.timerPreferences.value()==3660);
+    CHECK(r.screens.model().toast==nullptr);
+    // Leaving keeps it running; coming back shows the countdown.
+    r.open();
+    CHECK(r.screens.timer.state()==TimerState::Running && r.t().view==TimerView::Countdown);
+}
+void setupEdges() {
+    // 00:00:00 starts nothing, from the button or by B.
+    {
+        TimerRig r;
+        for (int i=0;i<3;++i) { r.tap(timerFieldBox(r.m(),i)); r.tap(timerKeyBox(r.m(),0)); r.tap(timerKeyBox(r.m(),0)); }
+        r.tap(timerSetBox(r.m()));
+        CHECK(r.screens.timer.state()==TimerState::Idle && r.t().view==TimerView::Setup);
+        r.a(); CHECK(r.t().focus==TimerFocusSet);
+        r.b();
+        CHECK(r.screens.timer.state()==TimerState::Idle && r.records.writes==0);
+    }
+    // 99:99:99 is held at the longest; SET by touch starts whatever the focus.
+    {
+        TimerRig r;
+        for (int i=0;i<3;++i) { r.tap(timerFieldBox(r.m(),i)); r.tap(timerKeyBox(r.m(),9)); r.tap(timerKeyBox(r.m(),9)); }
+        r.tap(timerFieldBox(r.m(),0));
+        r.tap(timerSetBox(r.m()));
+        CHECK(r.screens.timer.duration()==TimerMaxSeconds && r.t().seconds==TimerMaxSeconds);
+    }
+    // The last length is the next starting point, across a reboot.
+    {
+        TimerRig r(95);
+        CHECK(r.t().fields[0]==0 && r.t().fields[1]==1 && r.t().fields[2]==35);
+    }
+    // A failed write still starts, says so, and keeps the length for now.
+    {
+        TimerRig r;
+        r.records.writable=false;
+        r.tap(timerSetBox(r.m()));
+        CHECK(r.screens.timer.state()==TimerState::Running && r.screens.model().toast!=nullptr);
+        CHECK(std::string(r.screens.model().toast)==text::SaveFailed);
+        CHECK(r.screens.timerPreferences.value()==180);
+    }
+    // B held on a field repeats; the release adds nothing.
+    {
+        TimerRig r;
+        r.hold(Hold::B);
+        const TimeUs since=r.now;
+        CHECK(r.screens.nextUpdate()==since+HoldRepeat::DelayUs);
+        r.advance(since+HoldRepeat::DelayUs); r.advance(since+HoldRepeat::DelayUs+HoldRepeat::PeriodUs);
+        CHECK(r.t().fields[1]==5);
+        Events release{}; release.decide=true; release.holdChanged=true; release.pressUs=700000;
+        r.screens.handle(release,r.now);
+        CHECK(r.t().fields[1]==5 && r.screens.nextUpdate()==INT64_MAX);
+    }
+}
+void countsDownOnScreen() {
+    TimerRig r;
+    r.tap(timerSetBox(r.m()));                       // 00:03:00
+    const TimeUs start=r.now,end=r.screens.timer.deadline();
+    CHECK(r.t().seconds==180);
+    // Rounded up: the length shows until a whole second is gone, and the
+    // frame comes exactly when the shown second changes.
+    CHECK(r.screens.nextUpdate()==start+Second);
+    r.advance(start+Second-1); CHECK(r.t().seconds==180);
+    r.advance(start+Second); CHECK(r.t().seconds==179 && r.screens.nextUpdate()==start+2*Second);
+    r.advance(end-400000); CHECK(r.t().seconds==1 && r.screens.nextUpdate()==end);
+    // B pauses and resumes; paused, no frames.
+    r.now=start+10*Second;
+    r.b(); CHECK(r.t().paused && r.screens.timer.state()==TimerState::Paused && r.screens.nextUpdate()==INT64_MAX);
+    r.now=start+100*Second;
+    r.tap(timerCountdownButtonBox(r.m(),1)); CHECK(!r.t().paused && r.screens.timer.remaining(r.now)==170*Second);
+    // A short does nothing; A held fills RESET and resets on a release past 600ms.
+    r.a(599999); CHECK(r.screens.timer.state()==TimerState::Running);
+    r.hold(Hold::A);
+    const TimeUs held=r.now;
+    CHECK(r.t().resetFill==0 && r.screens.nextUpdate()==held+16000);
+    r.advance(held+300000); CHECK(r.t().resetFill==500);
+    r.advance(held+600000); CHECK(r.t().resetFill==1000);
+    // Full: no more frames for the fill, only the countdown's own.
+    CHECK(r.screens.nextUpdate()<=r.screens.timer.deadline() && r.screens.nextUpdate()!=r.now+16000);
+    // B joining makes a chord: the fill empties and no release follows.
+    r.hold(Hold::None); CHECK(r.t().resetFill==0);
+    r.hold(Hold::A); r.now+=700000;
+    Events release{}; release.next=true; release.holdChanged=true; release.pressUs=700000;
+    r.screens.handle(release,r.now);
+    CHECK(r.screens.timer.state()==TimerState::Idle && r.t().view==TimerView::Setup);
+    CHECK(r.t().fields[1]==3);                        // Back to the length last started.
+}
+void resetsByTouch() {
+    TimerRig r;
+    r.tap(timerSetBox(r.m()));
+    const Rect reset=timerCountdownButtonBox(r.m(),0);
+    // Lifted too soon: nothing.
+    r.touch(reset); r.now+=300000; r.tap(reset,300000);
+    CHECK(r.screens.timer.state()==TimerState::Running && r.t().resetFill==0);
+    // Slid off: nothing either.
+    r.touch(reset);
+    Events drag{}; drag.gesture=Gesture::DragStart; r.screens.handle(drag,r.now);
+    CHECK(r.t().resetFill==0);
+    Events end{}; end.gesture=Gesture::DragEnd; r.now+=700000; r.screens.handle(end,r.now);
+    CHECK(r.screens.timer.state()==TimerState::Running);
+    // Held and lifted on RESET: reset.
+    r.touch(reset);
+    r.advance(r.now+300000); CHECK(r.t().resetFill==500);
+    r.now+=300000; r.tap(reset,600000);
+    CHECK(r.screens.timer.state()==TimerState::Idle && r.t().view==TimerView::Setup);
+}
+void ringsOnScreen() {
+    TimerRig r;
+    r.tap(timerSetBox(r.m()));
+    const TimeUs end=r.screens.timer.deadline();
+    r.screens.timer.expire(end);
+    r.screens.present(ScreenId::Timer,end);
+    r.now=end;
+    CHECK(r.t().view==TimerView::Ringing && r.t().seconds==0);
+    CHECK(r.screens.holdPanelUntil()==end+TimerNoticeUs && r.screens.vibration()==VibrationWeak);
+    // Counted up, rounded down; the frame comes when the count changes or
+    // the motor does.
+    CHECK(r.screens.nextUpdate()==end+200000);
+    r.advance(end+200000); CHECK(r.screens.vibration()==0 && r.screens.nextUpdate()==end+Second);
+    r.advance(end+Second); CHECK(r.t().seconds==1);
+    r.advance(end+61*Second); CHECK(r.t().seconds==61 && r.screens.vibration()==0);
+    // Held at 99:59:59.
+    r.advance(end+TimeUs(TimerMaxSeconds+5)*Second);
+    CHECK(r.t().seconds==TimerMaxSeconds && r.screens.nextUpdate()==INT64_MAX);
+    // The button dismisses; the setup returns with the last length.
+    r.tap(timerDismissBox(r.m()));
+    CHECK(r.screens.timer.state()==TimerState::Idle && r.t().view==TimerView::Setup && r.t().fields[1]==3);
+    CHECK(r.screens.holdPanelUntil()==0 && r.screens.vibration()==0);
+    // So does B; and leaving for another screen does too, but a hidden
+    // screen left again later dismisses nothing.
+    r.tap(timerSetBox(r.m()));
+    r.screens.timer.expire(r.screens.timer.deadline());
+    r.screens.present(ScreenId::Timer,r.now);
+    r.b(); CHECK(r.screens.timer.state()==TimerState::Idle);
+    r.tap(timerSetBox(r.m()));
+    r.screens.timer.expire(r.screens.timer.deadline());
+    r.screens.present(ScreenId::Timer,r.now);
+    CHECK(r.screens.present(ScreenId::Stopwatch,r.now) && r.screens.timer.state()==TimerState::Idle);
+    r.screens.timer.start(r.now,1); r.screens.timer.expire(r.now+Second);
+    CHECK(r.screens.present(ScreenId::Home,r.now+Second) && r.screens.timer.state()==TimerState::Ringing);
+}
 }
 int main() {
     normalizes(); countsDown(); ignoresTheDate(); vibrates(); remembers();
     alertsWhileDark(); dismissEndsTheAlert(); retriesTheMotor(); expiryBeforeInput(); externalBoot();
     attentionContract(); presenting();
+    setsUp(); setupEdges(); countsDownOnScreen(); resetsByTouch(); ringsOnScreen();
     std::cout << "PASS: normalize, countdown, date independence, vibration pattern, last length record, "
                  "alert while dark, dismiss, motor retry, expiry before input, external boot, "
-                 "attention contract, presenting\n";
+                 "attention contract, presenting, setup, setup edges, countdown screen, touch reset, ringing screen\n";
 }

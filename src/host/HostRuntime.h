@@ -70,15 +70,16 @@ private:
     int brightness_ = Settings{}.brightness; // The level to reach, from the last draw.
     int appliedBrightness_ = -1; // Forced re-apply after every wake.
     void applyBrightness(TimeUs now);
-    // Asks every source, starts the requests that began, and reflects the
-    // started ones: the panel hold and the motor level are what they ask now.
+    // Asks every source and starts the requests that began: before the
+    // step's input, the held input is spent, the panel lit, the screen shown.
     void attend(TimeUs now);
-    // Sets the motor to the level the requests want, retrying a write that
-    // did not land.
+    // Holds the panel and sets the motor as the shown screen asks.
+    void followScreen(TimeUs now);
+    // Sets the motor to the wanted level, retrying a write that did not land.
     void applyVibration(TimeUs now);
-    // The level the requests want and the one the motor was last set to. They
-    // differ only until a write lands; a failed one is retried shortly, even
-    // once nothing asks any more, so a motor is never left running.
+    // The level the shown screen wants and the one the motor was last set to.
+    // They differ only until a write lands; a failed one is retried shortly,
+    // even once nothing asks any more, so a motor is never left running.
     int vibration_ = 0, appliedVibration_ = 0;
     TimeUs vibrationRetry_ = 0;
     static constexpr TimeUs VibrationRetryUs = 50000;

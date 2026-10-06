@@ -48,6 +48,7 @@ public:
          runtime_(hal,renderer,data,screens_,&background_) {
         // Registration order is display order (docs/task10/plan.md 4.1).
         background_.add(stopwatchInfo_);
+        screens_.bindTimer(&timer_,&timerPreferences_);
         runtime_.bindAttention(timerAttention_);
     }
     // The slot service must not keep calling into a shutdown that is gone.
@@ -70,7 +71,6 @@ public:
     ScreenManager& screens() { return screens_; }
     const StopwatchService& stopwatch() const { return stopwatch_; }
     TimerService& timer() { return timer_; }
-    const TimerAttention& timerAttention() const { return timerAttention_; }
     TimerPreferences& timerPreferences() { return timerPreferences_; }
     BackgroundInfoHub& background() { return background_; }
     const RuntimeSettings& runtimeSettings() const { return runtimeSettings_; }

@@ -38,5 +38,12 @@ public:
     // True while the screen is in a stretch that must not be interrupted, not
     // even by home. Only the boot commit of plan.md 8.2 uses it.
     virtual bool exclusive() const { return false; }
+    // What the screen asks of the panel and the motor while it is shown (a
+    // timer's alert, docs/task12/plan.md 1.3): the panel kept lit until then,
+    // which then counts as the last input (0: nothing held), and the motor's
+    // level, 0..255. The runtime applies whatever the shown screen asks, so
+    // leaving the screen lets go of both. Changes are timed by nextUpdate().
+    virtual TimeUs holdPanelUntil() const { return 0; }
+    virtual uint8_t vibration() const { return 0; }
 };
 }

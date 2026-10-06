@@ -6,6 +6,7 @@
 #include "features/launcher/AppListLayer.h"
 #include "features/settings/SettingsLayer.h"
 #include "features/stopwatch/StopwatchLayer.h"
+#include "features/timer/TimerLayer.h"
 #include "ui/overlays/StatsOverlay.h"
 #include "ui/overlays/ToastLayer.h"
 #include "ui/rendering/Renderer.h"
@@ -67,6 +68,7 @@ private:
     SettingsLayer settings_;
     ExternalLayer external_;
     StopwatchLayer stopwatch_;
+    TimerLayer timer_;
     ToastLayer toast_;
     StatsOverlay stats_;
     FrameComposer composer_;

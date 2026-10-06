@@ -112,7 +112,8 @@
   TrueType フォントはリポジトリに含まれないので、ユーザーに用意してもらう。作り直すまで、収録外の文字は `?` で表示される。
 - 文字盤に情報を出す場合は `BackgroundInfoProvider` を実装し、`HostApplication` で `BackgroundInfoHub` に登録する（上限は `BackgroundCapacity` の4つ）。
 - 画面を閉じていても装着者に知らせる場合（満了の通知など）は `AttentionSource` を実装し、`HostApplication` で `HostRuntime::bindAttention()` に登録する（上限4つ、手本は `TimerAttention`）。
-  点灯・画面の切り替え・押下中の操作の破棄・振動はホストが行い、要求元は「今の要求」を返すだけにする（architecture.md 2.1）。
+  点灯・画面の切り替え・押下中の操作の破棄はホストが行い、要求元は「今の要求」（前に出す画面）を返すだけにする。
+  前に出た画面での振動や点灯の保持は、その画面が `Screen::vibration()` / `holdPanelUntil()` で求める（architecture.md 2.1）。
 - 表示の更新は `nextUpdate()` の期限で要求する。毎ループの描画、busy wait、定期タイマー、毎フレームの I2C 読み出しを足さない。
 - `src/CMakeLists.txt` と `tools/test_runtime.py` のソース一覧に `.cpp` を足す。テストスイートを足したら `test_runtime.py` のスイート一覧にも加える。
 

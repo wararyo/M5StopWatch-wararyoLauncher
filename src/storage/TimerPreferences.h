@@ -14,6 +14,7 @@ public:
     static constexpr size_t RecordBytes=5;
     static constexpr int32_t DefaultSeconds=180;
     void bind(RecordBackend* backend) { backend_=backend; }
+    bool bound() const { return backend_!=nullptr; }
     // Reads the record. Whatever it says, a usable value is left in value():
     // a missing, unknown or broken record means the default, and is not
     // rewritten until a timer is started.

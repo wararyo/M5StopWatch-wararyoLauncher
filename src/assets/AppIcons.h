@@ -8,10 +8,10 @@ namespace launcher {
 //
 // Index into the embedded mask set (tools/build_icons.py writes this order).
 // Entries are appended, never reordered: the asset is indexed by this value.
-enum class IconId : uint8_t { Stopwatch,Settings,App1,App2,App3,Count };
+enum class IconId : uint8_t { Stopwatch,Settings,App1,App2,App3,Timer,Count };
 // Each app's colour (RGB565): the circle under its icon in the list, and the
 // colour it suggests for its background information.
-inline constexpr uint16_t StopwatchAccent=0x349f,SettingsAccent=0x632c,ExternalAccent=0x2e17;
+inline constexpr uint16_t StopwatchAccent=0x349f,SettingsAccent=0x632c,ExternalAccent=0x2e17,TimerAccent=0xc789;
 // The embedded icon set, built by tools/build_icons.py from the PNGs in icons/.
 // The masks are static and never change while the app runs, so a caller may
 // keep the pointer. Returns nullptr when the asset is missing or malformed;

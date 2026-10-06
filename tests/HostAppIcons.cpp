@@ -6,7 +6,7 @@ namespace launcher {
 // mask per id, as the firmware's is static for the life of the app.
 const IconBitmap* appIcon(IconId id) {
     static const uint8_t pixels[static_cast<int>(IconId::Count)][4]={
-        {0,255,255,0},{255,0,0,255},{255,255,0,0},{0,0,255,255},{128,128,128,128}};
+        {0,255,255,0},{255,0,0,255},{255,255,0,0},{0,0,255,255},{128,128,128,128},{64,192,192,64}};
     static const std::array<IconBitmap,static_cast<int>(IconId::Count)> set=[] {
         std::array<IconBitmap,static_cast<int>(IconId::Count)> icons{};
         for (int i=0;i<static_cast<int>(IconId::Count);++i) icons[i]={pixels[i],2,2};

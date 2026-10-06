@@ -100,10 +100,6 @@ void HostRuntime::step() {
         if (wasOff) data_.panelWoke(now);
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
-    // Again after the input, so a request it ended (a dismissal) lets go of
-    // the panel and the motor in this same step.
-    attend(now);
-    applyVibration(now);
     // A clock that moved is drawn again, which also takes its new deadlines.
     bool moved = false;
     nextService_ = data_.service(now, moved);
@@ -115,6 +111,7 @@ void HostRuntime::step() {
         // panel is not woken for a label (docs/task10/plan.md 4.3).
         if (background_ && background_->pending() && !dirty_ && clockVisible(screens_.model())) dirty_ = true;
     }
+    followScreen(now);
     if (!power_.screenOff() && (dirty_ || now >= nextDisplay_)) {
         const auto model = screens_.model();
         const auto effective=screens_.effectiveSettings();
@@ -155,31 +152,29 @@ void HostRuntime::step() {
     if (screens_.commitPendingBoot()) dirty_ = true;
 }
 void HostRuntime::attend(TimeUs now) {
-    TimeUs hold = 0;
-    int level = 0;
     for (int i = 0; i < attentionCount_; ++i) {
         auto& source = *attention_[i];
         auto request = source.attention(now);
         if (!request.active) { attended_[i] = false; continue; }
-        if (!attended_[i]) {
-            // A boot commit cannot be interrupted (plan.md 8.2). If it lands,
-            // the shutdown ends the request; if it fails, it starts after.
-            if (screens_.exclusive()) continue;
-            attended_[i] = true;
-            // Whatever is held was meant for what was shown before.
-            input_.discardHeld();
-            // A dark panel lights as for a press.
-            power_.update(now, true, screens_.active());
-            if (request.present) screens_.present(request.screen, now);
-            source.attended(now);
-            request = source.attention(now); // As started: its hold and motor.
-            dirty_ = true;
-        }
-        hold = std::max(hold, request.holdUntil);
-        level = std::max<int>(level, request.vibration);
+        if (attended_[i]) continue;
+        // A boot commit cannot be interrupted (plan.md 8.2). If it lands, the
+        // shutdown ends the request; if it fails, it starts after.
+        if (screens_.exclusive()) continue;
+        attended_[i] = true;
+        // Whatever is held was meant for what was shown before.
+        input_.discardHeld();
+        // A dark panel lights as for a press.
+        power_.update(now, true, screens_.active());
+        if (request.present) screens_.present(request.screen, now);
+        dirty_ = true;
     }
-    power_.holdUntil(hold);
-    vibration_ = level;
+}
+void HostRuntime::followScreen(TimeUs now) {
+    // The shown screen's alert (host/Screen.h): what it asks now is what the
+    // panel and the motor do, so leaving it lets go of both.
+    power_.holdUntil(screens_.holdPanelUntil());
+    vibration_ = screens_.vibration();
+    applyVibration(now);
 }
 void HostRuntime::applyVibration(TimeUs now) {
     if (vibration_ == appliedVibration_ || now < vibrationRetry_) return;

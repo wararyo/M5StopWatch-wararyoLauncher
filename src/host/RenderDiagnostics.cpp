@@ -637,6 +637,31 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             m.toast=nullptr; check("stopwatch-toast-off",m,d);
             m.screen=ScreenId::AppList; m.stopwatch=StopwatchModel{};
             check("stopwatch-left",m,d);
+            // The timer (work 12-3): the setup with the focus on every field
+            // and on SET (which greys the keys), typed values, the countdown
+            // with RESET filling, and the alert counting up. Each view is
+            // entered from another, which is a full repaint of the layer.
+            m.screen=ScreenId::Timer; m.timer=TimerModel{};
+            m.timer.fields[1]=3; check("timer-setup",m,d);
+            for(const int focus:{2,3,0}) { m.timer.focus=focus; check("timer-focus",m,d); }
+            m.timer.focus=1; check("timer-focus-wrap",m,d);
+            for(const int value:{1,12,99,75,0}) { m.timer.fields[0]=value; check("timer-field",m,d); }
+            m.timer.fields[2]=60; check("timer-field-over",m,d);
+            m.timer.view=TimerView::Countdown; m.timer.seconds=3660; check("timer-countdown",m,d);
+            for(const int32_t value:{3659,3600,3599,600,59,10,9,1}) { m.timer.seconds=value; check("timer-second",m,d); }
+            m.timer.seconds=TimerMaxSeconds; check("timer-longest",m,d);
+            m.timer.paused=true; check("timer-paused",m,d);
+            m.timer.paused=false; check("timer-resumed",m,d);
+            for(int fill=0;fill<=1000;fill+=125) { m.timer.resetFill=uint16_t(fill); check("timer-reset-fill",m,d); }
+            m.timer.resetFill=0; check("timer-reset-empty",m,d);
+            vTaskDelay(1);
+            m.timer.view=TimerView::Ringing; m.timer.seconds=0; check("timer-ringing",m,d);
+            for(const int32_t value:{int32_t(1),int32_t(2),int32_t(59),int32_t(60),int32_t(3600),TimerMaxSeconds}) { m.timer.seconds=value; check("timer-count-up",m,d); }
+            m.toast="保存しました"; check("timer-toast-on",m,d);
+            m.toast=nullptr; check("timer-toast-off",m,d);
+            m.timer=TimerModel{}; m.timer.fields[1]=3; check("timer-setup-again",m,d);
+            m.screen=ScreenId::AppList; m.timer=TimerModel{};
+            check("timer-left",m,d);
             m={}; m.viewport={w,h}; check("home",m,d);
             d.localTime.tm_min=42; check("minute",m,d);
             d.localTime.tm_mday=20; d.localTime.tm_wday=0; check("date",m,d);
@@ -1523,6 +1548,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 slide("noonish-transition",0.45f);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 renderer.selectFace("digital");
+                // The timer's three views, as docs/Images/Timer draws them.
+                sm.screen=ScreenId::Timer; sm.timer=TimerModel{};
+                sm.timer.fields[1]=3; sm.timer.focus=1; shoot("timer-setup",sm,scene);
+                sm.timer.focus=TimerFocusSet; shoot("timer-setup-set",sm,scene);
+                sm.timer.view=TimerView::Countdown; sm.timer.seconds=161; shoot("timer-countdown",sm,scene);
+                sm.timer.resetFill=500; shoot("timer-countdown-reset",sm,scene);
+                sm.timer.resetFill=0; sm.timer.paused=true; shoot("timer-paused",sm,scene);
+                sm.timer.view=TimerView::Ringing; sm.timer.seconds=1; shoot("timer-ringing",sm,scene);
+                sm.screen=ScreenId::Home; sm.timer=TimerModel{};
             }
 #endif
         }

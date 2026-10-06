@@ -27,6 +27,7 @@ inline void applySlots(const SlotCatalog& slots,AppListModel& m) {
 inline uint16_t appIconColor(const LaunchEntry& entry) {
     switch (entry.id) {
     case LaunchTargetId::Stopwatch: return StopwatchAccent;
+    case LaunchTargetId::Timer: return TimerAccent;
     case LaunchTargetId::Settings: return SettingsAccent;
     default: return ExternalAccent;
     }

@@ -169,30 +169,32 @@ void holdInEditors() {
     auto year=[&]() { return screens.model().settings.fields[0]; };
     openSettings(screens,now);
     screens.handle(press(false),now);              // the date editor, 2026
-    // A short press steps once, on the release.
+    // A short press steps once, as B goes down; the release adds nothing.
     TimeUs since=now;
     screens.handle(holdB(true),now);
-    CHECK(screens.nextUpdate()==now+HoldRepeat::DelayUs && year()==2026);
+    CHECK(screens.nextUpdate()==now+HoldRepeat::DelayUs && year()==2027);
     now+=200000; screens.handle(releaseB(since),now);
     CHECK(year()==2027 && screens.nextUpdate()==INT64_MAX);
-    // Held: a step at 500ms, then one each 100ms, and the release adds none.
+    // Held: a step at once, at 500ms, then one each 100ms; the release adds none.
     since=now; screens.handle(holdB(true),now);
+    CHECK(year()==2028);
     advance(since+HoldRepeat::DelayUs-1);
-    CHECK(year()==2027);
+    CHECK(year()==2028);
     advance(since+HoldRepeat::DelayUs);
-    CHECK(year()==2028 && screens.nextUpdate()==since+HoldRepeat::DelayUs+HoldRepeat::PeriodUs);
+    CHECK(year()==2029 && screens.nextUpdate()==since+HoldRepeat::DelayUs+HoldRepeat::PeriodUs);
     advance(since+HoldRepeat::DelayUs+HoldRepeat::PeriodUs);
-    CHECK(year()==2029);
+    CHECK(year()==2030);
     // A stalled loop adds one step, not the ones it missed.
     advance(since+HoldRepeat::DelayUs+5*HoldRepeat::PeriodUs);
-    CHECK(year()==2030 && screens.nextUpdate()==now+HoldRepeat::PeriodUs);
+    CHECK(year()==2031 && screens.nextUpdate()==now+HoldRepeat::PeriodUs);
     screens.handle(releaseB(since),now);
-    CHECK(year()==2030 && screens.nextUpdate()==INT64_MAX);
-    // A joining makes a chord: the hold ends with no release, and nothing steps.
+    CHECK(year()==2031 && screens.nextUpdate()==INT64_MAX);
+    // A joining makes a chord: the hold ends with no release, and nothing
+    // more steps than the press itself did.
     since=now; screens.handle(holdB(true),now);
     screens.handle(holdB(false),now+100000);
     advance(since+HoldRepeat::DelayUs*2);
-    CHECK(year()==2030 && screens.nextUpdate()==INT64_MAX);
+    CHECK(year()==2032 && screens.nextUpdate()==INT64_MAX);
     // A tap that moves the focus spends the press: no repeat, and its release
     // steps neither field.
     const auto frame=screens.model();
@@ -203,7 +205,7 @@ void holdInEditors() {
     CHECK(screens.model().settings.cursor==1 && screens.nextUpdate()==INT64_MAX);
     advance(since+HoldRepeat::DelayUs*2);
     screens.handle(releaseB(since),now);
-    CHECK(year()==2030 && screens.model().settings.fields[1]==9);
+    CHECK(year()==2033 && screens.model().settings.fields[1]==9);
     // On a button nothing repeats, and the release carries it out as before:
     // a long press of cancel still cancels.
     while (screens.model().settings.cursor!=settingsSlotCount(SettingsView::DateTime)-1)
@@ -252,8 +254,8 @@ void heldInput() {
     const TimeUs start=now;
     for (; now<=start+1000000; now+=10000) sample({false,true});
     sample({});
-    // Steps at 500, 600, 700, 800, 900 and 1000ms, none on the release.
-    CHECK(screens.model().settings.fields[0]==2032);
+    // Steps at 0, 500, 600, 700, 800, 900 and 1000ms, none on the release.
+    CHECK(screens.model().settings.fields[0]==2033);
 }
 void saveAndCancel() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);

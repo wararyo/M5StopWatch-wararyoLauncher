@@ -173,7 +173,10 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs now) {
     // fields and buttons; B steps a field, repeating while held, and carries
     // out a button. There is no separate editing state to enter.
     const int fields=settingsFieldCount(model_.view);
-    if (e.holdChanged && e.hold==Hold::B) hold_.begin(e.holdSince,model_.cursor,model_.cursor<fields);
+    // B on a field steps it as it goes down (input/HoldRepeat.h).
+    if (e.holdChanged && e.hold==Hold::B && hold_.begin(e.holdSince,model_.cursor,model_.cursor<fields)) {
+        step(1); out.changed=true;
+    }
     if (e.gesture==Gesture::Tap) {
         const auto hit=hitSettings({{width_,height_},model_.view,model_.cursor},e.x,e.y);
         switch (hit.kind) {

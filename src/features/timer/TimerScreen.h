@@ -11,9 +11,9 @@ namespace launcher {
 // screen never stops it; only the setup's unstarted edit is the screen's.
 //
 // Buttons follow the general rule (plan.md 5.1): A moves the focus, B steps a
-// field (repeating while held) or carries out SET. On the countdown A held for
-// 600ms and released resets, B pauses and resumes. Ringing, A, B or the button
-// dismisses. The keys are touch only.
+// field (at once, then repeating while held) or carries out SET. On the
+// countdown A held for 600ms resets there and then, B pauses and resumes.
+// Ringing, A, B or the button dismisses. The keys are touch only.
 //
 // Ringing, the screen is the alert: for its first minute it holds the panel lit
 // and drives the motor (TimerVibration.h), timed from when it was shown, so an
@@ -39,6 +39,8 @@ private:
     void setupFrom(int32_t seconds);
     bool start(TimeUs now,ScreenOutcome& out);
     void reset();
+    // RESET held for 600ms, by A or a finger: reset now, and spend the rest.
+    void resetByHold();
     void togglePause(TimeUs now);
     bool handleSetup(const Events& e,TimeUs now,ScreenOutcome& out);
     bool handleCountdown(const Events& e,TimeUs now);
@@ -51,6 +53,10 @@ private:
     HoldRepeat hold_;           // B held on a setup field.
     TimeUs fillSince_=-1;       // RESET held, by A or a finger, since; -1: not.
     bool touchOnReset_=false;   // The finger now down started on RESET.
+    // What is still down after a hold reset the timer: its release, or the
+    // rest of the touch, belongs to the countdown it ended, not to the setup
+    // that replaced it.
+    bool spentA_=false,spentTouch_=false;
     TimeUs ringStart_=-1;       // When the ringing view was shown.
     TimeUs nextShown_=INT64_MAX,nextAlert_=INT64_MAX,nextFill_=INT64_MAX;
     uint8_t vibration_=0;

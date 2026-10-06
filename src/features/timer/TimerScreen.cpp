@@ -15,10 +15,11 @@ TimerView viewOf(TimerState state) {
 }
 void TimerScreen::enter(TimeUs now) {
     shown_=true; fresh_=true;
-    hold_=HoldRepeat{}; fillSince_=-1; touchOnReset_=false;
+    hold_=HoldRepeat{}; fillSince_=-1; touchOnReset_=false; spentA_=spentTouch_=false;
     sample(now);
 }
 void TimerScreen::exit() {
+    spentA_=spentTouch_=false;
     // Leaving the alert is dismissing it, home included (docs/task12/plan.md
     // 2.4). Leaving the setup drops its unstarted edit; a countdown runs on.
     // Only a screen that is shown leaves anything: home and presenting call
@@ -70,8 +71,8 @@ void TimerScreen::sample(TimeUs now) {
     if (fillSince_>=0) {
         const TimeUs held=std::max<TimeUs>(0,now-fillSince_);
         model_.resetFill=uint16_t(std::min<TimeUs>(1000,held*1000/InputController::LongPressUs));
-        // Filled: the button stays full until the release, with no frames.
-        nextFill_=model_.resetFill<1000 ? now+FillFrameUs : INT64_MAX;
+        // A frame for the fill, and one exactly when it is full: the reset.
+        nextFill_=model_.resetFill<1000 ? std::min(now+FillFrameUs,fillSince_+InputController::LongPressUs) : INT64_MAX;
     } else {
         model_.resetFill=0;
         nextFill_=INT64_MAX;
@@ -88,8 +89,16 @@ bool TimerScreen::tick(TimeUs now) {
         model_.fields[model_.focus]=stepTimerField(model_.focus,model_.fields[model_.focus]);
         return true;
     }
+    if (model_.view==TimerView::Countdown && fillSince_>=0 && now-fillSince_>=InputController::LongPressUs)
+        resetByHold();
     sample(now);
     return true;
+}
+void TimerScreen::resetByHold() {
+    // Reset while still held (2026-10-06): the setup comes back the moment
+    // the fill completes, not when the wearer lets go.
+    spentA_=!touchOnReset_; spentTouch_=touchOnReset_;
+    reset();
 }
 TimeUs TimerScreen::holdPanelUntil() const {
     return model_.view==TimerView::Ringing && ringStart_>=0 ? ringStart_+TimerNoticeUs : 0;
@@ -114,7 +123,11 @@ void TimerScreen::togglePause(TimeUs now) {
 bool TimerScreen::handleSetup(const Events& e,TimeUs now,ScreenOutcome& out) {
     int& focus=model_.focus;
     bool changed=false;
-    if (e.holdChanged && e.hold==Hold::B) hold_.begin(e.holdSince,focus,focus<TimerFieldCount);
+    // B on a field steps it as it goes down (input/HoldRepeat.h).
+    if (e.holdChanged && e.hold==Hold::B && hold_.begin(e.holdSince,focus,focus<TimerFieldCount)) {
+        model_.fields[focus]=stepTimerField(focus,model_.fields[focus]);
+        changed=true;
+    }
     if (e.gesture==Gesture::Tap) {
         const auto hit=hitTimer({width_,height_},TimerView::Setup,e.x,e.y);
         switch (hit.kind) {
@@ -152,7 +165,9 @@ bool TimerScreen::handleCountdown(const Events& e,TimeUs now) {
         else if (!touchOnReset_) fillSince_=-1;
         changed=true;
     }
-    // Released after 600ms: reset. Sooner, nothing: a reset takes a decision.
+    // Released sooner than 600ms: nothing, a reset takes a decision. Held
+    // that long it already reset (tick); a release that still finds the
+    // countdown, because no frame came in time, resets now.
     if (e.next) {
         fillSince_=-1;
         if (e.pressUs>=InputController::LongPressUs) reset();
@@ -167,9 +182,7 @@ bool TimerScreen::handleCountdown(const Events& e,TimeUs now) {
         break;
     case Gesture::Tap: {
         const auto hit=hitTimer(m,TimerView::Countdown,e.x,e.y).kind;
-        // The same rule for a finger: lifted on RESET after 600ms. It counts
-        // only on release, so the setup that replaces the countdown never gets
-        // a tap meant for the button.
+        // The same for a finger; held 600ms it already reset (tick).
         if (touchOnReset_) {
             touchOnReset_=false; fillSince_=-1;
             if (hit==TimerHit::Reset && e.touchUs>=InputController::LongPressUs) reset();
@@ -187,17 +200,28 @@ bool TimerScreen::handleCountdown(const Events& e,TimeUs now) {
 ScreenOutcome TimerScreen::handle(const Events& e,TimeUs now) {
     ScreenOutcome out{};
     if (!available()) { out.leave=true; return out; }
+    // The rest of a press that reset by holding goes nowhere: A's release,
+    // and everything of the touch until the finger lifts.
+    Events in=e;
+    if (spentA_ && (in.next || (in.holdChanged && in.hold!=Hold::A))) { spentA_=false; in.next=false; }
+    if (spentTouch_ && in.gesture!=Gesture::None) {
+        if (in.gesture==Gesture::TouchStart) spentTouch_=false;
+        else {
+            if (in.gesture==Gesture::Tap || in.gesture==Gesture::DragEnd || in.gesture==Gesture::Cancel) spentTouch_=false;
+            in.gesture=Gesture::None;
+        }
+    }
     sample(now);
     bool changed=false;
     switch (model_.view) {
-    case TimerView::Setup: changed=handleSetup(e,now,out); break;
-    case TimerView::Countdown: changed=handleCountdown(e,now); break;
+    case TimerView::Setup: changed=handleSetup(in,now,out); break;
+    case TimerView::Countdown: changed=handleCountdown(in,now); break;
     case TimerView::Ringing: {
         // The alert has one target, so A and B both dismiss it. Only presses
         // that began after it arrive here (InputController::discardHeld).
-        const bool tapped=e.gesture==Gesture::Tap &&
-            hitTimer({width_,height_},TimerView::Ringing,e.x,e.y).kind==TimerHit::Dismiss;
-        if (e.next || e.decide || tapped) { timer_->dismiss(); changed=true; }
+        const bool tapped=in.gesture==Gesture::Tap &&
+            hitTimer({width_,height_},TimerView::Ringing,in.x,in.y).kind==TimerHit::Dismiss;
+        if (in.next || in.decide || tapped) { timer_->dismiss(); changed=true; }
         break;
     }
     }

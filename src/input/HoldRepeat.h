@@ -7,20 +7,24 @@ namespace launcher {
 // since when; this remembers what the press began on and times the repeats
 // through the screen's own deadline, so no input-period sampling is needed.
 //
+// A press on a target that repeats steps at once, as the button goes down,
+// and then again after the delay (2026-10-06: a value that answers the press
+// itself reads more naturally than one that waits for the release). Its
+// release adds nothing: the steps already were the press.
+//
 // A press belongs to the target it began on. Once the focus leaves that
 // target (a tap on another field) the press is spent: it stops repeating, and
 // its release does nothing, rather than acting on whatever is focused then.
-// Once it has repeated, the release adds nothing either: the steps already
-// were the press.
 class HoldRepeat {
 public:
     static constexpr TimeUs DelayUs=500000, PeriodUs=100000;
-    // A hold began on `target`, `since` the button went down. Only a target
-    // that `repeats` steps while held; any other is followed only to know
-    // whether its release still acts.
-    void begin(TimeUs since,int target,bool repeats) {
-        following_=true; spent_=repeated_=false; target_=target;
+    // A hold began on `target`, `since` the button went down. True when the
+    // target repeats: the caller steps it now, and the release will not.
+    // Any other target is followed only to know whether its release acts.
+    bool begin(TimeUs since,int target,bool repeats) {
+        following_=true; spent_=false; repeated_=repeats; target_=target;
         next_=repeats ? since+DelayUs : INT64_MAX;
+        return repeats;
     }
     // The focus is now `target`. A press that began elsewhere is spent.
     void follow(int target) {

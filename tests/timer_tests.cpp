@@ -555,17 +555,23 @@ void setupEdges() {
         CHECK(std::string(r.screens.model().toast)==text::SaveFailed);
         CHECK(r.screens.timerPreferences.value()==180);
     }
-    // B held on a field repeats; the release adds nothing.
+    // B on a field steps as it goes down, then repeats while held; the
+    // release adds nothing.
     {
         TimerRig r;
         r.hold(Hold::B);
         const TimeUs since=r.now;
-        CHECK(r.screens.nextUpdate()==since+HoldRepeat::DelayUs);
+        CHECK(r.t().fields[1]==4 && r.screens.nextUpdate()==since+HoldRepeat::DelayUs);
         r.advance(since+HoldRepeat::DelayUs); r.advance(since+HoldRepeat::DelayUs+HoldRepeat::PeriodUs);
-        CHECK(r.t().fields[1]==5);
+        CHECK(r.t().fields[1]==6);
         Events release{}; release.decide=true; release.holdChanged=true; release.pressUs=700000;
         r.screens.handle(release,r.now);
-        CHECK(r.t().fields[1]==5 && r.screens.nextUpdate()==INT64_MAX);
+        CHECK(r.t().fields[1]==6 && r.screens.nextUpdate()==INT64_MAX);
+        // On SET nothing happens as B goes down; the release starts.
+        r.a(); r.a(); CHECK(r.t().focus==TimerFocusSet);
+        r.hold(Hold::B); CHECK(r.screens.timer.state()==TimerState::Idle);
+        r.screens.handle(release,r.now);
+        CHECK(r.screens.timer.state()==TimerState::Running && r.screens.timer.duration()==360);
     }
 }
 void countsDownOnScreen() {
@@ -584,22 +590,30 @@ void countsDownOnScreen() {
     r.b(); CHECK(r.t().paused && r.screens.timer.state()==TimerState::Paused && r.screens.nextUpdate()==INT64_MAX);
     r.now=start+100*Second;
     r.tap(timerCountdownButtonBox(r.m(),1)); CHECK(!r.t().paused && r.screens.timer.remaining(r.now)==170*Second);
-    // A short does nothing; A held fills RESET and resets on a release past 600ms.
+    // A short does nothing; A held fills RESET.
     r.a(599999); CHECK(r.screens.timer.state()==TimerState::Running);
     r.hold(Hold::A);
-    const TimeUs held=r.now;
+    TimeUs held=r.now;
     CHECK(r.t().resetFill==0 && r.screens.nextUpdate()==held+16000);
     r.advance(held+300000); CHECK(r.t().resetFill==500);
-    r.advance(held+600000); CHECK(r.t().resetFill==1000);
-    // Full: no more frames for the fill, only the countdown's own.
-    CHECK(r.screens.nextUpdate()<=r.screens.timer.deadline() && r.screens.nextUpdate()!=r.now+16000);
-    // B joining makes a chord: the fill empties and no release follows.
-    r.hold(Hold::None); CHECK(r.t().resetFill==0);
-    r.hold(Hold::A); r.now+=700000;
-    Events release{}; release.next=true; release.holdChanged=true; release.pressUs=700000;
-    r.screens.handle(release,r.now);
+    // B joining makes a chord: the fill empties and nothing resets.
+    r.hold(Hold::None); CHECK(r.t().resetFill==0 && r.screens.nextUpdate()!=r.now+16000);
+    r.advance(held+700000); CHECK(r.screens.timer.state()==TimerState::Running);
+    // Held to 600ms it resets there and then, still held: the frame comes
+    // exactly at 600ms, and the setup shows the length last started.
+    r.hold(Hold::A); held=r.now;
+    r.advance(held+590000); CHECK(r.screens.timer.state()==TimerState::Running);
+    CHECK(r.screens.nextUpdate()==held+600000);
+    r.advance(held+600000);
     CHECK(r.screens.timer.state()==TimerState::Idle && r.t().view==TimerView::Setup);
-    CHECK(r.t().fields[1]==3);                        // Back to the length last started.
+    CHECK(r.t().fields[1]==3 && r.t().focus==1);
+    // Its release, later, does nothing to the setup (it would move the focus).
+    r.now+=400000;
+    Events release{}; release.next=true; release.holdChanged=true; release.pressUs=1000000;
+    r.screens.handle(release,r.now);
+    CHECK(r.t().focus==1);
+    // The next A is a press of its own.
+    r.a(); CHECK(r.t().focus==2);
 }
 void resetsByTouch() {
     TimerRig r;
@@ -614,11 +628,17 @@ void resetsByTouch() {
     CHECK(r.t().resetFill==0);
     Events end{}; end.gesture=Gesture::DragEnd; r.now+=700000; r.screens.handle(end,r.now);
     CHECK(r.screens.timer.state()==TimerState::Running);
-    // Held and lifted on RESET: reset.
+    // Held on RESET to 600ms: reset there and then, still touching.
     r.touch(reset);
-    r.advance(r.now+300000); CHECK(r.t().resetFill==500);
-    r.now+=300000; r.tap(reset,600000);
+    const TimeUs held=r.now;
+    r.advance(held+300000); CHECK(r.t().resetFill==500);
+    r.advance(held+600000);
     CHECK(r.screens.timer.state()==TimerState::Idle && r.t().view==TimerView::Setup);
+    // Lifting the finger, over what is now the hours field, does nothing.
+    r.now+=500000; r.tap(reset,1100000);
+    CHECK(r.t().focus==1);
+    // The next touch is a touch of its own.
+    r.tap(timerFieldBox(r.m(),0)); CHECK(r.t().focus==0);
 }
 void ringsOnScreen() {
     TimerRig r;

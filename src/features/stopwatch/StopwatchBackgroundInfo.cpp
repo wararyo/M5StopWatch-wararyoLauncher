@@ -25,7 +25,7 @@ bool StopwatchBackgroundInfo::sample(TimeUs now,BackgroundInfo& out) const {
     out.nextChangeAt=now>INT64_MAX-wait ? INT64_MAX : now+wait;
     // The launcher's stopwatch mask, shared rather than copied.
     out.icon=appIcon(IconId::Stopwatch);
-    out.suggestedColor=StopwatchAccent;
+    out.suggestedColor=StopwatchColors.background;
     return true;
 }
 }

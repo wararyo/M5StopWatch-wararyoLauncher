@@ -14,7 +14,8 @@ struct ListRow {
     // A row with an icon gets the filled circle. The mask on top is optional,
     // so a missing asset still leaves the circle and the rows scan the same.
     bool icon=false;
-    uint16_t iconColor=0;
+    // The circle's colour and the mask's on it (assets/AppIcons.h AppColors).
+    uint16_t iconColor=0,iconInk=0xf7be;
     const IconBitmap* mask=nullptr;
     // Dimmed is only a look. Whether B or a tap decides the row is `enabled`:
     // a dimmed external slot still opens, to explain why it cannot launch.

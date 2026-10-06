@@ -699,7 +699,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",labels[i]);
                         item.icon=i%2==0 ? appIcon(IconId::Stopwatch) : nullptr;
-                        if(i!=2) item.suggestedColor=i==0 ? StopwatchAccent : uint16_t(0xfd03);
+                        if(i!=2) item.suggestedColor=i==0 ? StopwatchColors.background : uint16_t(0xfd03);
                     }
                     shown.background.count=uint8_t(std::min(count,BackgroundCapacity));
                     return shown;
@@ -845,7 +845,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
                         item.icon=appIcon(IconId::Stopwatch);
-                        item.suggestedColor=StopwatchAccent;
+                        item.suggestedColor=StopwatchColors.background;
                     }
                     fd.background.count=uint8_t(std::min(count,BackgroundCapacity));
                 };
@@ -996,7 +996,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
                         item.icon=appIcon(IconId::Stopwatch);
-                        item.suggestedColor=StopwatchAccent;
+                        item.suggestedColor=StopwatchColors.background;
                     }
                     ad.background.count=uint8_t(std::min(count,BackgroundCapacity));
                 };
@@ -1138,7 +1138,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
                         item.icon=appIcon(IconId::Stopwatch);
-                        item.suggestedColor=StopwatchAccent;
+                        item.suggestedColor=StopwatchColors.background;
                     }
                     nd.background.count=uint8_t(std::min(count,BackgroundCapacity));
                 };
@@ -1299,7 +1299,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     auto& item=frame.background.items[0];
                     item=BackgroundInfo{}; item.appId=LaunchTargetId::Stopwatch;
                     std::snprintf(item.label,sizeof(item.label),"%02d:%02d",seconds/60%60,seconds%60);
-                    item.icon=appIcon(IconId::Stopwatch); item.suggestedColor=StopwatchAccent;
+                    item.icon=appIcon(IconId::Stopwatch); item.suggestedColor=StopwatchColors.background;
                     frame.background.count=1;
                 };
                 FrameModel pm; pm.viewport={w,h};
@@ -1434,11 +1434,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 FrameModel sm; sm.viewport={w,h};
                 scene=sampleData(); shoot("digital",sm,scene);
                 item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("digital-items",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); shoot("digital-seconds",sm,scene);
-                item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("digital-seconds-item",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1;
@@ -1448,11 +1448,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("digital-mixed",sm,scene);
                 scene=sampleData(); scene.batteryPercent=100;
-                item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("digital-full",sm,scene);
                 scene=sampleData();
                 item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 sm.launcher.transition=0.45f; shoot("digital-transition",sm,scene);
                 // Work 10-4: the list laid over scenery, on black and on a
                 // colour, drawn differentially after a slide from rest.
@@ -1466,13 +1466,13 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 scene=sampleData();
                 backdrop.listBackgroundForTest(0x0000); slide("backdrop-transition",0.45f);
                 backdrop.listBackgroundForTest(0x18c9); slide("backdrop-transition-colour",0.6f);
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0; shoot("backdrop-info",sm,scene);
                 // Work 10-5: Forest, like the reference pictures and around them.
                 renderer.selectFace("forest");
                 scene=sampleData(); shoot("forest",sm,scene);
                 scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("forest-info",sm,scene);
                 // The provisional palettes through the day (docs/forest-gradient/plan.md 4).
@@ -1482,7 +1482,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 }
                 renderer.handle(hold);
                 scene=sampleData(); shoot("forest-seconds",sm,scene);
-                scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("forest-seconds-info",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
@@ -1491,7 +1491,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("forest-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 slide("forest-transition",0.45f);
                 // The list fully up on each part of the day's ground.
                 for(int hour:{12,6,18,22}) {
@@ -1508,11 +1508,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 };
                 scene=sampleData(); setTime(6,0,0); scene.localTime.tm_mday=20; shoot("analog",sm,scene);
                 scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("analog-info",sm,scene);
                 scene=sampleData(); setTime(10,8,37); shoot("analog-seconds",sm,scene);
-                setTime(3,15,0); scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                setTime(3,15,0); scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("analog-over-date",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
@@ -1521,7 +1521,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("analog-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 slide("analog-transition",0.45f);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 // Work 11-3: Noonish at the references' 10:07 on the 20th, the
@@ -1530,7 +1530,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 if(!renderer.noonishSeconds()) renderer.handle(hold);
                 scene=sampleData(); setTime(10,7,0); scene.localTime.tm_mday=20; shoot("noonish",sm,scene);
                 scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("noonish-info",sm,scene);
                 setTime(12,0,0); shoot("noonish-together",sm,scene);
@@ -1544,7 +1544,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("noonish-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 slide("noonish-transition",0.45f);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 renderer.selectFace("digital");

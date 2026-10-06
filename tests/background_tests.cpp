@@ -211,7 +211,7 @@ void iconsAndColoursComeFromTheApp() {
     service.start(0);
     BackgroundInfo out;
     CHECK(provider.sample(Second,out));
-    CHECK(out.icon && out.icon==appIcon(IconId::Stopwatch) && out.suggestedColor==StopwatchAccent);
+    CHECK(out.icon && out.icon==appIcon(IconId::Stopwatch) && out.suggestedColor==StopwatchColors.background);
     BackgroundInfoHub stopwatch; stopwatch.add(provider); stopwatch.collect(Second);
     CHECK(stopwatch.collect(2*Second)==BackgroundRelabeled);     // the same asset each time
 }

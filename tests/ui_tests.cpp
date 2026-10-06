@@ -2,6 +2,7 @@
 #include "TestScreens.h"
 #include "host/FrameComposer.h"
 #include "features/launcher/AppListLayout.h"
+#include "features/launcher/AppListRows.h"
 #include "ui/rendering/Element.h"
 #include "ui/rendering/PaintContext.h"
 #include "ui/list/ListController.h"
@@ -916,12 +917,28 @@ void watchChangeBits() {
     a=b; b.background.count=0; b.localTime.tm_min=3;
     CHECK(watchChanges(a,b)==(WatchBackground|WatchTime));
 }
+// Each app brings both colours of its icon: the circle and the mask on it.
+// The timer's circle is light, so its mask is dark; the rest keep the white
+// every icon was drawn in before.
+void appIconColors() {
+    AppListModel m;
+    std::array<ListRow,AppListCount> rows{};
+    buildAppListRows(m,rows,appIcon);
+    for (int i=0;i<AppListCount;++i) {
+        CHECK(rows[i].icon && rows[i].mask);
+        if (LaunchRegistry[i].id==LaunchTargetId::Timer)
+            CHECK(rows[i].iconColor==0xfd03 && rows[i].iconInk==0x3080);
+        else CHECK(rows[i].iconInk==AppIconWhite);
+    }
+    CHECK(rows[0].iconColor==StopwatchColors.background && rows[0].iconColor==0x349f);
+}
 int main() {
     navigation(); flick(); launcherList(); launcherController(); composition();
     listLayout(); listController(); deadlines(); repaint(); damage();
-    homeInput(); digitalControl(); digitalLayoutRules(); maskFitting(); timeGlyphs(); watchChangeBits();
+    homeInput(); digitalControl(); digitalLayoutRules(); maskFitting(); timeGlyphs(); watchChangeBits(); appIconColors();
     std::cout<<"PASS: navigation/geometry, launcher controller, frame composition, "
                "shared list layout/controller, display deadlines, "
                "3000 differential framebuffer cases over a changing background, damage rectangle, "
-               "home input, digital control, digital layout, mask fitting, time glyphs, watch changes\n";
+               "home input, digital control, digital layout, mask fitting, time glyphs, watch changes, "
+               "app icon colours\n";
 }

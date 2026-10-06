@@ -8,7 +8,7 @@ namespace launcher {
 namespace {
 // docs/Images/Timer in RGB565. The keys are white at 20% over black, SET the
 // light grey at 20%, the focus the timer's lime.
-constexpr uint16_t Ink=0x0000,White=0xffff,Lime=TimerAccent;
+constexpr uint16_t Ink=0x0000,White=0xffff,Lime=0xc789; // #C4F24F
 constexpr uint16_t KeyFill=0x3186,KeyIdleFill=0x18c3,KeyIdleInk=0x6b4d;
 constexpr uint16_t SetFill=0x2104,ButtonFill=0x5acb,ButtonGlow=0x9cf3;
 }

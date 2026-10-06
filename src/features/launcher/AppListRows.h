@@ -24,12 +24,12 @@ inline void applySlots(const SlotCatalog& slots,AppListModel& m) {
         m.rowDimmed[i]=!ready;
     }
 }
-inline uint16_t appIconColor(const LaunchEntry& entry) {
+inline AppColors appColors(const LaunchEntry& entry) {
     switch (entry.id) {
-    case LaunchTargetId::Stopwatch: return StopwatchAccent;
-    case LaunchTargetId::Timer: return TimerAccent;
-    case LaunchTargetId::Settings: return SettingsAccent;
-    default: return ExternalAccent;
+    case LaunchTargetId::Stopwatch: return StopwatchColors;
+    case LaunchTargetId::Timer: return TimerColors;
+    case LaunchTargetId::Settings: return SettingsColors;
+    default: return ExternalColors;
     }
 }
 using IconLookup=const IconBitmap* (*)(IconId);
@@ -42,7 +42,9 @@ inline ListRows buildAppListRows(const AppListModel& m,std::array<ListRow,AppLis
         auto& row=rows[i];
         row.id=appRowId(entry.id);
         row.label=m.names[i] ? m.names[i] : entry.name;
-        row.icon=true; row.iconColor=appIconColor(entry);
+        row.icon=true;
+        const AppColors colors=appColors(entry);
+        row.iconColor=colors.background; row.iconInk=colors.foreground;
         row.mask=icons ? icons(entry.icon) : nullptr;
         row.dimmed=m.rowDimmed[i]; row.enabled=true;
     }

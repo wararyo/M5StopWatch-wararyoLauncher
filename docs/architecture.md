@@ -152,6 +152,8 @@ A+Bの連続600ms長押しは共通のホーム操作で、通常は個別画面
 4. `FrameModel`、`FrameComposer` の可視性・`FrameOrder`、`HostRenderer` のLayer所有・準備・対応表を追加する。
    必要なら `FrameActivity` と診断の分類も追加する。
 5. アイコンを追加する場合は `IconId` と [build_icons.py](../tools/build_icons.py) の `ICONS` を対応させ、資産を再生成する。
+   一覧での色は [AppIcons.h](../src/assets/AppIcons.h) の `AppColors`（円の背景色と、その上のマスクの前景色）で決め、`AppListRows.h` の `appColors()` に足す。
+   背景色は文字盤へのバックグラウンド情報の推奨色にも使う。既存のアプリの前景色は一覧の白（`AppIconWhite`）。
    `IconId` は埋め込み画像の索引なので既存順序を変えない。新しい表示文字にはフォントの収録範囲も確認する。
    画面に出す固定の文字列は [Strings.h](../src/i18n/Strings.h) に日本語と英語の両方を足し、`text::` で参照する。
 6. [CMakeLists.txt](../src/CMakeLists.txt) と [test_runtime.py](../tools/test_runtime.py) のソース一覧を更新し、

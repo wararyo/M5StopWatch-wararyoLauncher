@@ -54,7 +54,7 @@ void ListView::plan(FramePlan& frame,Gfx& g,const ListPlacement& placement,ListR
         const char* label=fit(g,slot.fitted,row,labelWidth(m,row.icon));
         uint32_t hash=hashValue(row.id,0x9e3779b9u);
         hash=hashValue(uint32_t(slot.index==selection_)|(uint32_t(row.dimmed)<<1)|(uint32_t(row.icon)<<2),hash);
-        hash=hashValue(row.iconColor,hash);
+        hash=hashValue(row.iconColor|(uint32_t(row.iconInk)<<16),hash);
         hash=hashValue(uint32_t(reinterpret_cast<uintptr_t>(row.mask)),hash);
         hash=hashString(label,hash);
         hash=hashValue(uint32_t(slot.layout.centerY),hashValue(uint32_t(slot.layout.iconX),hash));
@@ -131,13 +131,13 @@ void ListView::paintRow(Gfx& g,const RowLayout& r,const ListRow& row,bool select
         if (const auto* icon=row.mask) {
             if (scale_==1.0f)
                 g.pushGrayscaleImage(r.iconX-icon->width/2,r.centerY-icon->height/2,
-                    icon->width,icon->height,icon->pixels,lgfx::grayscale_8bit,White,row.iconColor);
+                    icon->width,icon->height,icon->pixels,lgfx::grayscale_8bit,row.iconInk,row.iconColor);
             else
                 // Rotate-zoom takes pixel indices and adds half a pixel to each,
                 // so both centres are given as index-0.5 to stay on the boundary.
                 g.pushGrayscaleImageRotateZoom(r.iconX-0.5f,r.centerY-0.5f,
                     icon->width*0.5f-0.5f,icon->height*0.5f-0.5f,0.0f,scale_,scale_,
-                    icon->width,icon->height,icon->pixels,lgfx::grayscale_8bit,White,row.iconColor);
+                    icon->width,icon->height,icon->pixels,lgfx::grayscale_8bit,row.iconInk,row.iconColor);
         }
     }
     // A dimmed row greys its name out. The icon is left alone so the rows

@@ -42,6 +42,7 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 `ScreenManager`、`HostRuntime` を所有する。宣言順に構築し、借用側のRuntime・画面が先に破棄される。
 `ScreenManager` は具体的な画面と `LauncherController` を所有するが、計測サービスは借りる。
 `TimerAttention` もここで所有し、`HostRuntime` に注意の要求元として登録する（2.1）。`HostShutdown` は外部起動の確定時にストップウォッチを止め、タイマーと振動も止める。
+文字盤へのバックグラウンド情報の提供元（`StopwatchBackgroundInfo`、`TimerBackgroundInfo`）と `BackgroundInfoHub` もここで所有する。登録順（ストップウォッチ→タイマー）が表示順になる。
 
 `main.cpp` はHAL、`HostRenderer`、時刻・設定・スロットのサービス、`HomeDataSource` を生成して注入する。
 `HostRenderer` は各描画レイヤーと文字盤管理を所有する。大きい描画オブジェクトと `HostApplication` は
@@ -95,6 +96,9 @@ staticに置き、8KiBのUIタスクスタックを圧迫しない。新しい�
   満了の画面を離れること（ホームを含む）は解除を意味する。表示されていない画面の `exit()` は何もしない。
 - 描画は [TimerLayer](../src/features/timer/TimerLayer.h)。キー・ボタンも含めて各箱を要素にし、表示の切り替えは全面再描画にする。
   時刻の数字は D-DIN-PRO Exp SemiBold 64px の数字グリフ（`timerDigitGlyphs()`）を使う。
+- 文字盤: 計時中だけ [TimerBackgroundInfo](../src/features/timer/TimerBackgroundInfo.h) が残り時間を出す（一時停止・満了・入力中は出さない）。
+  書式はストップウォッチと同じく1時間未満は `mm:ss`、以上は `HH:mm` だが、丸めは切り上げ（秒へ切り上げ、1時間以上はさらに分へ切り上げ）。
+  期限は表示が変わる時刻で、最後の `00:01` の期限は満了時刻と一致する。上限の `99:59:59` は最初の59秒だけ `100:00` と出る。
 
 ここには二段階の変更判定がある。Runtimeの `dirty_` は「モデルを再評価する必要がある」という意味であり、
 液晶転送を確定しない。再評価後に `FramePlan` が実際のピクセル変更を判定し、変更がなければ描画・転送を省く。

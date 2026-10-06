@@ -10,6 +10,7 @@
 #include "features/background/BackgroundInfoHub.h"
 #include "features/stopwatch/StopwatchBackgroundInfo.h"
 #include "features/timer/TimerAttention.h"
+#include "features/timer/TimerBackgroundInfo.h"
 namespace launcher {
 // What the application ends once an external boot is certain (plan.md 8.2
 // step 5). The slot service calls it on the UI task, after the boot partition
@@ -43,11 +44,12 @@ private:
 class HostApplication {
 public:
     HostApplication(Hal& hal,RenderPort& renderer,DisplayDataSource& data,int width,int height)
-        :stopwatchInfo_(stopwatch_),timerAttention_(timer_),shutdown_(stopwatch_,timer_,hal),
+        :stopwatchInfo_(stopwatch_),timerInfo_(timer_),timerAttention_(timer_),shutdown_(stopwatch_,timer_,hal),
          screens_(stopwatch_,runtimeSettings_,width,height),
          runtime_(hal,renderer,data,screens_,&background_) {
         // Registration order is display order (docs/task10/plan.md 4.1).
         background_.add(stopwatchInfo_);
+        background_.add(timerInfo_);
         screens_.bindTimer(&timer_,&timerPreferences_);
         runtime_.bindAttention(timerAttention_);
     }
@@ -81,6 +83,7 @@ private:
     // Service, then the providers that read it, then the hub that collects
     // them, all before the runtime that is lent the hub.
     StopwatchBackgroundInfo stopwatchInfo_;
+    TimerBackgroundInfo timerInfo_;
     TimerAttention timerAttention_;
     BackgroundInfoHub background_;
     RuntimeSettings runtimeSettings_{};

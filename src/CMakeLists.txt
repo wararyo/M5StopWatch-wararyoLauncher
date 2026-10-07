@@ -5,8 +5,8 @@ idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     "ui/overlays/ToastLayer.cpp" "ui/overlays/StatsOverlay.cpp"
     "host/ScreenManager.cpp" "host/HostRuntime.cpp" "host/HostRenderer.cpp" "host/RenderDiagnostics.cpp"
     "hal/M5Hal.cpp" "hal/InputWake.cpp" "hal/ImuWake.cpp" "hal/Pm1Irq.cpp" "power/DrainLog.cpp" "power/ChargeLog.cpp" "power/UsbDiag.cpp"
-    "services/TimeService.cpp" "features/home/HomeDataSource.cpp" "services/StopwatchService.cpp"
-    "storage/SettingsStore.cpp" "storage/NvsBackend.cpp"
+    "services/TimeService.cpp" "features/home/HomeDataSource.cpp" "services/StopwatchService.cpp" "services/TimerService.cpp" "features/timer/TimerScreen.cpp" "features/timer/TimerLayer.cpp" "features/timer/TimerBackgroundInfo.cpp"
+    "storage/SettingsStore.cpp" "storage/NvsBackend.cpp" "storage/TimerPreferences.cpp"
     "features/home/HomeLayer.cpp" "features/home/faces/DigitalWatchFace.cpp"
     "assets/AppIcons.cpp" "features/launcher/AppListLayer.cpp" "features/launcher/LauncherController.cpp"
     "features/settings/SettingsScreen.cpp" "features/settings/SettingsLayer.cpp"
@@ -20,6 +20,6 @@ idf_component_register(SRCS "main.cpp" "input/InputController.cpp"
     # so they do not change with these directories.
     EMBED_FILES "ui/graphics/fonts/GenShinGothicMedium28.vlw" "assets/AppIcons.bin"
         "ui/graphics/fonts/DDinProExpSemiBold100.vlw" "ui/graphics/fonts/DDinProCondensedSemiBold120.vlw"
-        "ui/graphics/fonts/DDinProExpBold28.vlw" "ui/graphics/fonts/DDinProExpBold22.vlw"
+        "ui/graphics/fonts/DDinProExpBold28.vlw" "ui/graphics/fonts/DDinProExpBold22.vlw" "ui/graphics/fonts/DDinProExpSemiBold64.vlw"
     REQUIRES app_update esp_app_format nvs_flash esp_psram spi_flash esp_hw_support esp_timer esp_driver_usb_serial_jtag esp_driver_gpio esp_pm)
 target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)

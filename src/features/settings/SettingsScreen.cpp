@@ -24,7 +24,9 @@ void SettingsScreen::openView(SettingsView view) {
     // here, so saving and cancelling both return where the eye already is.
     model_.view=view;
     model_.cursor=0;
-    model_.editing=false;
+    // A press held across the change belongs to the view it began in: its
+    // release must not decide anything in this one.
+    hold_.follow(-1);
     if (!available()) return;
     if (view==SettingsView::DateTime) {
         std::tm jst{}; TimeUs subsecond=0;
@@ -57,7 +59,7 @@ void SettingsScreen::step(int delta) {
         default: value=wrap(value,0,59,delta); break;
         }
         break;
-    // Wrapping, not clamping: A only ever steps forward, so every level has to
+    // Wrapping, not clamping: B only ever steps forward, so every level has to
     // be reachable without a second button.
     case SettingsView::Brightness:
         value=wrap(value,BrightnessMin,BrightnessMax,delta,BrightnessStep); break;
@@ -150,49 +152,72 @@ ScreenOutcome SettingsScreen::handleList(ListController& list,const Events& e,Ti
 ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs now) {
     ScreenOutcome out{};
     if (!available()) return out;
-    if (model_.view==SettingsView::Menu) {
+    if (shownList()) {
+        // Only an editor follows B. A press still followed here began in an
+        // editor that closed under it (save tapped while B was down), so its
+        // release decides nothing in the list either.
+        Events in=e;
+        if (in.decide && hold_.following()) in.decide=hold_.release(-1);
+        else if (in.holdChanged && in.hold!=Hold::B) hold_.end();
         ListDecision decision;
-        out=handleList(menu_,e,now,decision);
-        if (decision.decided) openItem(decision.id,out);
-        return out;
-    }
-    if (model_.view==SettingsView::WatchFace) {
-        ListDecision decision;
-        out=handleList(faceList_,e,now,decision);
+        if (model_.view==SettingsView::Menu) {
+            out=handleList(menu_,in,now,decision);
+            if (decision.decided) openItem(decision.id,out);
+            return out;
+        }
+        out=handleList(faceList_,in,now,decision);
         if (decision.decided) out.notice=chooseFace(decision.id);
         return out;
     }
+    // The editors (docs/task12/plan.md 1.5): A moves the focus over the
+    // fields and buttons; B steps a field, repeating while held, and carries
+    // out a button. There is no separate editing state to enter.
     const int fields=settingsFieldCount(model_.view);
+    // B on a field steps it as it goes down (input/HoldRepeat.h).
+    if (e.holdChanged && e.hold==Hold::B && hold_.begin(e.holdSince,model_.cursor,model_.cursor<fields)) {
+        step(1); out.changed=true;
+    }
     if (e.gesture==Gesture::Tap) {
         const auto hit=hitSettings({{width_,height_},model_.view,model_.cursor},e.x,e.y);
         switch (hit.kind) {
         case SettingsHit::Field:
-            model_.cursor=hit.index; model_.editing=false; out.changed=true; break;
+            model_.cursor=hit.index; out.changed=true; break;
         case SettingsHit::Up:
         case SettingsHit::Down:
-            model_.cursor=hit.index; model_.editing=false;
+            model_.cursor=hit.index;
             step(hit.kind==SettingsHit::Up ? 1 : -1); out.changed=true; break;
         case SettingsHit::Action:
-            model_.cursor=fields+hit.index; model_.editing=false;
+            model_.cursor=fields+hit.index;
             out.changed=true; out.notice=confirm(out); break;
         case SettingsHit::Button:
-            model_.cursor=fields+settingsActionCount(model_.view)+hit.index; model_.editing=false;
+            model_.cursor=fields+settingsActionCount(model_.view)+hit.index;
             out.changed=true; out.notice=confirm(out); break;
         case SettingsHit::None: break;
         }
+        hold_.follow(model_.cursor);
+        // B let go in this same sample: the tap decided it, but the hold ends
+        // here all the same, or its repeats would run on with nothing held.
+        if (e.decide || (e.holdChanged && e.hold!=Hold::B)) hold_.end();
         return out;
     }
     if (e.next) {
-        if (model_.editing) step(1);
-        else model_.cursor=(model_.cursor+1)%settingsSlotCount(model_.view);
+        model_.cursor=(model_.cursor+1)%settingsSlotCount(model_.view);
+        hold_.follow(model_.cursor);
         out.changed=true;
     }
     if (e.decide) {
-        // B enters a field, then confirms it. On a button it acts straight away.
-        if (model_.cursor<fields) model_.editing=!model_.editing;
-        else { model_.editing=false; out.notice=confirm(out); }
+        if (hold_.release(model_.cursor)) {
+            if (model_.cursor<fields) step(1);
+            else out.notice=confirm(out);
+        }
         out.changed=true;
-    }
+    } else if (e.holdChanged && e.hold!=Hold::B) hold_.end();
     return out;
+}
+bool SettingsScreen::tick(TimeUs now) {
+    if (auto* l=shownList()) return l->update(now);
+    if (!hold_.take(now)) return false;
+    step(1);
+    return true;
 }
 }

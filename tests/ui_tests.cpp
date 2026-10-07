@@ -2,6 +2,7 @@
 #include "TestScreens.h"
 #include "host/FrameComposer.h"
 #include "features/launcher/AppListLayout.h"
+#include "features/launcher/AppListRows.h"
 #include "ui/rendering/Element.h"
 #include "ui/rendering/PaintContext.h"
 #include "ui/list/ListController.h"
@@ -35,10 +36,10 @@ void navigation() {
            composeFrame(s.model()).home.clip==Rect{0,0,468,468}));
     drag(-51); CHECK(s.model().screen==ScreenId::AppList && s.model().launcher.transition==1);
     CHECK(composeFrame(s.model()).home.listProgress==1 && composeFrame(s.model()).home.clip.empty());
-    for(int i=1;i<=5;++i) {
+    for(int i=1;i<=AppListCount;++i) {
         e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
-        CHECK(s.model().launcher.list.selection==i%5);
-        const auto row=layoutListRow(placementOf(s.model()),i%5);
+        CHECK(s.model().launcher.list.selection==i%AppListCount);
+        const auto row=layoutListRow(placementOf(s.model()),i%AppListCount);
         CHECK(row.box.contains(row.labelX,row.centerY));
     }
     drag(50); CHECK(s.model().screen==ScreenId::AppList);
@@ -51,9 +52,12 @@ void navigation() {
     e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
     e={}; e.gesture=Gesture::Tap; e.x=0; e.y=0;
     CHECK(!s.handle(e,now) && !s.model().toast);
-    const auto row=layoutListRow(placementOf(s.model()),1);
+    // Settings, unavailable here without its store: the tap is acknowledged.
+    const int settingsRow=2;
+    CHECK(LaunchRegistry[settingsRow].id==LaunchTargetId::Settings);
+    const auto row=layoutListRow(placementOf(s.model()),settingsRow);
     e.x=row.labelX; e.y=row.centerY; s.handle(e,now);
-    CHECK(s.model().launcher.list.selection==1 && s.model().toast);
+    CHECK(s.model().launcher.list.selection==settingsRow && s.model().toast);
     CHECK(s.nextUpdate()==now+1400000);
     now+=1400000; s.update(now); CHECK(!s.model().toast && s.nextUpdate()==INT64_MAX);
     e={}; e.gesture=Gesture::DragStart; e.totalX=100; e.totalY=10;
@@ -157,10 +161,15 @@ void flick() {
     e.gesture=Gesture::DragEnd; resumed.handle(e,320000); resumed.update(500000);
     CHECK(!resumed.active() && !resumed.model().toast);
     TestScreens edge; release(edge,100000,-1000); edge.update(450000);
-    CHECK(edge.model().launcher.list.scroll==336 && edge.model().screen==ScreenId::AppList);
+    CHECK(edge.model().launcher.list.scroll==(AppListCount-1)*84 && edge.model().screen==ScreenId::AppList);
     TestScreens decide; release(decide,1000);
     e={}; e.decide=true; decide.handle(e,282000); decide.update(462000);
-    CHECK(decide.model().toast && decide.model().launcher.list.scroll==decide.model().launcher.list.selection*84);
+    // B during the coast decides the row it lands on: here the timer, which
+    // opens, where an unavailable row would only be acknowledged.
+    const int landed=decide.model().launcher.list.selection;
+    CHECK(decide.model().launcher.list.scroll==landed*84);
+    CHECK(LaunchRegistry[landed].id==LaunchTargetId::Timer ? decide.model().screen==ScreenId::Timer
+                                                           : decide.model().toast!=nullptr);
     TestScreens buttons; release(buttons,1000);
     e={}; e.next=true; buttons.handle(e,282000); buttons.update(462000);
     CHECK(buttons.model().launcher.list.scroll==buttons.model().launcher.list.selection*84);
@@ -174,7 +183,7 @@ void launcherList() {
     // Wrap to the stopwatch row with A and open it before the scroll lands:
     // the list arrives at once, leaves no deadline and comes back in place.
     TestScreens s; e.next=true; s.handle(e,0); s.update(180000);
-    for(int i=0;i<5;++i) { e={}; e.next=true; s.handle(e,200000+i*40000); s.update(216000+i*40000); }
+    for(int i=0;i<AppListCount;++i) { e={}; e.next=true; s.handle(e,200000+i*40000); s.update(216000+i*40000); }
     CHECK(s.model().launcher.list.selection==0 && s.model().launcher.list.animating);
     e={}; e.decide=true; s.handle(e,380000);
     auto m=s.model();
@@ -296,17 +305,18 @@ void composition() {
     CHECK(!clockVisible(m) && composeFrame(m).list);
     // An open screen covers the clock and the list whatever the slide says,
     // and only its own layer shows.
-    for (const auto screen:{ScreenId::Settings,ScreenId::External,ScreenId::Stopwatch}) {
+    for (const auto screen:{ScreenId::Settings,ScreenId::External,ScreenId::Stopwatch,ScreenId::Timer}) {
         m.screen=screen; m.launcher.transition=0.5f;
         c=composeFrame(m);
         CHECK(!c.clockVisible() && !clockVisible(m) && !c.list);
-        CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)==1);
+        CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)+int(c.timer)==1);
+        CHECK(c.timer==(screen==ScreenId::Timer));
         CHECK(c.settings==(screen==ScreenId::Settings) && c.external==(screen==ScreenId::External));
     }
     // Back to front: the clock, the list's rows on the frame's base, the
     // screens that cover it, and the notice over everything. Each layer
     // exactly once.
-    CHECK(FrameLayerCount==6);
+    CHECK(FrameLayerCount==7);
     CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppList);
     CHECK(FrameOrder[FrameLayerCount-1]==FrameLayer::Toast);
     for (int i=0;i<FrameLayerCount;++i) for (int j=0;j<i;++j) CHECK(FrameOrder[i]!=FrameOrder[j]);
@@ -907,12 +917,28 @@ void watchChangeBits() {
     a=b; b.background.count=0; b.localTime.tm_min=3;
     CHECK(watchChanges(a,b)==(WatchBackground|WatchTime));
 }
+// Each app brings both colours of its icon: the circle and the mask on it.
+// The timer's circle is light, so its mask is dark; the rest keep the white
+// every icon was drawn in before.
+void appIconColors() {
+    AppListModel m;
+    std::array<ListRow,AppListCount> rows{};
+    buildAppListRows(m,rows,appIcon);
+    for (int i=0;i<AppListCount;++i) {
+        CHECK(rows[i].icon && rows[i].mask);
+        if (LaunchRegistry[i].id==LaunchTargetId::Timer)
+            CHECK(rows[i].iconColor==0xfd03 && rows[i].iconInk==0x3080);
+        else CHECK(rows[i].iconInk==AppIconWhite);
+    }
+    CHECK(rows[0].iconColor==StopwatchColors.background && rows[0].iconColor==0x349f);
+}
 int main() {
     navigation(); flick(); launcherList(); launcherController(); composition();
     listLayout(); listController(); deadlines(); repaint(); damage();
-    homeInput(); digitalControl(); digitalLayoutRules(); maskFitting(); timeGlyphs(); watchChangeBits();
+    homeInput(); digitalControl(); digitalLayoutRules(); maskFitting(); timeGlyphs(); watchChangeBits(); appIconColors();
     std::cout<<"PASS: navigation/geometry, launcher controller, frame composition, "
                "shared list layout/controller, display deadlines, "
                "3000 differential framebuffer cases over a changing background, damage rectangle, "
-               "home input, digital control, digital layout, mask fitting, time glyphs, watch changes\n";
+               "home input, digital control, digital layout, mask fitting, time glyphs, watch changes, "
+               "app icon colours\n";
 }

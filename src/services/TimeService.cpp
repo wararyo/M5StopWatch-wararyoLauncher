@@ -4,9 +4,13 @@ namespace launcher {
 bool TimeService::syncFromRtc() {
     CivilTime utc{};
     if (!hal_ || !hal_->readRtc(utc) || !trusted(utc)) { valid_ = false; return false; }
-    hal_->setUtcClock(unixFromCivil(utc));
+    setOffEdge(unixFromCivil(utc));
     valid_ = true;
     return true;
+}
+void TimeService::setOffEdge(int64_t unixSeconds) {
+    hal_->setUtcClock(unixSeconds);
+    edgeSet_ = false;
 }
 bool TimeService::begin(Hal& hal) {
     hal_ = &hal;
@@ -32,6 +36,9 @@ SaveResult TimeService::save(const CivilTime& jstInput) {
     CivilTime jst = jstInput;
     jst.second = 0; // Manual entry edits to the minute; seconds start at zero (5.4).
     if (!trusted(jst)) return SaveResult::Invalid;
+    // Whichever way it goes, the clock ends up set within a second, or as it
+    // was: aligned at once, it measures drift again from the next alignment.
+    alignWanted_ = true;
     const int64_t target = unixFromCivil(jst) - JstOffsetSec;
     if (!hal_->writeRtc(civilFromUnix(target))) {
         // Nothing reached the chip. Recover whatever the RTC still holds so the
@@ -51,7 +58,7 @@ SaveResult TimeService::save(const CivilTime& jstInput) {
         std::printf("[Time] rtc read-back mismatch; recovered=%s\n", recovered ? "yes" : "no");
         return recovered ? SaveResult::RtcWriteFailed : SaveResult::Unrecoverable;
     }
-    hal_->setUtcClock(unixFromCivil(readback));
+    setOffEdge(unixFromCivil(readback));
     valid_ = true;
     return SaveResult::Saved;
 }
@@ -60,8 +67,9 @@ void TimeService::beginAlign(TimeUs now) {
     alignUntil_ = now + AlignWindowUs;
     alignFirst_ = true;
 }
-TimeUs TimeService::align(TimeUs now, bool& stepped) {
-    stepped = false;
+TimeUs TimeService::align(TimeUs now, ClockAlignment& result) {
+    result = {};
+    if (alignWanted_) { alignWanted_ = false; beginAlign(now); }
     if (alignUntil_ == INT64_MIN) return INT64_MAX;
     CivilTime utc{};
     // A failed or untrusted read leaves the clock as it is; the next wake
@@ -72,10 +80,11 @@ TimeUs TimeService::align(TimeUs now, bool& stepped) {
         return INT64_MAX;
     }
     const int64_t second = unixFromCivil(utc);
-    // A late read starts the watch again from itself instead.
+    // A late read starts the watch again from itself instead, and so does
+    // any second but the next: a misread, or a gap the edge may lie inside.
     const bool late = now - alignReadAt_ > AlignGapUs;
     alignReadAt_ = now;
-    if (alignFirst_ || late || second == alignSecond_) {
+    if (alignFirst_ || late || second != alignSecond_ + 1) {
         alignFirst_ = false;
         alignSecond_ = second;
         return now + AlignPollUs;
@@ -85,9 +94,21 @@ TimeUs TimeService::align(TimeUs now, bool& stepped) {
     hal_->setUtcClock(second);
     valid_ = true;
     alignUntil_ = INT64_MIN;
-    stepped = true;
-    std::printf("[Time] aligned to rtc: system clock was %+lldms\n",
-                (long long)((before - second * 1000000) / 1000));
+    result.stepped = true;
+    const TimeUs gain = before - second * 1000000;
+    if (edgeSet_) {
+        result.measured = true;
+        result.gainUs = gain;
+        const TimeUs over = now - edgeAt_;
+        std::printf("[Time] aligned to rtc: system clock was %+lldms over %llds (%+lldppm)\n",
+                    (long long)(gain / 1000), (long long)(over / 1000000),
+                    (long long)(over > 0 ? gain * 1000000 / over : 0));
+    } else {
+        std::printf("[Time] aligned to rtc: system clock was %+lldms (set off an edge, not drift)\n",
+                    (long long)(gain / 1000));
+    }
+    edgeSet_ = true;
+    edgeAt_ = now;
     return INT64_MAX;
 }
 }

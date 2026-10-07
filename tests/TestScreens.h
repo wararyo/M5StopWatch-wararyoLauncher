@@ -14,6 +14,8 @@ struct TestHome : HomeControlPort {
 // host/HostApplication.h owns it. A base, so it is built before the manager.
 struct AppState {
     StopwatchService stopwatch;
+    TimerService timer;
+    TimerPreferences timerPreferences;
     RuntimeSettings runtime;
     TestHome home;
 };
@@ -21,6 +23,7 @@ struct AppState {
 struct TestScreens : AppState, ScreenManager {
     explicit TestScreens(int width=468,int height=468) : ScreenManager(stopwatch,runtime,width,height) {
         home.viewport={width,height}; bindHome(&home);
+        bindTimer(&timer,&timerPreferences);
     }
 };
 }

@@ -36,6 +36,10 @@ public:
     // decides when; fakes without one inherit the no-op. False when the
     // write did not reach M5PM1, so the runtime sends it again.
     virtual bool setStatusLed(bool) { return true; }
+    // The vibration motor, 0 (off) to 255. False when the level did not reach
+    // the motor's driver, so the runtime tries again. Fakes without a motor
+    // inherit the no-op.
+    virtual bool setVibration(uint8_t level) { (void)level; return true; }
     // The RTC is read and written as UTC (plan.md 7.3). The system clock is
     // what the launcher actually reads each frame, so it sits behind the HAL
     // too: settimeofday is not available on the PC toolchain, and routing it

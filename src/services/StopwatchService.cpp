@@ -1,4 +1,5 @@
 #include "StopwatchService.h"
+#include <algorithm>
 namespace launcher {
 void StopwatchService::start(TimeUs now) {
     if (state_==StopwatchState::Running) return;
@@ -14,6 +15,14 @@ void StopwatchService::reset() {
     accumulated_=0; startedAt_=0;
     state_=StopwatchState::Reset;
     rows_=0; lapCount_=0;
+    counting_=false;
+}
+void StopwatchService::clockCorrected(TimeUs gainUs) {
+    if (!counting_) return;
+    counting_=false;
+    // Ahead means less really went by.
+    if (state_==StopwatchState::Running) startedAt_+=gainUs;
+    else if (state_==StopwatchState::Paused) accumulated_=std::max<TimeUs>(0,accumulated_-gainUs);
 }
 void StopwatchService::lap(TimeUs now) {
     // Only a running measurement has a lap to take; the button is dead in the

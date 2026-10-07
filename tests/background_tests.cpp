@@ -2,6 +2,8 @@
 #include "features/home/HomeDataSource.h"
 #include "features/background/BackgroundInfoHub.h"
 #include "features/stopwatch/StopwatchBackgroundInfo.h"
+#include "features/timer/TimerBackgroundInfo.h"
+#include "host/LaunchRegistry.h"
 #include "services/TimeService.h"
 #include "assets/AppIcons.h"
 #include <cstdlib>
@@ -41,6 +43,12 @@ std::string label(const BackgroundSnapshot& s,int i) { return s.items[i].label; 
 std::string format(TimeUs elapsed,TimeUs* wait=nullptr) {
     char text[BackgroundLabelBytes];
     const auto w=formatStopwatchBackground(elapsed,text,sizeof(text));
+    if (wait) *wait=w;
+    return text;
+}
+std::string timerFormat(TimeUs remaining,TimeUs* wait=nullptr) {
+    char text[BackgroundLabelBytes];
+    const auto w=formatTimerBackground(remaining,text,sizeof(text));
     if (wait) *wait=w;
     return text;
 }
@@ -211,7 +219,7 @@ void iconsAndColoursComeFromTheApp() {
     service.start(0);
     BackgroundInfo out;
     CHECK(provider.sample(Second,out));
-    CHECK(out.icon && out.icon==appIcon(IconId::Stopwatch) && out.suggestedColor==StopwatchAccent);
+    CHECK(out.icon && out.icon==appIcon(IconId::Stopwatch) && out.suggestedColor==StopwatchColors.background);
     BackgroundInfoHub stopwatch; stopwatch.add(provider); stopwatch.collect(Second);
     CHECK(stopwatch.collect(2*Second)==BackgroundRelabeled);     // the same asset each time
 }
@@ -298,7 +306,7 @@ void homeGetsTheLabelAfterTheScreenCloses() {
     TimeService time; time.begin(hal);
     HomeDataSource data(hal,time);
     HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
-    CHECK(application.background().providers()==1 && application.background().rejected()==0);
+    CHECK(application.background().providers()==2 && application.background().rejected()==0);
     runtime.begin();
     hal.time=1000; runtime.step();
     CHECK(render.watch.background.count==0);             // Reset: nothing to show
@@ -430,15 +438,165 @@ void labelsWakeOnlyAFaceThatShowsThem() {
     CHECK(framesOver(5)==0);
 }
 
+void timerFormat() {
+    TimeUs wait=0;
+    // Nothing left: 00:00 and no change to wait for.
+    CHECK(timerFormat(0,&wait)=="00:00" && wait==INT64_MAX);
+    CHECK(timerFormat(-5*Second,&wait)=="00:00" && wait==INT64_MAX);
+    // Rounded up: what is left of a second still shows as that second.
+    CHECK(timerFormat(1,&wait)=="00:01" && wait==1);
+    CHECK(timerFormat(400000,&wait)=="00:01" && wait==400000);
+    CHECK(timerFormat(Second,&wait)=="00:01" && wait==Second);
+    CHECK(timerFormat(Second+1,&wait)=="00:02" && wait==1);
+    CHECK(timerFormat(59*Second+1,&wait)=="01:00" && wait==1);
+    CHECK(timerFormat(3599*Second,&wait)=="59:59" && wait==Second);
+    // An hour switches the unit: the seconds rounded up, then the minutes.
+    CHECK(timerFormat(3599*Second+1,&wait)=="01:00" && wait==1);
+    CHECK(timerFormat(3600*Second,&wait)=="01:00" && wait==Second);   // next: 59:59
+    CHECK(timerFormat(3600*Second+1,&wait)=="01:01" && wait==1);
+    CHECK(timerFormat(3601*Second,&wait)=="01:01" && wait==Second);   // next: 01:00
+    CHECK(timerFormat(3660*Second,&wait)=="01:01" && wait==Minute);
+    CHECK(timerFormat(3660*Second+1,&wait)=="01:02" && wait==1);
+    CHECK(timerFormat(2*Hour,&wait)=="02:00" && wait==Minute);
+    CHECK(timerFormat(99*Hour+59*Minute,&wait)=="99:59" && wait==Minute);
+    // The longest timer rounds up to the hundredth hour for its first seconds.
+    CHECK(timerFormat(TimeUs(TimerMaxSeconds)*Second,&wait)=="100:00" && wait==59*Second);
+}
+
+void timerProvider() {
+    TimerService service;
+    TimerBackgroundInfo provider(service);
+    CHECK(provider.id()==LaunchTargetId::Timer);
+    BackgroundInfo out;
+    CHECK(!provider.sample(0,out));                       // Idle: nothing
+    CHECK(service.start(1000,3601));
+    // Just started: the length as set, rounded up to the minute.
+    CHECK(provider.sample(1000,out) && std::string(out.label)=="01:01" && out.nextChangeAt==1000+Second);
+    CHECK(out.icon && out.icon==appIcon(IconId::Timer) && out.suggestedColor==TimerColors.background);
+    CHECK(provider.sample(1000+Second,out) && std::string(out.label)=="01:00" && out.nextChangeAt==1000+2*Second);
+    CHECK(provider.sample(1000+2*Second,out) && std::string(out.label)=="59:59" && out.nextChangeAt==1000+3*Second);
+    // A late frame shows the current label and waits for the change after now.
+    CHECK(provider.sample(1000+2*Second+300000,out) && std::string(out.label)=="59:59");
+    CHECK(out.nextChangeAt==1000+3*Second);
+    CHECK(service.pause(1000+10*Second+300000));
+    CHECK(!provider.sample(1000+20*Second,out));          // Paused: nothing
+    // Resumed: the boundaries follow the countdown, carrying its fraction.
+    CHECK(service.resume(50*Second));
+    CHECK(provider.sample(50*Second,out) && std::string(out.label)=="59:51");
+    CHECK(out.nextChangeAt==50*Second+700000);
+    const TimeUs end=service.deadline();
+    CHECK(end==50*Second+3590*Second+700000);
+    // The last second: 00:01 until the end, which is its deadline.
+    CHECK(provider.sample(end-400000,out) && std::string(out.label)=="00:01" && out.nextChangeAt==end);
+    // Run out but not yet expired: nothing, never 00:00.
+    CHECK(!provider.sample(end,out));
+    CHECK(service.expire(end) && service.state()==TimerState::Ringing);
+    CHECK(!provider.sample(end+Second,out));              // Ringing: nothing
+    CHECK(service.dismiss());
+    CHECK(!provider.sample(end+2*Second,out));
+    // Both lines, in registration order: the stopwatch's, then the timer's.
+    StopwatchService stopwatch; StopwatchBackgroundInfo first(stopwatch);
+    BackgroundInfoHub hub; hub.add(first); hub.add(provider);
+    stopwatch.start(0); CHECK(service.start(0,90));
+    CHECK(hub.collect(Second)==BackgroundAdded);
+    const auto& s=hub.snapshot();
+    CHECK(s.count==2 && s.items[0].appId==LaunchTargetId::Stopwatch && s.items[1].appId==LaunchTargetId::Timer);
+    CHECK(label(s,0)=="00:01" && label(s,1)=="01:29");
+    CHECK(service.pause(2*Second));
+    CHECK(hub.collect(2*Second)==(BackgroundRemoved|BackgroundRelabeled));
+    CHECK(hub.snapshot().count==1 && hub.snapshot().items[0].appId==LaunchTargetId::Stopwatch);
+}
+
+void homeShowsTheTimeLeft() {
+    StubHal hal; RecordingRender render; render.showLabels=true;
+    TimeService time; time.begin(hal);
+    HomeDataSource data(hal,time);
+    HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
+    runtime.begin();
+    hal.time=1000; runtime.step();
+    auto pressButton=[&](bool a) {
+        (a ? hal.input.a : hal.input.b)=true; hal.time+=20000; runtime.step();
+        (a ? hal.input.a : hal.input.b)=false; hal.time+=20000; runtime.step();
+        hal.time+=200000; runtime.step();
+    };
+    auto goHome=[&] {
+        hal.input.a=hal.input.b=true; hal.time+=10000; runtime.step();
+        hal.time+=600000; runtime.step();
+        hal.input={}; hal.time+=10000; runtime.step();
+        CHECK(runtime.model().screen==ScreenId::Home);
+    };
+    auto openTimer=[&] {
+        pressButton(true);                               // clock -> list
+        while (LaunchRegistry[runtime.model().launcher.list.selection].id!=LaunchTargetId::Timer) pressButton(true);
+        pressButton(false);
+        CHECK(runtime.model().screen==ScreenId::Timer);
+    };
+    openTimer();
+    pressButton(true); pressButton(true);                // minutes -> seconds -> SET
+    pressButton(false);                                  // start the default 3 minutes
+    CHECK(application.timer().state()==TimerState::Running && application.timer().duration()==180);
+    const TimeUs end=application.timer().deadline();
+    goHome();
+    const auto& shown=render.watch.background;
+    CHECK(shown.count==1 && shown.items[0].appId==LaunchTargetId::Timer);
+    CHECK(std::string(shown.items[0].label)=="03:00");   // under a second gone: rounded up
+    CHECK(shown.items[0].icon==appIcon(IconId::Timer) && shown.items[0].suggestedColor==TimerColors.background);
+    CHECK(shown.items[0].nextChangeAt>hal.time && shown.items[0].nextChangeAt<=hal.time+Second);
+    CHECK((end-shown.items[0].nextChangeAt)%Second==0);
+    // A face that shows it is drawn once per second, each frame one second less.
+    std::string last=shown.items[0].label;
+    int changes=0;
+    for (int i=0;i<50;++i) {
+        const int before=render.draws;
+        hal.time+=100000; runtime.step();
+        if (render.draws!=before) {
+            CHECK(render.watch.background.count==1);
+            CHECK(std::string(render.watch.background.items[0].label)!=last);
+            last=render.watch.background.items[0].label; ++changes;
+        }
+    }
+    CHECK(changes==5 && last=="02:55");
+    // Setting the wall clock moves neither the label nor its deadline.
+    CHECK(time.save({2026,1,1,0,0,0})==SaveResult::Saved);
+    runtime.dataChanged(); hal.time+=10000; runtime.step();
+    CHECK(std::string(render.watch.background.items[0].label)=="02:55");
+    CHECK((end-render.watch.background.items[0].nextChangeAt)%Second==0);
+    // Paused from its screen: home shows nothing for it.
+    openTimer();
+    CHECK(runtime.model().timer.view==TimerView::Countdown);
+    pressButton(false);
+    CHECK(application.timer().state()==TimerState::Paused);
+    goHome();
+    CHECK(render.watch.background.count==0);
+    // Resumed, it is back; left alone, it runs out under the clock and the
+    // alert covers it.
+    openTimer(); pressButton(false);
+    CHECK(application.timer().state()==TimerState::Running);
+    goHome();
+    CHECK(render.watch.background.count==1 && render.watch.background.items[0].appId==LaunchTargetId::Timer);
+    const TimeUs due=application.timer().deadline();
+    while (hal.time<due) { hal.time+=100000; runtime.step(); }
+    CHECK(application.timer().state()==TimerState::Ringing && runtime.model().screen==ScreenId::Timer);
+    CHECK(runtime.model().timer.view==TimerView::Ringing);
+    // Dismissed, and home again: nothing.
+    pressButton(false);
+    CHECK(application.timer().state()==TimerState::Idle);
+    goHome();
+    CHECK(render.watch.background.count==0);
+}
+
 int main() {
     collectsInRegistrationOrder();
     labelsAreCheckedAndOwned();
     deadlinesFollowTheShownItems();
     stopwatchFormat();
     stopwatchProvider();
+    timerFormat();
+    timerProvider();
     iconsAndColoursComeFromTheApp();
     homeGetsTheLabelAfterTheScreenCloses();
     labelsWakeOnlyAFaceThatShowsThem();
+    homeShowsTheTimeLeft();
     std::cout << "background tests passed\n";
     return 0;
 }

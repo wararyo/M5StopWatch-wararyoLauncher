@@ -12,6 +12,7 @@ FrameModel ScreenManager::model() const {
     m.stats=runtime_.stats;
     m.external=external_.model();
     m.stopwatch=stopwatchScreen_.model();
+    m.timer=timerScreen_.model();
     m.activity=activity();
     return m;
 }
@@ -35,6 +36,7 @@ bool ScreenManager::open(Screen& screen,ScreenId id,TimeUs now) {
 bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
     if (entry) {
         if (entry->id==LaunchTargetId::Stopwatch && open(stopwatchScreen_,ScreenId::Stopwatch,now)) return true;
+        if (entry->id==LaunchTargetId::Timer && open(timerScreen_,ScreenId::Timer,now)) return true;
         if (entry->id==LaunchTargetId::Settings && open(settings_,ScreenId::Settings,now)) return true;
         // Every external row opens, whatever the slot holds: the detail
         // screen is where an empty or broken slot explains itself.
@@ -48,6 +50,28 @@ bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
     // list itself never advertises a missing target.
     notify(text::Unavailable,now);
     return true;
+}
+void ScreenManager::leaveAll() {
+    toast_=nullptr; toastUntil_=INT64_MAX;
+    launcher_.home();
+    settings_.exit(); external_.exit(); stopwatchScreen_.exit(); timerScreen_.exit(); active_=nullptr;
+}
+bool ScreenManager::present(ScreenId id,TimeUs now) {
+    Screen* target=nullptr;
+    switch (id) {
+    case ScreenId::Settings: target=&settings_; break;
+    case ScreenId::Stopwatch: target=&stopwatchScreen_; break;
+    case ScreenId::Timer: target=&timerScreen_; break;
+    case ScreenId::Home: break;
+    // The list and the external detail show a choice the request cannot make.
+    default: return false;
+    }
+    if (target && !target->available()) return false;
+    // Already shown: entered again, so it takes up what it is asked to show
+    // (a countdown that rang) without first being left, which would end it.
+    if (target && target==active_) { toast_=nullptr; toastUntil_=INT64_MAX; target->enter(now); return true; }
+    leaveAll();
+    return !target || open(*target,id,now);
 }
 bool ScreenManager::update(TimeUs now) {
     bool changed=false;
@@ -69,9 +93,8 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
     // itself is suppressed until the API answers (plan.md 8.2 step 3).
     if (active_ && active_->exclusive()) return false;
     if (e.home) {
-        ++homeCount_; toast_=nullptr; toastUntil_=INT64_MAX;
-        launcher_.home();
-        settings_.exit(); external_.exit(); stopwatchScreen_.exit(); active_=nullptr;
+        ++homeCount_;
+        leaveAll();
         return true;
     }
     const bool changed=update(now);

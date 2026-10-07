@@ -13,6 +13,7 @@
 #define LAUNCHER_TEXTS(X) \
     /* App list. The external names stand in until a guest image names itself. */ \
     X(Stopwatch,          "ストップウォッチ",       "Stopwatch") \
+    X(Timer,              "タイマー",               "Timer") \
     X(Settings,           "設定",                   "Settings") \
     X(ExternalApp1,       "外部アプリ1",            "App 1") \
     X(ExternalApp2,       "外部アプリ2",            "App 2") \
@@ -25,6 +26,8 @@
     X(TimeSaved,          "時刻を保存しました",     "Time saved") \
     X(InvalidDate,        "日付が正しくありません", "Invalid date") \
     X(ClockUnavailable,   "時計を設定できません",   "Cannot set the clock") \
+    /* Timer */ \
+    X(Dismiss,            "解除",                   "Dismiss") \
     X(FaceUnavailable,    "文字盤を表示できません", "Cannot show this face") \
     /* Settings */ \
     X(DateTime,           "日時",                   "Date & time") \

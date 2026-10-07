@@ -4,16 +4,23 @@ namespace launcher {
 Events InputController::update(TimeUs now, const InputSnapshot& in, bool consumeTouch, bool longPress) {
     Events out{};
     out.activity = in.a || in.b || in.touching || previous_.a || previous_.b || previous_.touching;
+    if (in.a && !previous_.a) pressA_ = now;
+    if (in.b && !previous_.b) pressB_ = now;
     if (in.a && in.b) {
         chordGroup_ = true;
         if (!timing_) { timing_ = true; chordSince_ = now; }
-        if (!homeSent_ && now - chordSince_ >= 600000) out.home = homeSent_ = true;
+        if (!spent_ && !homeSent_ && now - chordSince_ >= 600000) out.home = homeSent_ = true;
     } else timing_ = false;
-    if (!chordGroup_) {
+    if (!chordGroup_ && !spent_) {
         out.next = previous_.a && !in.a;
         out.decide = previous_.b && !in.b;
+        if (out.next) out.pressUs = now - pressA_;
+        if (out.decide) out.pressUs = now - pressB_;
+        // Only a button on its own holds: the moment the other joins, the
+        // pair is a chord and stays one until both are up.
+        if (in.a != in.b) { out.hold = in.a ? Hold::A : Hold::B; out.holdSince = in.a ? pressA_ : pressB_; }
     }
-    if (!in.a && !in.b) chordGroup_ = homeSent_ = false;
+    if (!in.a && !in.b) chordGroup_ = homeSent_ = spent_ = false;
 
     out.x = in.x; out.y = in.y;
     if (in.touching && !previous_.touching) {
@@ -32,6 +39,7 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
     // Home cancels the whole gesture, including a release in this same sample.
     if (out.home) {
         out.next = out.decide = false;
+        out.hold = Hold::None;
         out.gesture = Gesture::Cancel;
         swallowed_ = in.touching;
         dragging_ = longPressArmed_ = false;
@@ -58,11 +66,20 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
         out.x = previous_.x; out.y = previous_.y;
         out.totalX = previous_.x - startX_; out.totalY = previous_.y - startY_;
         out.gesture = dragging_ ? Gesture::DragEnd : Gesture::Tap;
+        out.touchUs = now - touchSince_;
         out.velocityY = now - lastMoveTime_ < 80000 ? velocityY_ : 0;
     }
     if (!in.touching) swallowed_ = dragging_ = homeTouch_ = longPressArmed_ = false;
+    out.holdChanged = out.hold != hold_;
+    hold_ = out.hold;
     previous_ = in;
     sampleTime_ = now;
     return out;
+}
+void InputController::discardHeld() {
+    // The hold itself is left to end at the next sample, so whoever follows it
+    // sees it end rather than silently lose it.
+    if (previous_.a || previous_.b) { spent_ = true; timing_ = false; }
+    if (previous_.touching) { swallowed_ = true; dragging_ = longPressArmed_ = homeTouch_ = false; }
 }
 }

@@ -7,11 +7,14 @@ namespace launcher {
 void HostRuntime::begin() {
     const TimeUs now = hal_.now();
     power_.begin(now); nextInput_ = nextUsb_ = now; renderer_.invalidate();
-    data_.panelWoke(now);
+    alignClock(now);
 }
 void HostRuntime::step() {
     const TimeUs now = hal_.now();
     const bool wasOff = power_.screenOff();
+    // Before the input: a press that arrives with a timer's expiry cannot
+    // pause or dismiss what has already run out (docs/task12/plan.md 2.4).
+    attend(now);
     // Asked every pass so a notification is consumed even when input is due
     // anyway. It only brings a read forward while nothing is being followed:
     // the touch driver skips its I2C read when asked again within 10ms of a
@@ -25,7 +28,9 @@ void HostRuntime::step() {
         const auto e = input_.update(now, raw, wasOff && raw.touching, screens_.homeAtRest());
         // Release edges also count as activity. Process home before screen events.
         power_.update(now, e.activity, screens_.active());
-        if (e.home || e.next || e.decide || e.gesture != Gesture::None) {
+        // A hold that starts or ends is passed on as well: a screen that
+        // repeats or fills while a button is held times it from there.
+        if (e.home || e.next || e.decide || e.holdChanged || e.gesture != Gesture::None) {
             // A long press changes the clock's own deadline (seconds shown or
             // not); the redraw below takes the new one in this same step.
             const bool changed = screens_.handle(e, now);
@@ -92,13 +97,22 @@ void HostRuntime::step() {
         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
         appliedBrightness_ = -1;
         fadeEnd_ = power_.screenOff() ? 0 : std::max(now, hal_.panelShowsAt()) + FadeUs;
-        if (wasOff) data_.panelWoke(now);
+        if (wasOff) alignClock(now);
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
-    // A clock that moved is drawn again, which also takes its new deadlines.
-    bool moved = false;
-    nextService_ = data_.service(now, moved);
-    if (moved && !power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
+    // A follower's own alignment, with the panel left dark: a timer counting
+    // down through the dark is put right on its way (docs/task12/plan.md 2.1).
+    if (now >= alignmentDue()) alignClock(now);
+    ClockAlignment alignment;
+    nextService_ = data_.service(now, alignment);
+    if (alignment.measured) {
+        for (int i = 0; i < followerCount_; ++i) followers_[i]->clockCorrected(alignment.gainUs);
+        // A measurement on screen moved with it.
+        if (!power_.screenOff() && screens_.clockCorrected(now)) dirty_ = true;
+    }
+    // A clock that moved is drawn again, which also takes its new deadlines,
+    // and its applications' labels with theirs.
+    if (alignment.stepped && !power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
     if (!power_.screenOff()) {
         dirty_ = screens_.update(now) || dirty_;
         // A provider's notification redraws a clock on screen. A covered
@@ -106,6 +120,7 @@ void HostRuntime::step() {
         // panel is not woken for a label (docs/task10/plan.md 4.3).
         if (background_ && background_->pending() && !dirty_ && clockVisible(screens_.model())) dirty_ = true;
     }
+    followScreen(now);
     if (!power_.screenOff() && (dirty_ || now >= nextDisplay_)) {
         const auto model = screens_.model();
         const auto effective=screens_.effectiveSettings();
@@ -145,6 +160,45 @@ void HostRuntime::step() {
     // strand the commit, because the screen itself takes no input until it ends.
     if (screens_.commitPendingBoot()) dirty_ = true;
 }
+void HostRuntime::attend(TimeUs now) {
+    for (int i = 0; i < attentionCount_; ++i) {
+        auto& source = *attention_[i];
+        auto request = source.attention(now);
+        if (!request.active) { attended_[i] = false; continue; }
+        if (attended_[i]) continue;
+        // A boot commit cannot be interrupted (plan.md 8.2). If it lands, the
+        // shutdown ends the request; if it fails, it starts after.
+        if (screens_.exclusive()) continue;
+        attended_[i] = true;
+        // Whatever is held was meant for what was shown before.
+        input_.discardHeld();
+        // A dark panel lights as for a press.
+        power_.update(now, true, screens_.active());
+        if (request.present) screens_.present(request.screen, now);
+        dirty_ = true;
+    }
+}
+void HostRuntime::alignClock(TimeUs now) {
+    data_.alignClock(now);
+    for (int i = 0; i < followerCount_; ++i) followers_[i]->alignmentBegun(now);
+}
+TimeUs HostRuntime::alignmentDue() const {
+    TimeUs due = INT64_MAX;
+    for (int i = 0; i < followerCount_; ++i) due = std::min(due, followers_[i]->alignmentDue());
+    return due;
+}
+void HostRuntime::followScreen(TimeUs now) {
+    // The shown screen's alert (host/Screen.h): what it asks now is what the
+    // panel and the motor do, so leaving it lets go of both.
+    power_.holdUntil(screens_.holdPanelUntil());
+    vibration_ = screens_.vibration();
+    applyVibration(now);
+}
+void HostRuntime::applyVibration(TimeUs now) {
+    if (vibration_ == appliedVibration_ || now < vibrationRetry_) return;
+    if (hal_.setVibration(uint8_t(vibration_))) appliedVibration_ = vibration_;
+    else { appliedVibration_ = VibrationUnknown; vibrationRetry_ = now + VibrationRetryUs; }
+}
 bool HostRuntime::sleepAllowed() const {
     return power_.screenOff() && power_.usb.vbusValid && !power_.usb.powered();
 }
@@ -162,7 +216,11 @@ void HostRuntime::wait(TimeUs also) {
     // postpone unsampled input forever under continuous processing overruns.
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
-    auto deadline = std::min({nextInput_, power_.deadline(), nextService_, also});
+    // The attention sources, the motor and the followers' alignments are
+    // waited for with the panel dark too.
+    auto deadline = std::min({nextInput_, power_.deadline(), nextService_, also,
+                              nextVibration(), alignmentDue()});
+    for (int i = 0; i < attentionCount_; ++i) deadline = std::min(deadline, attention_[i]->nextAttention());
     if (usbPolled(now)) deadline = std::min(deadline, nextUsb_);
     if (!power_.screenOff()) {
         deadline = std::min(deadline, std::min(screens_.nextUpdate(), nextDisplay_));

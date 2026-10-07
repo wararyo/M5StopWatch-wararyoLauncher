@@ -26,16 +26,22 @@ public:
     bool update(TimeUs now, bool activity, bool visibleActive) {
         const auto old = state_;
         if (activity) lastActivity_ = now;
-        if (now - lastActivity_ >= timeout_) state_ = DisplayState::ScreenOff;
+        if (now - since() >= timeout_) state_ = DisplayState::ScreenOff;
         else state_ = activity || visibleActive ? DisplayState::Active : DisplayState::WatchIdle;
         return old != state_;
     }
     bool screenOff() const { return state_ == DisplayState::ScreenOff; }
     DisplayState state() const { return state_; }
-    TimeUs deadline() const { return screenOff() ? INT64_MAX : lastActivity_ + timeout_; }
+    TimeUs deadline() const { return screenOff() ? INT64_MAX : since() + timeout_; }
+    // Keeps a lit panel on until `until`, which then counts as the last
+    // activity: the timeout runs from there (a timer's alert, docs/task12/plan.md
+    // 2.5). 0 drops it, and the timeout runs from the last input again. It
+    // does not light a dark panel: update() with activity does.
+    void holdUntil(TimeUs until) { hold_ = until; }
     UsbState usb{};
 private:
-    TimeUs lastActivity_ = 0;
+    TimeUs since() const { return lastActivity_ > hold_ ? lastActivity_ : hold_; }
+    TimeUs lastActivity_ = 0, hold_ = 0;
     TimeUs timeout_ = TimeUs(Settings{}.screenOffSec) * 1000000;
     DisplayState state_ = DisplayState::WatchIdle;
 };

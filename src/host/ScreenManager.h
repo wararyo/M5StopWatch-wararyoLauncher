@@ -3,6 +3,7 @@
 #include "features/external/ExternalAppScreen.h"
 #include "features/settings/SettingsScreen.h"
 #include "features/stopwatch/StopwatchScreen.h"
+#include "features/timer/TimerScreen.h"
 #include "host/FrameModel.h"
 #include "host/EffectiveSettings.h"
 #include "features/launcher/AppListRows.h"
@@ -20,6 +21,7 @@ public:
         :runtime_(runtime),viewport_{width,height},launcher_(viewport_) {
         settings_.resize(width,height); external_.resize(width,height);
         stopwatchScreen_.resize(width,height); stopwatchScreen_.bind(&stopwatch);
+        timerScreen_.resize(width,height);
     }
     ScreenManager(const ScreenManager&)=delete;
     ScreenManager& operator=(const ScreenManager&)=delete;
@@ -27,6 +29,9 @@ public:
     // as the unimplemented entries do. Nothing else in the launcher changes.
     void bind(SettingsStore* store,TimeService* time) { settings_.bind(store,time); }
     void bindSlots(SlotService* slots) { external_.bind(slots,&slots_); }
+    // The timer and its last length. Without them the timer entry is
+    // unavailable, as an unimplemented one is.
+    void bindTimer(TimerService* timer,TimerPreferences* preferences) { timerScreen_.bind(timer,preferences); }
     // The clock layer's input, and the faces settings chooses from. Without it
     // a tap on the clock does nothing, the list is still reached by A/B and
     // the swipe up, and settings offers no face to choose.
@@ -40,7 +45,16 @@ public:
     // starts a boot, so a result arriving after home is harmless (plan.md 8.2).
     void setSlots(const SlotCatalog& slots) { slots_=slots; }
     bool handle(const Events& e,TimeUs now);
+    // Brings `id` forward over whatever is shown, as an attention request asks
+    // (host/AttentionSource.h). What was shown is left as home leaves it: an
+    // open screen exits, dropping its unsaved edit, and a list or a drag is
+    // let go. Only the built-in screens that need no choice of their own can
+    // be presented; false for the rest, which leaves everything as it was.
+    bool present(ScreenId id,TimeUs now);
     bool update(TimeUs now);
+    // The open screen re-samples what it measures (host/Screen.h). A hidden
+    // one samples afresh when it is entered.
+    bool clockCorrected(TimeUs now) { return active_ && active_->clockCorrected(now); }
     // Issued by the runtime once the committing frame has been painted.
     bool commitPendingBoot() { return external_.commitPendingBoot(); }
     // The frame as the app composes it from each feature's model. The settings
@@ -56,6 +70,12 @@ public:
     // hidden list's motion never keeps settings awake or drawing.
     TimeUs nextUpdate() const;
     bool active() const { return active_ ? active_->active() : launcher_.active(); }
+    // Whether the open screen is in a stretch nothing may interrupt (a boot
+    // commit, plan.md 8.2).
+    bool exclusive() const { return active_ && active_->exclusive(); }
+    // What the shown screen asks of the panel and the motor (host/Screen.h).
+    TimeUs holdPanelUntil() const { return active_ ? active_->holdPanelUntil() : 0; }
+    uint8_t vibration() const { return active_ ? active_->vibration() : 0; }
 private:
     FrameActivity activity() const;
     ScreenId screen() const { return active_ ? activeId_ : launcher_.listShown() ? ScreenId::AppList : ScreenId::Home; }
@@ -63,11 +83,14 @@ private:
     // the input is acknowledged with a notice when there is none to enter.
     bool launch(const LaunchEntry* entry,TimeUs now);
     bool open(Screen& screen,ScreenId id,TimeUs now);
+    // Every screen left and the launcher back at rest on the clock.
+    void leaveAll();
     void notify(const char* notice,TimeUs now) { toast_=notice; toastUntil_=now+1400000; }
     RuntimeSettings& runtime_;
     SettingsScreen settings_;
     ExternalAppScreen external_;
     StopwatchScreen stopwatchScreen_;
+    TimerScreen timerScreen_;
     SlotCatalog slots_{};
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.

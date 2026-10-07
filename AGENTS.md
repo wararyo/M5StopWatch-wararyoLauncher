@@ -95,7 +95,8 @@
 - 画面を閉じても続く状態（計測・タイマーなど）があるか。あれば画面から分けてサービスに置く。
 - 文字盤に出す情報（バックグラウンド情報）があるか。
 - 保存する設定があるか。
-- アイコン（44×44 のグレースケールマスク、原本は `icons/icons.ai`）と一覧の色。アイコンはデザインが要るので、ユーザーから受け取るか、仮のものを置くことを伝える。
+- アイコン（44×44 のグレースケールマスク、原本は `icons/icons.ai`）と一覧の色（円の背景色とアイコンの前景色。`assets/AppIcons.h` の `AppColors`）。
+  明るい背景色には暗い前景色を選ぶ。アイコンはデザインが要るので、ユーザーから受け取るか、仮のものを置くことを伝える。
 
 ### 3. ストップウォッチを手本に実装する
 
@@ -111,6 +112,9 @@
 - 画面に新しい日本語の文字を出すときは、埋め込みフォントの部分集合を作り直す（`tools/build_font.py`。`src/` 内の非ASCII文字を自動で集める）。
   TrueType フォントはリポジトリに含まれないので、ユーザーに用意してもらう。作り直すまで、収録外の文字は `?` で表示される。
 - 文字盤に情報を出す場合は `BackgroundInfoProvider` を実装し、`HostApplication` で `BackgroundInfoHub` に登録する（上限は `BackgroundCapacity` の4つ）。
+- 画面を閉じていても装着者に知らせる場合（満了の通知など）は `AttentionSource` を実装し、`HostApplication` で `HostRuntime::bindAttention()` に登録する（上限4つ、手本は `TimerAttention`）。
+  点灯・画面の切り替え・押下中の操作の破棄はホストが行い、要求元は「今の要求」（前に出す画面）を返すだけにする。
+  前に出た画面での振動や点灯の保持は、その画面が `Screen::vibration()` / `holdPanelUntil()` で求める（architecture.md 2.1）。
 - 表示の更新は `nextUpdate()` の期限で要求する。毎ループの描画、busy wait、定期タイマー、毎フレームの I2C 読み出しを足さない。
 - `src/CMakeLists.txt` と `tools/test_runtime.py` のソース一覧に `.cpp` を足す。テストスイートを足したら `test_runtime.py` のスイート一覧にも加える。
 

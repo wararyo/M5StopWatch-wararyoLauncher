@@ -31,6 +31,10 @@ public:
     // runtime's own display deadline is unset while an app screen covers the
     // clock (HostRuntime::step, `model.transition<1`).
     virtual bool tick(TimeUs now) { (void)now; return false; }
+    // The monotonic clock was corrected against the RTC (services/
+    // ClockFollower.h), so a measurement shown and the deadline timed from it
+    // may have moved: re-sample them. True means the display changed.
+    virtual bool clockCorrected(TimeUs now) { (void)now; return false; }
     // True while the screen's own content is in motion under the user's hand
     // or settling after it (a list drag or its inertia). The runtime keeps the
     // display active for it; the hidden launcher's motion never counts here.
@@ -38,5 +42,12 @@ public:
     // True while the screen is in a stretch that must not be interrupted, not
     // even by home. Only the boot commit of plan.md 8.2 uses it.
     virtual bool exclusive() const { return false; }
+    // What the screen asks of the panel and the motor while it is shown (a
+    // timer's alert, docs/task12/plan.md 1.3): the panel kept lit until then,
+    // which then counts as the last input (0: nothing held), and the motor's
+    // level, 0..255. The runtime applies whatever the shown screen asks, so
+    // leaving the screen lets go of both. Changes are timed by nextUpdate().
+    virtual TimeUs holdPanelUntil() const { return 0; }
+    virtual uint8_t vibration() const { return 0; }
 };
 }

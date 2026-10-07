@@ -4,6 +4,7 @@
 #include "features/settings/SettingsModel.h"
 #include "features/external/ExternalModel.h"
 #include "features/stopwatch/StopwatchModel.h"
+#include "features/timer/TimerModel.h"
 #include "ui/rendering/Viewport.h"
 namespace launcher {
 // What a frame shows happening, for the render metrics. The app decides it
@@ -28,6 +29,7 @@ struct FrameModel {
     SettingsModel settings{};
     ExternalModel external{};
     StopwatchModel stopwatch{};
+    TimerModel timer{};
     const char* toast=nullptr;
     // The statistics overlay, an application-wide runtime setting.
     bool stats=false;

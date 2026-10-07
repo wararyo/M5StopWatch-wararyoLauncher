@@ -7,10 +7,10 @@ namespace launcher {
 // The layers of a frame, back to front. The statistics chip is not among them:
 // it is painted after all of them, outside the plan (ui/overlays/StatsOverlay.h).
 // The list's background is no layer: it is the frame's base (HostRenderer::draw).
-enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Toast };
+enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Timer, Toast };
 inline constexpr FrameLayer FrameOrder[]={
     FrameLayer::Home,FrameLayer::AppList,FrameLayer::Settings,
-    FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Toast};
+    FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Timer,FrameLayer::Toast};
 inline constexpr int FrameLayerCount=int(sizeof(FrameOrder)/sizeof(FrameOrder[0]));
 // Where each part of a frame goes, derived from the frame model alone. The
 // renderer draws from it and the runtime takes the clock's deadline from it,
@@ -24,7 +24,7 @@ struct FrameComposition {
     WatchEnvironment home{};
     // Which layers show. A hidden list still registers its slots empty, so it
     // erases what it drew; a closed screen registers nothing at all.
-    bool list=false,settings=false,external=false,stopwatch=false;
+    bool list=false,settings=false,external=false,stopwatch=false,timer=false;
     // A different screen than the frame before, set by FrameComposer. Layers
     // that planned nothing then have no history to erase with, and layers that
     // stop planning leave boxes nobody registers: the frame is repainted in
@@ -44,6 +44,7 @@ inline FrameComposition composeFrame(const FrameModel& m) {
     c.settings=m.screen==ScreenId::Settings;
     c.external=m.screen==ScreenId::External;
     c.stopwatch=m.screen==ScreenId::Stopwatch;
+    c.timer=m.screen==ScreenId::Timer;
     return c;
 }
 inline bool clockVisible(const FrameModel& m) { return composeFrame(m).clockVisible(); }

@@ -74,6 +74,17 @@ WatchData sampleData() {
     d.localTime.tm_mon=8; d.localTime.tm_mday=19; d.localTime.tm_wday=6;
     d.batteryPercent=82; return d;
 }
+// A running stopwatch's line and a running timer's, as their providers write
+// them, the timer's time left in `left` (work 12-4).
+void timerItems(WatchData& d,const char* left) {
+    auto& s=d.background.items[0];
+    s=BackgroundInfo{}; s.appId=LaunchTargetId::Stopwatch; std::snprintf(s.label,sizeof(s.label),"02:40");
+    s.icon=appIcon(IconId::Stopwatch); s.suggestedColor=StopwatchColors.background;
+    auto& t=d.background.items[1];
+    t=BackgroundInfo{}; t.appId=LaunchTargetId::Timer; std::snprintf(t.label,sizeof(t.label),"%s",left);
+    t.icon=appIcon(IconId::Timer); t.suggestedColor=TimerColors.background;
+    d.background.count=2;
+}
 #ifdef LAUNCHER_RENDER_SHOTS
 // One frame as text: "[Shot] name w h", then base64 lines of run-length
 // pairs (run-1, then the pixel as read back, high byte first), then
@@ -463,17 +474,13 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             m.settings.menu=ListState{}; m.settings.menu.selection=0; check("settings-menu-reentry",m,d);
             for(const auto view:{SettingsView::DateTime,SettingsView::Brightness,
                                  SettingsView::ScreenOff,SettingsView::Info}) {
-                m.settings.view=view; m.settings.editing=false;
+                m.settings.view=view;
                 m.settings.fields[0]=view==SettingsView::DateTime ? 2026 :
                     view==SettingsView::Brightness ? 90 : 1;
                 m.settings.fields[1]=9; m.settings.fields[2]=21;
                 m.settings.fields[3]=23; m.settings.fields[4]=59;
                 for(int slot=0;slot<settingsSlotCount(view);++slot) {
                     m.settings.cursor=slot; check("settings-slot",m,d);
-                    if(slot<settingsFieldCount(view)) {
-                        m.settings.editing=true; check("settings-editing",m,d);
-                        m.settings.editing=false;
-                    }
                 }
                 // Information carries the statistics action: its label does not
                 // change when taken, only its colour, so both states are swept.
@@ -641,6 +648,88 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             m.toast=nullptr; check("stopwatch-toast-off",m,d);
             m.screen=ScreenId::AppList; m.stopwatch=StopwatchModel{};
             check("stopwatch-left",m,d);
+            // The timer (work 12-3): the setup with the focus on every field
+            // and on SET (which greys the keys), typed values, the countdown
+            // with RESET filling, and the alert counting up. Each view is
+            // entered from another, which is a full repaint of the layer.
+            m.screen=ScreenId::Timer; m.timer=TimerModel{};
+            m.timer.fields[1]=3; check("timer-setup",m,d);
+            for(const int focus:{2,3,0}) { m.timer.focus=focus; check("timer-focus",m,d); }
+            m.timer.focus=1; check("timer-focus-wrap",m,d);
+            for(const int value:{1,12,99,75,0}) { m.timer.fields[0]=value; check("timer-field",m,d); }
+            m.timer.fields[2]=60; check("timer-field-over",m,d);
+            m.timer.view=TimerView::Countdown; m.timer.seconds=3660; check("timer-countdown",m,d);
+            for(const int32_t value:{3659,3600,3599,600,59,10,9,1}) { m.timer.seconds=value; check("timer-second",m,d); }
+            m.timer.seconds=TimerMaxSeconds; check("timer-longest",m,d);
+            m.timer.paused=true; check("timer-paused",m,d);
+            m.timer.paused=false; check("timer-resumed",m,d);
+            for(int fill=0;fill<=1000;fill+=125) { m.timer.resetFill=uint16_t(fill); check("timer-reset-fill",m,d); }
+            m.timer.resetFill=0; check("timer-reset-empty",m,d);
+            vTaskDelay(1);
+            m.timer.view=TimerView::Ringing; m.timer.seconds=0; check("timer-ringing",m,d);
+            for(const int32_t value:{int32_t(1),int32_t(2),int32_t(59),int32_t(60),int32_t(3600),TimerMaxSeconds}) { m.timer.seconds=value; check("timer-count-up",m,d); }
+            m.toast="保存しました"; check("timer-toast-on",m,d);
+            m.toast=nullptr; check("timer-toast-off",m,d);
+            m.timer=TimerModel{}; m.timer.fields[1]=3; check("timer-setup-again",m,d);
+            m.screen=ScreenId::AppList; m.timer=TimerModel{};
+            check("timer-left",m,d);
+            // Work 12-4: the alert over whatever was on screen, and what
+            // dismissing it leaves. The interrupted frame is drawn, then the
+            // alert differentially over it, so anything the replaced screen
+            // left behind shows against the full repaint. present() goes
+            // through home, so the list under the alert is at rest.
+            {
+                static WatchData running,after;
+                running=d; timerItems(running,"00:01");
+                after=running; after.background.count=1;          // the timer's line gone
+                FrameModel alert; alert.viewport={w,h}; alert.screen=ScreenId::Timer;
+                alert.timer.view=TimerView::Ringing;
+                char name[48];
+                auto over=[&](const char* from,const FrameModel& fm) {
+                    std::snprintf(name,sizeof(name),"timer-from-%s",from); check(name,fm,running);
+                    std::snprintf(name,sizeof(name),"timer-alert-over-%s",from); check(name,alert,running);
+                    vTaskDelay(1);
+                };
+                FrameModel from; from.viewport={w,h};
+                over("home",from);
+                from.launcher.transition=0.45f; over("list-moving",from);
+                from.screen=ScreenId::AppList; from.launcher.transition=1;
+                from.launcher.list.selection=1; from.launcher.list.scroll=float(rowSpacing(from.viewport)+13);
+                over("list-dragged",from);
+                from.toast="準備中"; over("list-toast",from);
+                from=FrameModel{}; from.viewport={w,h}; from.screen=ScreenId::Settings;
+                from.settings.view=SettingsView::DateTime; from.settings.cursor=2;
+                const int date[]={2026,9,21,23,59};
+                for(int i=0;i<5;++i) from.settings.fields[i]=date[i];
+                over("settings-editing",from);
+                from.settings=SettingsModel{}; from.settings.menu.selection=2;
+                from.settings.menu.scroll=float(2*rowSpacing(from.viewport)-37);
+                over("settings-menu",from);
+                from.settings=SettingsModel{}; from.screen=ScreenId::Stopwatch;
+                from.stopwatch.state=StopwatchState::Running; from.stopwatch.elapsedUs=TimeUs(754)*1000000+230000;
+                from.stopwatch.rows=2; from.stopwatch.lapNumber[0]=2; from.stopwatch.lapNumber[1]=1;
+                from.stopwatch.lapUs[0]=TimeUs(402)*1000000; from.stopwatch.lapUs[1]=TimeUs(311)*1000000;
+                over("stopwatch",from);
+                from.stopwatch=StopwatchModel{}; from.screen=ScreenId::External;
+                from.external.slot=1; from.external.status=catalog.slots[0].status;
+                from.external.name=catalog.slots[0].name[0] ? catalog.slots[0].name : nullptr;
+                from.external.version=catalog.slots[0].version[0] ? catalog.slots[0].version : nullptr;
+                over("external",from);
+                // The countdown it ran out on, RESET half filled: the same
+                // screen entered again.
+                from.external=ExternalModel{}; from.screen=ScreenId::Timer;
+                from.timer.view=TimerView::Countdown; from.timer.seconds=1; from.timer.resetFill=500;
+                over("countdown",from);
+                // Counting up, then dismissed by A, B or the button (the
+                // setup with the last length) or by A+B (home, without the
+                // timer's line).
+                for(const int32_t value:{1,2,60}) { alert.timer.seconds=value; check("timer-alert-count",alert,running); }
+                FrameModel setup; setup.viewport={w,h}; setup.screen=ScreenId::Timer; setup.timer.fields[1]=3;
+                check("timer-dismissed-setup",setup,after);
+                setup.screen=ScreenId::Home; setup.timer=TimerModel{}; check("timer-setup-to-home",setup,after);
+                check("timer-alert-again",alert,running);
+                FrameModel home; home.viewport={w,h}; check("timer-dismissed-home",home,after);
+            }
             m={}; m.viewport={w,h}; check("home",m,d);
             d.localTime.tm_min=42; check("minute",m,d);
             d.localTime.tm_mday=20; d.localTime.tm_wday=0; check("date",m,d);
@@ -678,7 +767,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",labels[i]);
                         item.icon=i%2==0 ? appIcon(IconId::Stopwatch) : nullptr;
-                        if(i!=2) item.suggestedColor=i==0 ? StopwatchAccent : uint16_t(0xfd03);
+                        if(i!=2) item.suggestedColor=i==0 ? StopwatchColors.background : uint16_t(0xfd03);
                     }
                     shown.background.count=uint8_t(std::min(count,BackgroundCapacity));
                     return shown;
@@ -701,6 +790,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 check("item-four",m,withItems(4));           // two drawn
                 check("item-removed",m,withItems(1));
                 check("item-none",m,d);
+                // Work 12-4: the timer's line beside the stopwatch's, counting
+                // down, across the hour's change of unit, and gone.
+                shown=d; timerItems(shown,"03:00"); check("item-timer",m,shown);
+                for(const char* left:{"02:59","01:00","100:00","59:59","00:01"}) {
+                    std::snprintf(shown.background.items[1].label,BackgroundLabelBytes,"%s",left);
+                    check("item-timer-label",m,shown);
+                }
+                shown.background.count=1; check("item-timer-gone",m,shown);
+                check("item-timer-none",m,d);
                 withItems(2);
                 m.toast="保存しました"; check("item-toast-on",m,shown);
                 m.toast=nullptr; check("item-toast-off",m,shown);
@@ -824,7 +922,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
                         item.icon=appIcon(IconId::Stopwatch);
-                        item.suggestedColor=StopwatchAccent;
+                        item.suggestedColor=StopwatchColors.background;
                     }
                     fd.background.count=uint8_t(std::min(count,BackgroundCapacity));
                 };
@@ -862,6 +960,13 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 fm.toast="保存しました"; check("forest-toast-on",fm,fd);
                 fm.toast=nullptr; check("forest-toast-off",fm,fd);
                 items(1); check("forest-item-removed",fm,fd);
+                // Work 12-4: the timer's line under the stopwatch's, and gone.
+                timerItems(fd,"03:00"); check("forest-timer",fm,fd);
+                for(const char* left:{"02:59","100:00","00:01"}) {
+                    std::snprintf(fd.background.items[1].label,BackgroundLabelBytes,"%s",left);
+                    check("forest-timer-label",fm,fd);
+                }
+                items(1); check("forest-timer-gone",fm,fd);
                 fd.background.count=0; fd.batteryPercent=82; check("forest-plain-again",fm,fd);
                 vTaskDelay(1);
                 renderer.handle(hold); check("forest-seconds",fm,fd);
@@ -975,7 +1080,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
                         item.icon=appIcon(IconId::Stopwatch);
-                        item.suggestedColor=StopwatchAccent;
+                        item.suggestedColor=StopwatchColors.background;
                     }
                     ad.background.count=uint8_t(std::min(count,BackgroundCapacity));
                 };
@@ -1039,6 +1144,13 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 am.toast="保存しました"; check("analog-toast-on",am,ad);
                 am.toast=nullptr; check("analog-toast-off",am,ad);
                 items(1); check("analog-item-removed",am,ad);
+                // Work 12-4: the timer's line under the stopwatch's, and gone.
+                timerItems(ad,"03:00"); check("analog-timer",am,ad);
+                for(const char* left:{"02:59","100:00","00:01"}) {
+                    std::snprintf(ad.background.items[1].label,BackgroundLabelBytes,"%s",left);
+                    check("analog-timer-label",am,ad);
+                }
+                items(1); check("analog-timer-gone",am,ad);
                 ad.background.count=0; ad.batteryPercent=82; check("analog-plain-again",am,ad);
                 vTaskDelay(1);
                 // The dot: shown, every second of a minute, across the steps,
@@ -1117,7 +1229,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         item.appId=i==0 ? LaunchTargetId::Stopwatch : static_cast<LaunchTargetId>(40+i);
                         std::snprintf(item.label,sizeof(item.label),"%s",i==0 ? "02:40" : "12:34");
                         item.icon=appIcon(IconId::Stopwatch);
-                        item.suggestedColor=StopwatchAccent;
+                        item.suggestedColor=StopwatchColors.background;
                     }
                     nd.background.count=uint8_t(std::min(count,BackgroundCapacity));
                 };
@@ -1169,6 +1281,13 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 nm.toast="保存しました"; check("noonish-toast-on",nm,nd);
                 nm.toast=nullptr; check("noonish-toast-off",nm,nd);
                 items(1); check("noonish-item-removed",nm,nd);
+                // Work 12-4: the timer's line under the stopwatch's, and gone.
+                timerItems(nd,"03:00"); check("noonish-timer",nm,nd);
+                for(const char* left:{"02:59","100:00","00:01"}) {
+                    std::snprintf(nd.background.items[1].label,BackgroundLabelBytes,"%s",left);
+                    check("noonish-timer-label",nm,nd);
+                }
+                items(1); check("noonish-timer-gone",nm,nd);
                 vTaskDelay(1);
                 // The dot: every second over the regions, on a boundary at
                 // 12:00, and at a step together with the regions turning.
@@ -1278,7 +1397,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     auto& item=frame.background.items[0];
                     item=BackgroundInfo{}; item.appId=LaunchTargetId::Stopwatch;
                     std::snprintf(item.label,sizeof(item.label),"%02d:%02d",seconds/60%60,seconds%60);
-                    item.icon=appIcon(IconId::Stopwatch); item.suggestedColor=StopwatchAccent;
+                    item.icon=appIcon(IconId::Stopwatch); item.suggestedColor=StopwatchColors.background;
                     frame.background.count=1;
                 };
                 FrameModel pm; pm.viewport={w,h};
@@ -1413,11 +1532,12 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 FrameModel sm; sm.viewport={w,h};
                 scene=sampleData(); shoot("digital",sm,scene);
                 item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("digital-items",sm,scene);
+                timerItems(scene,"03:00"); shoot("digital-timer",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); shoot("digital-seconds",sm,scene);
-                item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("digital-seconds-item",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1;
@@ -1427,11 +1547,11 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("digital-mixed",sm,scene);
                 scene=sampleData(); scene.batteryPercent=100;
-                item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("digital-full",sm,scene);
                 scene=sampleData();
                 item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 sm.launcher.transition=0.45f; shoot("digital-transition",sm,scene);
                 // Work 10-4: the list laid over scenery, on black and on a
                 // colour, drawn differentially after a slide from rest.
@@ -1445,13 +1565,14 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 scene=sampleData();
                 backdrop.listBackgroundForTest(0x0000); slide("backdrop-transition",0.45f);
                 backdrop.listBackgroundForTest(0x18c9); slide("backdrop-transition-colour",0.6f);
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0; shoot("backdrop-info",sm,scene);
                 // Work 10-5: Forest, like the reference pictures and around them.
                 renderer.selectFace("forest");
                 scene=sampleData(); shoot("forest",sm,scene);
+                timerItems(scene,"03:00"); shoot("forest-timer",sm,scene);
                 scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("forest-info",sm,scene);
                 // The provisional palettes through the day (docs/forest-gradient/plan.md 4).
@@ -1461,7 +1582,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 }
                 renderer.handle(hold);
                 scene=sampleData(); shoot("forest-seconds",sm,scene);
-                scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("forest-seconds-info",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
@@ -1470,7 +1591,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("forest-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 slide("forest-transition",0.45f);
                 // The list fully up on each part of the day's ground.
                 for(int hour:{12,6,18,22}) {
@@ -1486,12 +1607,13 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     scene.localTime.tm_hour=hour; scene.localTime.tm_min=minute; scene.localTime.tm_sec=second;
                 };
                 scene=sampleData(); setTime(6,0,0); scene.localTime.tm_mday=20; shoot("analog",sm,scene);
+                timerItems(scene,"03:00"); shoot("analog-timer",sm,scene);
                 scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("analog-info",sm,scene);
                 scene=sampleData(); setTime(10,8,37); shoot("analog-seconds",sm,scene);
-                setTime(3,15,0); scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchAccent);
+                setTime(3,15,0); scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("analog-over-date",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
@@ -1500,7 +1622,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("analog-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 slide("analog-transition",0.45f);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 // Work 11-3: Noonish at the references' 10:07 on the 20th, the
@@ -1508,8 +1630,9 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 renderer.selectFace("noonish");
                 if(!renderer.noonishSeconds()) renderer.handle(hold);
                 scene=sampleData(); setTime(10,7,0); scene.localTime.tm_mday=20; shoot("noonish",sm,scene);
+                timerItems(scene,"03:00"); shoot("noonish-timer",sm,scene);
                 scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
                 shoot("noonish-info",sm,scene);
                 setTime(12,0,0); shoot("noonish-together",sm,scene);
@@ -1523,10 +1646,19 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
                 item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
                 shoot("noonish-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchAccent);
+                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 slide("noonish-transition",0.45f);
                 sm.screen=ScreenId::Home; sm.launcher.transition=0;
                 renderer.selectFace("digital");
+                // The timer's three views, as docs/Images/Timer draws them.
+                sm.screen=ScreenId::Timer; sm.timer=TimerModel{};
+                sm.timer.fields[1]=3; sm.timer.focus=1; shoot("timer-setup",sm,scene);
+                sm.timer.focus=TimerFocusSet; shoot("timer-setup-set",sm,scene);
+                sm.timer.view=TimerView::Countdown; sm.timer.seconds=161; shoot("timer-countdown",sm,scene);
+                sm.timer.resetFill=500; shoot("timer-countdown-reset",sm,scene);
+                sm.timer.resetFill=0; sm.timer.paused=true; shoot("timer-paused",sm,scene);
+                sm.timer.view=TimerView::Ringing; sm.timer.seconds=1; shoot("timer-ringing",sm,scene);
+                sm.screen=ScreenId::Home; sm.timer=TimerModel{};
             }
 #endif
         }

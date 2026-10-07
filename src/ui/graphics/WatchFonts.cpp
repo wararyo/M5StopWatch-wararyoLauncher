@@ -6,6 +6,8 @@ extern const uint8_t digitalTimeStart[] asm("_binary_DDinProExpSemiBold100_vlw_s
 extern const uint8_t digitalTimeEnd[] asm("_binary_DDinProExpSemiBold100_vlw_end");
 extern const uint8_t forestTimeStart[] asm("_binary_DDinProCondensedSemiBold120_vlw_start");
 extern const uint8_t forestTimeEnd[] asm("_binary_DDinProCondensedSemiBold120_vlw_end");
+extern const uint8_t timerDigitStart[] asm("_binary_DDinProExpSemiBold64_vlw_start");
+extern const uint8_t timerDigitEnd[] asm("_binary_DDinProExpSemiBold64_vlw_end");
 extern const uint8_t textStart[] asm("_binary_DDinProExpBold28_vlw_start");
 extern const uint8_t textEnd[] asm("_binary_DDinProExpBold28_vlw_end");
 extern const uint8_t smallStart[] asm("_binary_DDinProExpBold22_vlw_start");
@@ -28,6 +30,11 @@ const VlwGlyphs* digitalTimeGlyphs() {
 const VlwGlyphs* forestTimeGlyphs() {
     static VlwGlyphs glyphs;
     static const VlwGlyphs* loaded=loadGlyphs(glyphs,forestTimeStart,forestTimeEnd,"DDinProCondensedSemiBold120");
+    return loaded;
+}
+const VlwGlyphs* timerDigitGlyphs() {
+    static VlwGlyphs glyphs;
+    static const VlwGlyphs* loaded=loadGlyphs(glyphs,timerDigitStart,timerDigitEnd,"DDinProExpSemiBold64");
     return loaded;
 }
 const lgfx::IFont* watchTextFont() {

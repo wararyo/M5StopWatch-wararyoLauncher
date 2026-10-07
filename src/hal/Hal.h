@@ -18,6 +18,12 @@ public:
     // wake-up). Also clears the interrupt, so ask it every step. The fakes
     // without an IMU inherit false.
     virtual bool takeWristWake() { return false; }
+    // The IMU's step counter: the steps counted since the launcher started
+    // it, which go on counting through light sleep. A plain count; the day and
+    // what outlives a restart are the pedometer's (docs/task13/plan.md 2.2).
+    // An I2C read, so ask only when the count is wanted. False when it could
+    // not be read; the fakes without an IMU inherit that.
+    virtual bool readStepCount(uint32_t& steps) { (void)steps; return false; }
     // True when an interrupt reports USB power coming and going, so VBUS need
     // not be polled while the watch sleeps. Then takeUsbEvent() is true once
     // after the line was raised, by that or by anything sharing it: VBUS is

@@ -13,6 +13,7 @@ FrameModel ScreenManager::model() const {
     m.external=external_.model();
     m.stopwatch=stopwatchScreen_.model();
     m.timer=timerScreen_.model();
+    m.pedometer=pedometerScreen_.model();
     m.activity=activity();
     return m;
 }
@@ -37,6 +38,7 @@ bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
     if (entry) {
         if (entry->id==LaunchTargetId::Stopwatch && open(stopwatchScreen_,ScreenId::Stopwatch,now)) return true;
         if (entry->id==LaunchTargetId::Timer && open(timerScreen_,ScreenId::Timer,now)) return true;
+        if (entry->id==LaunchTargetId::Pedometer && open(pedometerScreen_,ScreenId::Pedometer,now)) return true;
         if (entry->id==LaunchTargetId::Settings && open(settings_,ScreenId::Settings,now)) return true;
         // Every external row opens, whatever the slot holds: the detail
         // screen is where an empty or broken slot explains itself.
@@ -54,7 +56,8 @@ bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
 void ScreenManager::leaveAll() {
     toast_=nullptr; toastUntil_=INT64_MAX;
     launcher_.home();
-    settings_.exit(); external_.exit(); stopwatchScreen_.exit(); timerScreen_.exit(); active_=nullptr;
+    settings_.exit(); external_.exit(); stopwatchScreen_.exit(); timerScreen_.exit(); pedometerScreen_.exit();
+    active_=nullptr;
 }
 bool ScreenManager::present(ScreenId id,TimeUs now) {
     Screen* target=nullptr;

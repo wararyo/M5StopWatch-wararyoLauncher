@@ -10,7 +10,7 @@ namespace launcher {
 // VlwGlyphs for why.
 const VlwGlyphs* digitalTimeGlyphs();  // Exp SemiBold 100px: 0-9 : -
 const VlwGlyphs* forestTimeGlyphs();   // Condensed SemiBold 120px: 0-9 : -
-const VlwGlyphs* timerDigitGlyphs();   // Exp SemiBold 64px: 0-9 : - (the timer's own screen)
+const VlwGlyphs* timerDigitGlyphs();   // Exp SemiBold 64px: 0-9 : - , (the timer and pedometer screens)
 const lgfx::IFont* watchTextFont();    // Exp Bold 28px, printable ASCII
 const lgfx::IFont* watchSmallFont();   // Exp Bold 22px, printable ASCII
 // Draws ASCII `text` with its first advance starting at x, on the baseline y,

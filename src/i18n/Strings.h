@@ -14,6 +14,7 @@
     /* App list. The external names stand in until a guest image names itself. */ \
     X(Stopwatch,          "ストップウォッチ",       "Stopwatch") \
     X(Timer,              "タイマー",               "Timer") \
+    X(Pedometer,          "歩数計",                 "Pedometer") \
     X(Settings,           "設定",                   "Settings") \
     X(ExternalApp1,       "外部アプリ1",            "App 1") \
     X(ExternalApp2,       "外部アプリ2",            "App 2") \
@@ -28,6 +29,9 @@
     X(ClockUnavailable,   "時計を設定できません",   "Cannot set the clock") \
     /* Timer */ \
     X(Dismiss,            "解除",                   "Dismiss") \
+    /* Pedometer. The unit follows the count. */ \
+    X(StepsToday,         "今日の歩数",             "Steps today") \
+    X(StepsUnit,          "歩",                     "steps") \
     X(FaceUnavailable,    "文字盤を表示できません", "Cannot show this face") \
     /* Settings */ \
     X(DateTime,           "日時",                   "Date & time") \

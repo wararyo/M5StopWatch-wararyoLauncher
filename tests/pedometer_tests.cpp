@@ -1,5 +1,7 @@
 #include "host/HostApplication.h"
 #include "host/LaunchRegistry.h"
+#include "features/pedometer/PedometerLayout.h"
+#include "i18n/Strings.h"
 #include "multifirm/FakeSlotService.h"
 #include "services/TimeService.h"
 #include "storage/SettingsStore.h"
@@ -358,10 +360,92 @@ void savesForAnExternalBoot() {
     int32_t day=0; uint32_t steps=0;
     CHECK(r.records.saved(day,steps) && day==int32_t(dayOf(2026,10,7)) && steps==77);
 }
+std::string shown(const PedometerModel& m) { char out[16]; formatSteps(m,out,sizeof(out)); return out; }
+void formatsTheCount() {
+    CHECK(shown({true,0})=="0" && shown({true,999})=="999" && shown({true,1000})=="1,000");
+    CHECK(shown({true,12345})=="12,345" && shown({true,123456})=="123,456");
+    CHECK(shown({true,1234567})=="1,234,567" && shown({true,4294967295u})=="4,294,967,295");
+    CHECK(shown({false,12345})=="--");
+    // Cut short rather than overrun.
+    char small[4]; formatSteps({true,12345},small,sizeof(small)); CHECK(std::string(small).size()<sizeof(small));
+}
+void sitsAfterTheTimer() {
+    int timer=-1,pedometer=-1;
+    for (int i=0;i<int(LaunchRegistry.size());++i) {
+        if (LaunchRegistry[i].id==LaunchTargetId::Timer) timer=i;
+        if (LaunchRegistry[i].id==LaunchTargetId::Pedometer) pedometer=i;
+    }
+    CHECK(timer>=0 && pedometer==timer+1);
+    CHECK(int(LaunchTargetId::Pedometer)==6 && LaunchRegistry[pedometer].icon==IconId::Pedometer);
+    CHECK(LaunchRegistry[pedometer].kind==TargetKind::Builtin && LaunchRegistry[pedometer].name==text::Pedometer);
+    CHECK(appColors(LaunchRegistry[pedometer]).background==0x2d87 &&
+          appColors(LaunchRegistry[pedometer]).foreground==AppIconWhite);
+    // OK, and where it takes touches, stay inside the panel's circle.
+    const Viewport m{468,468};
+    for (const Rect& r:{pedometerOkBox(m),pedometerOkHitBox(m),pedometerCountBox(m),pedometerTitleBox(m)})
+        for (int cx:{r.x,r.x+r.w}) for (int cy:{r.y,r.y+r.h}) {
+            const int dx=cx-234,dy=cy-234;
+            CHECK(dx*dx+dy*dy<=234*234);
+        }
+}
+// From the clock: A into the list, along to the pedometer, B to open it.
+void openPedometer(Rig& r) {
+    r.press(true);
+    while (LaunchRegistry[r.runtime.model().launcher.list.selection].id!=LaunchTargetId::Pedometer) r.press(true);
+    r.press(false);
+}
+void tap(Rig& r,int x,int y) {
+    r.hal.input.touching=true; r.hal.input.x=x; r.hal.input.y=y;
+    r.follow(r.hal.time+10000,r.hal.time+50000);
+    r.hal.input.touching=false; r.at(r.hal.time+10000); r.at(r.hal.time+200000);
+}
+void showsTheCount() {
+    Rig r(jstUs(2026,10,7,12,0,0));
+    r.hal.steps=12345;
+    openPedometer(r);
+    auto model=[&] { return r.runtime.model(); };
+    CHECK(model().screen==ScreenId::Pedometer);
+    // Read when it opened.
+    CHECK(model().pedometer.available && model().pedometer.steps==12345);
+    // Then every second while shown: a step is drawn within the second.
+    r.hal.steps=12350;
+    const int draws=r.hal.draws;
+    r.run(r.hal.time+1100000);
+    CHECK(model().pedometer.steps==12350 && r.hal.draws>draws);
+    // A, B and a tap on OK go back to the list; a tap elsewhere does nothing.
+    r.press(true); CHECK(model().screen==ScreenId::AppList);
+    // Closed, it keeps no deadline of its own.
+    CHECK(r.app.screens().nextUpdate()==INT64_MAX || r.app.screens().nextUpdate()>r.hal.time+Second);
+    r.press(false); CHECK(model().screen==ScreenId::Pedometer);
+    r.press(false); CHECK(model().screen==ScreenId::AppList);
+    r.press(false);
+    const Rect title=pedometerTitleBox({468,468});
+    tap(r,title.x+title.w/2,title.y+title.h/2); CHECK(model().screen==ScreenId::Pedometer);
+    const Rect ok=pedometerOkBox({468,468});
+    tap(r,ok.x+ok.w/2,ok.y+ok.h+ok.h/2); CHECK(model().screen==ScreenId::AppList);
+    // A+B goes home, as everywhere.
+    r.press(false); CHECK(model().screen==ScreenId::Pedometer);
+    r.hal.input.a=r.hal.input.b=true; r.follow(r.hal.time+10000,r.hal.time+700000);
+    r.hal.input.a=r.hal.input.b=false; r.at(r.hal.time+10000);
+    CHECK(model().screen==ScreenId::Home);
+}
+void opensWithoutAnImu() {
+    PedometerHal hal; hal.imu=false;
+    // The entry opens anyway, to say there is nothing to count.
+    PedometerScreen screen; PedometerService service(hal); screen.bind(&service);
+    CHECK(screen.available());
+    screen.enter(0);
+    CHECK(!screen.model().available && shown(screen.model())=="--");
+    CHECK(screen.nextUpdate()==Second);
+    screen.exit(); CHECK(screen.nextUpdate()==INT64_MAX);
+    PedometerScreen unbound; CHECK(!unbound.available());
+}
 }
 int main() {
     numbersDays(); plansAlignments(); keepsTheRecord(); counts(); carriesOverRestarts(); savesGoingDark();
     endsTheDayInTheDark(); retriesTheRead(); followsTheClock(); readsBesideTheClock(); savesForAnExternalBoot();
+    formatsTheCount(); sitsAfterTheTimer(); showsTheCount(); opensWithoutAnImu();
     std::cout << "PASS: day numbers, alignment plan, record, counting, restarts, save going dark, "
-                 "day end in the dark, read retry, clock changes, reads beside the clock, external boot\n";
+                 "day end in the dark, read retry, clock changes, reads beside the clock, external boot, "
+                 "count format, list position, pedometer screen, screen without an IMU\n";
 }

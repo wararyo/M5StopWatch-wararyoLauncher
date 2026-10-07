@@ -60,6 +60,7 @@ public:
         background_.add(stopwatchInfo_);
         background_.add(timerInfo_);
         screens_.bindTimer(&timer_,&timerPreferences_);
+        screens_.bindPedometer(&pedometer_);
         runtime_.bindAttention(timerAttention_);
         runtime_.bindClockFollower(stopwatch_);
         runtime_.bindClockFollower(timer_);

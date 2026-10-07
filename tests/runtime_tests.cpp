@@ -238,7 +238,9 @@ void screens() {
     CHECK(s.active()); s.update(180000); CHECK(!s.active() && s.model().launcher.transition==1);
     s.handle(e,200000); s.update(380000); CHECK(s.model().launcher.list.selection==1);
     // Settings, which has no store here: acknowledged, and nothing opens.
-    s.handle(e,390000); s.update(395000);
+    for (TimeUs t=390000;t<400000 && LaunchRegistry[s.model().launcher.list.selection].id!=LaunchTargetId::Settings;t+=2000) {
+        s.handle(e,t); s.update(t+1000);
+    }
     CHECK(LaunchRegistry[s.model().launcher.list.selection].id==LaunchTargetId::Settings);
     e={}; e.decide=true; s.handle(e,400000);
     CHECK(s.model().screen==ScreenId::AppList && s.model().toast);
@@ -285,7 +287,8 @@ void runtime() {
     h.time += 400000; r.step(); r.wait(); CHECK(h.waited > 10000); // Released and settled.
     CHECK(HostRuntime::waitDelay(100000, 90000) == 1000);
     CHECK(HostRuntime::waitDelay(100000, 105000) == 5000);
-    CHECK(LaunchRegistry.size() == 6 && LaunchRegistry[1].id == LaunchTargetId::Timer && LaunchRegistry[3].slot == 1 && LaunchRegistry[5].slot == 3);
+    CHECK(LaunchRegistry.size() == 7 && LaunchRegistry[1].id == LaunchTargetId::Timer &&
+          LaunchRegistry[2].id == LaunchTargetId::Pedometer && LaunchRegistry[4].slot == 1 && LaunchRegistry[6].slot == 3);
     for (const auto& entry : LaunchRegistry) CHECK(entry.name && entry.name[0]);
 }
 void lightSleep() {

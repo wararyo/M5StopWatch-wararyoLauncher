@@ -1659,6 +1659,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 sm.timer.resetFill=0; sm.timer.paused=true; shoot("timer-paused",sm,scene);
                 sm.timer.view=TimerView::Ringing; sm.timer.seconds=1; shoot("timer-ringing",sm,scene);
                 sm.screen=ScreenId::Home; sm.timer=TimerModel{};
+                // Work 13-3: the pedometer screen as docs/Images/Pedometer
+                // draws it, a longer count, no IMU, and its row in the list.
+                sm.screen=ScreenId::Pedometer; sm.pedometer={true,12345}; shoot("pedometer",sm,scene);
+                sm.pedometer={true,1234567}; shoot("pedometer-long",sm,scene);
+                sm.pedometer={false,0}; shoot("pedometer-none",sm,scene);
+                sm.screen=ScreenId::AppList; sm.pedometer=PedometerModel{}; sm.launcher.transition=1;
+                sm.launcher.list.selection=2; sm.launcher.list.scroll=2*rowSpacing(sm.viewport);
+                shoot("pedometer-row",sm,scene);
+                sm.screen=ScreenId::Home; sm.launcher=AppListModel{};
             }
 #endif
         }

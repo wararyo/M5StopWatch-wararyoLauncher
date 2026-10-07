@@ -27,6 +27,7 @@ def main():
                            "src/features/external/ExternalAppScreen.cpp",
                            "src/services/StopwatchService.cpp", "src/services/TimerService.cpp", "src/features/timer/TimerScreen.cpp", "src/features/timer/TimerBackgroundInfo.cpp", "src/storage/TimerPreferences.cpp",
                            "src/services/PedometerService.cpp", "src/storage/PedometerRecord.cpp", "src/features/pedometer/PedometerRoutine.cpp",
+                           "src/features/pedometer/PedometerScreen.cpp",
                            "src/features/stopwatch/StopwatchFormat.cpp", "src/features/stopwatch/StopwatchScreen.cpp",
                            "src/features/stopwatch/StopwatchBackgroundInfo.cpp",
                            "src/features/background/BackgroundInfoHub.cpp", "src/ui/graphics/MaskImage.cpp", "src/ui/graphics/VlwGlyphs.cpp",

@@ -4,6 +4,7 @@
 #include "features/settings/SettingsScreen.h"
 #include "features/stopwatch/StopwatchScreen.h"
 #include "features/timer/TimerScreen.h"
+#include "features/pedometer/PedometerScreen.h"
 #include "host/FrameModel.h"
 #include "host/EffectiveSettings.h"
 #include "features/launcher/AppListRows.h"
@@ -21,7 +22,7 @@ public:
         :runtime_(runtime),viewport_{width,height},launcher_(viewport_) {
         settings_.resize(width,height); external_.resize(width,height);
         stopwatchScreen_.resize(width,height); stopwatchScreen_.bind(&stopwatch);
-        timerScreen_.resize(width,height);
+        timerScreen_.resize(width,height); pedometerScreen_.resize(width,height);
     }
     ScreenManager(const ScreenManager&)=delete;
     ScreenManager& operator=(const ScreenManager&)=delete;
@@ -32,6 +33,9 @@ public:
     // The timer and its last length. Without them the timer entry is
     // unavailable, as an unimplemented one is.
     void bindTimer(TimerService* timer,TimerPreferences* preferences) { timerScreen_.bind(timer,preferences); }
+    // The count the pedometer screen shows. Without it the entry is
+    // unavailable, as an unimplemented one is.
+    void bindPedometer(PedometerService* pedometer) { pedometerScreen_.bind(pedometer); }
     // The clock layer's input, and the faces settings chooses from. Without it
     // a tap on the clock does nothing, the list is still reached by A/B and
     // the swipe up, and settings offers no face to choose.
@@ -91,6 +95,7 @@ private:
     ExternalAppScreen external_;
     StopwatchScreen stopwatchScreen_;
     TimerScreen timerScreen_;
+    PedometerScreen pedometerScreen_;
     SlotCatalog slots_{};
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.

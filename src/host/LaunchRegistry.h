@@ -7,9 +7,10 @@
 namespace launcher {
 enum class TargetKind { Builtin,External };
 struct LaunchEntry { LaunchTargetId id; const char* name; IconId icon; TargetKind kind; int slot; };
-inline constexpr std::array<LaunchEntry,6> LaunchRegistry{{
+inline constexpr std::array<LaunchEntry,7> LaunchRegistry{{
     {LaunchTargetId::Stopwatch,text::Stopwatch,IconId::Stopwatch,TargetKind::Builtin,-1},
     {LaunchTargetId::Timer,text::Timer,IconId::Timer,TargetKind::Builtin,-1},
+    {LaunchTargetId::Pedometer,text::Pedometer,IconId::Pedometer,TargetKind::Builtin,-1},
     {LaunchTargetId::Settings,text::Settings,IconId::Settings,TargetKind::Builtin,-1},
     {LaunchTargetId::External1,text::ExternalApp1,IconId::App1,TargetKind::External,1},
     {LaunchTargetId::External2,text::ExternalApp2,IconId::App2,TargetKind::External,2},

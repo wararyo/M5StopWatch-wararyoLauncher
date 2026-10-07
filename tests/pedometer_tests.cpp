@@ -440,12 +440,56 @@ void opensWithoutAnImu() {
     screen.exit(); CHECK(screen.nextUpdate()==INT64_MAX);
     PedometerScreen unbound; CHECK(!unbound.available());
 }
+std::string line(uint32_t steps) { char out[BackgroundLabelBytes]; formatPedometerBackground(steps,out,sizeof(out)); return out; }
+void labelsTheFace() {
+    // Rounded down: tenths of a thousand, then whole thousands.
+    CHECK(line(10000)=="10.0K" && line(10099)=="10.0K" && line(10100)=="10.1K" && line(10999)=="10.9K");
+    CHECK(line(99999)=="99.9K" && line(100000)=="100K" && line(123456)=="123K" && line(4294967295u)=="4294967K");
+    // Shown from 10,000 steps, with the pedometer's own look and no deadline.
+    PedometerHal hal;
+    PedometerService service(hal); service.begin(0,0,0,false);
+    PedometerBackgroundInfo info(service);
+    CHECK(info.id()==LaunchTargetId::Pedometer);
+    BackgroundInfo out;
+    hal.steps=9999; service.refresh(0); CHECK(!info.sample(0,out));
+    hal.steps=10000; service.refresh(0); out=BackgroundInfo{};
+    CHECK(info.sample(0,out) && std::string(out.label)=="10.0K" && out.nextChangeAt==INT64_MAX);
+    CHECK(out.icon==appIcon(IconId::Pedometer) && out.suggestedColor==PedometerColors.background);
+    // Without an IMU, nothing, whatever a record carried over.
+    PedometerHal bare; bare.imu=false;
+    PedometerService none(bare); none.begin(0,0,0,false);
+    PedometerBackgroundInfo noInfo(none); out=BackgroundInfo{};
+    CHECK(!noInfo.sample(0,out));
+}
+void reachesTheFaceLast() {
+    Rig r(jstUs(2026,10,7,12,0,0));
+    r.hal.drawEvery=Second;
+    auto& hub=r.app.background();
+    CHECK(hub.providers()==3);
+    // Below 10,000 the clock shows nothing of it.
+    r.hal.steps=9990; r.pedometer.refresh(r.hal.time);
+    r.run(r.hal.time+2*Second);
+    CHECK(hub.snapshot().count==0);
+    // Read on a clock frame once the count is 30s old: then on the face,
+    // after a running timer's line.
+    CHECK(r.app.timer().start(r.hal.time,600));
+    r.hal.steps=10050;
+    r.run(r.hal.time+20*Second);
+    tap(r,234,234);   // Keeps the panel lit past its 30s.
+    CHECK(!r.runtime.power().screenOff() && r.runtime.model().screen==ScreenId::Home);
+    r.run(r.hal.time+5*Second);    // 27.3s since the last read
+    CHECK(hub.snapshot().count==1 && hub.snapshot().items[0].appId==LaunchTargetId::Timer);
+    r.run(r.hal.time+4*Second);    // past 30s: read on a clock frame
+    const auto& s=hub.snapshot();
+    CHECK(s.count==2 && s.items[0].appId==LaunchTargetId::Timer && s.items[1].appId==LaunchTargetId::Pedometer);
+    CHECK(std::string(s.items[1].label)=="10.0K");
+}
 }
 int main() {
     numbersDays(); plansAlignments(); keepsTheRecord(); counts(); carriesOverRestarts(); savesGoingDark();
     endsTheDayInTheDark(); retriesTheRead(); followsTheClock(); readsBesideTheClock(); savesForAnExternalBoot();
-    formatsTheCount(); sitsAfterTheTimer(); showsTheCount(); opensWithoutAnImu();
+    formatsTheCount(); sitsAfterTheTimer(); showsTheCount(); opensWithoutAnImu(); labelsTheFace(); reachesTheFaceLast();
     std::cout << "PASS: day numbers, alignment plan, record, counting, restarts, save going dark, "
                  "day end in the dark, read retry, clock changes, reads beside the clock, external boot, "
-                 "count format, list position, pedometer screen, screen without an IMU\n";
+                 "count format, list position, pedometer screen, screen without an IMU, face label, face order\n";
 }

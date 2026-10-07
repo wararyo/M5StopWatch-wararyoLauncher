@@ -45,7 +45,8 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 `StopwatchService`・`TimerService`・`PedometerService` は、時刻の合わせ直しを求める計時サービスとして `HostRuntime` に登録する（6章）。
 `PedometerRoutine` は画面の外で動く処理の口（[HostRoutine](../src/host/HostRoutine.h)）として登録する（2.3）。
 `HostShutdown` は外部起動の確定時にストップウォッチを止め、タイマーと振動も止め、今日の歩数を保存する。
-文字盤へのバックグラウンド情報の提供元（`StopwatchBackgroundInfo`、`TimerBackgroundInfo`）と `BackgroundInfoHub` もここで所有する。登録順（ストップウォッチ→タイマー）が表示順になる。
+文字盤へのバックグラウンド情報の提供元（`StopwatchBackgroundInfo`、`TimerBackgroundInfo`、`PedometerBackgroundInfo`）と `BackgroundInfoHub` もここで所有する。登録順（ストップウォッチ→タイマー→歩数計）が表示順になる。
+歩数計の行は今日の歩数が10,000歩以上のときだけ、0.1K単位（10万歩からは1K単位）に切り捨てて出す。期限は持たず、時計の描画に相乗りした読み取りで更新される（2.3）。
 
 `main.cpp` はHAL、`HostRenderer`、時刻・設定・スロットのサービス、`HomeDataSource` を生成して注入する。
 `HostRenderer` は各描画レイヤーと文字盤管理を所有する。大きい描画オブジェクトと `HostApplication` は

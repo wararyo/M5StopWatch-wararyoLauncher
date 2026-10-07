@@ -306,7 +306,7 @@ void homeGetsTheLabelAfterTheScreenCloses() {
     TimeService time; time.begin(hal);
     HomeDataSource data(hal,time);
     HostApplication application(hal,render,data,468,468); auto& runtime=application.runtime();
-    CHECK(application.background().providers()==2 && application.background().rejected()==0);
+    CHECK(application.background().providers()==3 && application.background().rejected()==0);
     runtime.begin();
     hal.time=1000; runtime.step();
     CHECK(render.watch.background.count==0);             // Reset: nothing to show

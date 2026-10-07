@@ -228,20 +228,27 @@ void takesCorrections() {
     v.clockCorrected(-Second); CHECK(v.remaining(0)==1);
 }
 void vibrates() {
-    // Weak and sparse, then denser, then strong, for one minute.
-    auto at=[](double seconds) { return timerVibration(TimeUs(seconds*Second)); };
-    CHECK(at(0).level==VibrationWeak && at(0).until==200000);
-    CHECK(at(0.2).level==0 && at(0.2).until==2*Second);
-    CHECK(at(9.9).level==0 && at(9.9).until==10*Second);
-    CHECK(at(10).level==VibrationMedium && at(10).until==10200000);
-    CHECK(at(10.3).level==0 && at(10.3).until==10500000);
-    CHECK(at(10.5).level==VibrationMedium && at(10.5).until==10700000);
-    CHECK(at(10.7).level==0 && at(10.7).until==12*Second);
-    CHECK(at(20).level==VibrationStrong && at(20).until==20400000);
-    CHECK(at(20.4).level==0 && at(20.4).until==20600000);
-    CHECK(at(59.9).level==VibrationStrong && at(59.9).until==60*Second); // Cut at the end.
-    CHECK(at(60).level==0 && at(60).until==INT64_MAX);
-    CHECK(at(-1).level==VibrationWeak);
+    // Weak taps, then longer ones, then medium pairs and long pulses, then
+    // strong, for one minute. Times in milliseconds.
+    auto at=[](TimeUs ms) { return timerVibration(ms*1000); };
+    CHECK(at(0).level==VibrationWeak && at(0).until==60000);
+    CHECK(at(60).level==0 && at(60).until==Second);
+    CHECK(at(1000).level==VibrationWeak && at(1000).until==1060000);
+    CHECK(at(7999).level==0 && at(7999).until==8*Second);
+    CHECK(at(8000).level==VibrationWeak && at(8000).until==8100000);
+    CHECK(at(8100).level==0 && at(8100).until==9*Second);
+    CHECK(at(15999).level==0 && at(15999).until==16*Second);
+    CHECK(at(16000).level==VibrationMedium && at(16000).until==16200000);
+    CHECK(at(16300).level==0 && at(16300).until==16500000);
+    CHECK(at(16500).level==VibrationMedium && at(16500).until==16700000);
+    CHECK(at(16700).level==0 && at(16700).until==18*Second);
+    CHECK(at(24000).level==VibrationMedium && at(24000).until==24500000);
+    CHECK(at(24500).level==0 && at(24500).until==25*Second);
+    CHECK(at(32000).level==VibrationStrong && at(32000).until==32400000);
+    CHECK(at(32400).level==0 && at(32400).until==32600000);
+    CHECK(at(59900).level==VibrationStrong && at(59900).until==60*Second); // Cut at the end.
+    CHECK(at(60000).level==0 && at(60000).until==INT64_MAX);
+    CHECK(at(-1000).level==VibrationWeak);
     // Followed change by change: always forward, every pulse under a second
     // (M5IOE1 must not sleep under one), and over at one minute.
     TimeUs t=0; int changes=0; TimeUs longest=0;
@@ -326,11 +333,10 @@ void alertsWhileDark() {
     CHECK(r.hal.motor==VibrationWeak);
     // The motor follows the pattern on the screen's deadlines. The panel's
     // fade wakes the loop as well, so it is followed by step.
-    r.at(end+200000-1); CHECK(r.hal.motor==VibrationWeak);
-    r.at(end+200000); CHECK(r.hal.motor==0);
-    r.at(end+Second); CHECK(r.shown().seconds==1);
-    r.at(end+2*Second-1); CHECK(r.hal.motor==0);
-    r.at(end+2*Second); CHECK(r.hal.motor==VibrationWeak && r.shown().seconds==2);
+    r.at(end+60000-1); CHECK(r.hal.motor==VibrationWeak);
+    r.at(end+60000); CHECK(r.hal.motor==0);
+    r.at(end+Second-1); CHECK(r.hal.motor==0 && r.shown().seconds==0);
+    r.at(end+Second); CHECK(r.hal.motor==VibrationWeak && r.shown().seconds==1);
     // Lit for the whole minute, rests included, though nothing is pressed.
     for (TimeUs t=end+3*Second;t<end+60*Second;t+=3*Second) { r.at(t); CHECK(!r.runtime.power().screenOff()); }
     r.at(end+60*Second);
@@ -438,19 +444,24 @@ void dismissEndsTheAlert() {
 void retriesTheMotor() {
     Rig r;
     CHECK(r.timer.start(r.hal.time,5));
+    r.at(5*Second); r.at(5*Second+60000);
+    CHECK(r.hal.motor==0);
+    // Followed in a strong pulse, which outlasts a retry.
+    const TimeUs pulse=5*Second+32*Second;
+    const auto written=r.hal.levels.size();
     r.hal.motorWrites=false;
-    r.at(5*Second);
-    CHECK(r.hal.motor==0 && r.hal.levels.size()==1);
-    r.at(5*Second+49000); CHECK(r.hal.levels.size()==1);
-    r.at(5*Second+50000); CHECK(r.hal.levels.size()==2);
-    r.hal.motorWrites=true; r.at(5*Second+100000);
-    CHECK(r.hal.motor==VibrationWeak);
+    r.at(pulse);
+    CHECK(r.hal.motor==0 && r.hal.levels.size()==written+1);
+    r.at(pulse+49000); CHECK(r.hal.levels.size()==written+1);
+    r.at(pulse+50000); CHECK(r.hal.levels.size()==written+2);
+    r.hal.motorWrites=true; r.at(pulse+100000);
+    CHECK(r.hal.motor==VibrationStrong);
     // Stopping fails at first too: it is retried after the alert is gone.
     r.hal.motorWrites=false;
-    r.hal.input.b=true; r.at(5*Second+110000);
-    r.hal.input.b=false; r.at(5*Second+120000);
-    CHECK(r.timer.state()==TimerState::Idle && r.hal.levels.back()==0 && r.hal.motor==VibrationWeak);
-    r.hal.motorWrites=true; r.at(5*Second+170000);
+    r.hal.input.b=true; r.at(pulse+110000);
+    r.hal.input.b=false; r.at(pulse+120000);
+    CHECK(r.timer.state()==TimerState::Idle && r.hal.levels.back()==0 && r.hal.motor==VibrationStrong);
+    r.hal.motorWrites=true; r.at(pulse+170000);
     CHECK(r.hal.motor==0);
     const auto writes=r.hal.levels.size();           // Nothing left to retry.
     r.at(r.hal.time+Second); r.at(r.hal.time+Second);
@@ -853,8 +864,8 @@ void ringsOnScreen() {
     CHECK(r.screens.holdPanelUntil()==end+TimerNoticeUs && r.screens.vibration()==VibrationWeak);
     // Counted up, rounded down; the frame comes when the count changes or
     // the motor does.
-    CHECK(r.screens.nextUpdate()==end+200000);
-    r.advance(end+200000); CHECK(r.screens.vibration()==0 && r.screens.nextUpdate()==end+Second);
+    CHECK(r.screens.nextUpdate()==end+60000);
+    r.advance(end+60000); CHECK(r.screens.vibration()==0 && r.screens.nextUpdate()==end+Second);
     r.advance(end+Second); CHECK(r.t().seconds==1);
     r.advance(end+61*Second); CHECK(r.t().seconds==61 && r.screens.vibration()==0);
     // Held at 99:59:59.

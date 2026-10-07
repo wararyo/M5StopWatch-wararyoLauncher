@@ -31,6 +31,10 @@ public:
     // runtime's own display deadline is unset while an app screen covers the
     // clock (HostRuntime::step, `model.transition<1`).
     virtual bool tick(TimeUs now) { (void)now; return false; }
+    // The monotonic clock was corrected against the RTC (services/
+    // ClockFollower.h), so a measurement shown and the deadline timed from it
+    // may have moved: re-sample them. True means the display changed.
+    virtual bool clockCorrected(TimeUs now) { (void)now; return false; }
     // True while the screen's own content is in motion under the user's hand
     // or settling after it (a list drag or its inertia). The runtime keeps the
     // display active for it; the hidden launcher's motion never counts here.

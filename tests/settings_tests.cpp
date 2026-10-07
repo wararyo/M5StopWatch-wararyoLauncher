@@ -230,6 +230,25 @@ void holdInEditors() {
     since=now; screens.handle(holdB(true),now);
     now+=100000; screens.handle(releaseB(since),now);
     CHECK(screens.model().settings.view==SettingsView::Brightness);
+    // B let go in the same sample as a tap: the hold ends there, and nothing
+    // keeps counting with nothing held (review 2026-10-07, P2).
+    {
+        TestScreens tapped; tapped.bind(&store,&time); TimeUs t3=0;
+        openSettings(tapped,t3); tapped.handle(press(false),t3);   // the date editor
+        const int before=tapped.model().settings.fields[0];
+        Events down{}; down.holdChanged=true; down.hold=Hold::B; down.holdSince=t3;
+        tapped.handle(down,t3);
+        CHECK(tapped.model().settings.fields[0]==before+1);
+        const auto f=tapped.model();
+        const SettingsGeometry g{{f.viewport.width,f.viewport.height},f.settings.view,f.settings.cursor};
+        const Rect year=settingsFieldBox(g,0);
+        Events both=tap(year.x+year.w/2,year.y+year.h/2);
+        both.decide=true; both.holdChanged=true; both.pressUs=100000;
+        tapped.handle(both,t3);
+        CHECK(tapped.nextUpdate()==INT64_MAX);
+        t3+=2000000; tapped.update(t3);
+        CHECK(tapped.model().settings.fields[0]==before+1);
+    }
     // Leaving drops a hold: nothing keeps a deadline behind the clock.
     screens.handle(holdB(true),now);
     Events home{}; home.home=true; screens.handle(home,now);

@@ -195,6 +195,9 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs now) {
         case SettingsHit::None: break;
         }
         hold_.follow(model_.cursor);
+        // B let go in this same sample: the tap decided it, but the hold ends
+        // here all the same, or its repeats would run on with nothing held.
+        if (e.decide || (e.holdChanged && e.hold!=Hold::B)) hold_.end();
         return out;
     }
     if (e.next) {

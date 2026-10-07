@@ -16,9 +16,10 @@ public:
     TimeUs nextUpdate(TimeUs now) const override;
     // Still read only on the draw path: a dark panel costs no I2C for it.
     void refreshBattery() override { batteryDue_ = INT64_MIN; }
-    // The system clock is aligned with the RTC after every dark spell.
-    void panelWoke(TimeUs now) override { time_.beginAlign(now); }
-    TimeUs service(TimeUs now, bool& changed) override { return time_.align(now, changed); }
+    // The system clock is aligned with the RTC after every dark spell, and
+    // when a timer or the stopwatch asks.
+    void alignClock(TimeUs now) override { time_.beginAlign(now); }
+    TimeUs service(TimeUs now, ClockAlignment& alignment) override { return time_.align(now, alignment); }
 private:
     Hal& hal_;
     TimeService& time_;

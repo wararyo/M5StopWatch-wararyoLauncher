@@ -52,6 +52,8 @@ public:
         background_.add(timerInfo_);
         screens_.bindTimer(&timer_,&timerPreferences_);
         runtime_.bindAttention(timerAttention_);
+        runtime_.bindClockFollower(stopwatch_);
+        runtime_.bindClockFollower(timer_);
     }
     // The slot service must not keep calling into a shutdown that is gone.
     ~HostApplication() { if (slots_) slots_->bindShutdown(nullptr); }

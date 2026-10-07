@@ -6,8 +6,8 @@ namespace launcher {
 // sparse at first, then stronger and denser, for one minute counted from when
 // the alert began, which can be later than the expiry.
 inline constexpr TimeUs TimerNoticeUs=60000000;
-// Motor levels for the HAL (0..255). Starting points, tuned on the device.
-inline constexpr uint8_t VibrationWeak=140,VibrationMedium=190,VibrationStrong=255;
+// Motor levels for the HAL (0..255), tuned on the device (task 12-5).
+inline constexpr uint8_t VibrationWeak=120,VibrationMedium=160,VibrationStrong=255;
 // What the motor does `sinceNotice` into the alert, and when that changes
 // next, as an offset from the same start. INT64_MAX once the alert is over.
 //
@@ -19,9 +19,11 @@ inline VibrationStep timerVibration(TimeUs sinceNotice) {
     struct Pulse { TimeUs on,off; };
     struct Phase { TimeUs begin,period; uint8_t level; Pulse pulses[2]; int count; };
     static constexpr Phase Phases[]{
-        {0,2000000,VibrationWeak,{{0,200000},{0,0}},1},
-        {10000000,2000000,VibrationMedium,{{0,200000},{500000,700000}},2},
-        {20000000,600000,VibrationStrong,{{0,400000},{0,0}},1},
+        {0,1000000,VibrationWeak,{{0,60000},{0,0}},1},
+        {8000000,1000000,VibrationWeak,{{0,100000},{0,0}},1},
+        {16000000,2000000,VibrationMedium,{{0,200000},{500000,700000}},2},
+        {24000000,1000000,VibrationMedium,{{0,500000},{0,0}},1},
+        {32000000,600000,VibrationStrong,{{0,400000},{0,0}},1},
     };
     const TimeUs t=sinceNotice<0 ? 0 : sinceNotice;
     if (t>=TimerNoticeUs) return {};

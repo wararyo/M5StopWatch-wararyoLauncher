@@ -94,6 +94,11 @@ bool TimerScreen::tick(TimeUs now) {
     sample(now);
     return true;
 }
+bool TimerScreen::clockCorrected(TimeUs now) {
+    if (!available() || model_.view==TimerView::Setup) return false;
+    sample(now);
+    return true;
+}
 void TimerScreen::resetByHold() {
     // Reset while still held (2026-10-06): the setup comes back the moment
     // the fill completes, not when the wearer lets go.
@@ -140,6 +145,9 @@ bool TimerScreen::handleSetup(const Events& e,TimeUs now,ScreenOutcome& out) {
         default: break;
         }
         hold_.follow(focus);
+        // B let go in this same sample: the tap decided it, but the hold ends
+        // here all the same, or its repeats would run on with nothing held.
+        if (e.decide || (e.holdChanged && e.hold!=Hold::B)) hold_.end();
         return changed;
     }
     if (e.next) {

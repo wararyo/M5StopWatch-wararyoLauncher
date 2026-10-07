@@ -29,6 +29,13 @@ public:
         if (attentionCount_ >= AttentionCapacity) return false;
         attention_[attentionCount_++] = &source; return true;
     }
+    // A service that counts through the dark (services/ClockFollower.h). The
+    // clock is aligned with the RTC when it asks, with the panel dark too, and
+    // it is handed what every alignment finds. False when full.
+    bool bindClockFollower(ClockFollower& follower) {
+        if (followerCount_ >= FollowerCapacity) return false;
+        followers_[followerCount_++] = &follower; return true;
+    }
     void begin();
     void step();
     // `also` is a deadline of the caller's own, such as an instrument's.
@@ -48,6 +55,13 @@ private:
     AttentionSource* attention_[AttentionCapacity]{};
     bool attended_[AttentionCapacity]{}; // Started, and still asking.
     int attentionCount_ = 0;
+    static constexpr int FollowerCapacity = 4;
+    ClockFollower* followers_[FollowerCapacity]{};
+    int followerCount_ = 0;
+    // Begins aligning the clock with the RTC, and tells every follower so.
+    void alignClock(TimeUs now);
+    // The earliest any follower wants the clock aligned.
+    TimeUs alignmentDue() const;
     InputController input_;
     ScreenManager& screens_;
     PowerManager power_;
@@ -77,9 +91,13 @@ private:
     void followScreen(TimeUs now);
     // Sets the motor to the wanted level, retrying a write that did not land.
     void applyVibration(TimeUs now);
-    // The level the shown screen wants and the one the motor was last set to.
-    // They differ only until a write lands; a failed one is retried shortly,
-    // even once nothing asks any more, so a motor is never left running.
+    // The level the shown screen wants and the one the motor is known to be
+    // at. They differ only until a write lands; a failed one is retried
+    // shortly, even once nothing asks any more, so a motor is never left
+    // running. A failed write may still have reached the motor (written, then
+    // not read back), so after one the level is unknown (-1) and whatever is
+    // wanted, off included, is written until a write is confirmed.
+    static constexpr int VibrationUnknown = -1;
     int vibration_ = 0, appliedVibration_ = 0;
     TimeUs vibrationRetry_ = 0;
     static constexpr TimeUs VibrationRetryUs = 50000;

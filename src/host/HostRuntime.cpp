@@ -7,7 +7,7 @@ namespace launcher {
 void HostRuntime::begin() {
     const TimeUs now = hal_.now();
     power_.begin(now); nextInput_ = nextUsb_ = now; renderer_.invalidate();
-    data_.panelWoke(now);
+    alignClock(now);
 }
 void HostRuntime::step() {
     const TimeUs now = hal_.now();
@@ -97,13 +97,22 @@ void HostRuntime::step() {
         hal_.setScreenOff(power_.screenOff()); dirty_ = true; renderer_.invalidate();
         appliedBrightness_ = -1;
         fadeEnd_ = power_.screenOff() ? 0 : std::max(now, hal_.panelShowsAt()) + FadeUs;
-        if (wasOff) data_.panelWoke(now);
+        if (wasOff) alignClock(now);
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
-    // A clock that moved is drawn again, which also takes its new deadlines.
-    bool moved = false;
-    nextService_ = data_.service(now, moved);
-    if (moved && !power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
+    // A follower's own alignment, with the panel left dark: a timer counting
+    // down through the dark is put right on its way (docs/task12/plan.md 2.1).
+    if (now >= alignmentDue()) alignClock(now);
+    ClockAlignment alignment;
+    nextService_ = data_.service(now, alignment);
+    if (alignment.measured) {
+        for (int i = 0; i < followerCount_; ++i) followers_[i]->clockCorrected(alignment.gainUs);
+        // A measurement on screen moved with it.
+        if (!power_.screenOff() && screens_.clockCorrected(now)) dirty_ = true;
+    }
+    // A clock that moved is drawn again, which also takes its new deadlines,
+    // and its applications' labels with theirs.
+    if (alignment.stepped && !power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
     if (!power_.screenOff()) {
         dirty_ = screens_.update(now) || dirty_;
         // A provider's notification redraws a clock on screen. A covered
@@ -169,6 +178,15 @@ void HostRuntime::attend(TimeUs now) {
         dirty_ = true;
     }
 }
+void HostRuntime::alignClock(TimeUs now) {
+    data_.alignClock(now);
+    for (int i = 0; i < followerCount_; ++i) followers_[i]->alignmentBegun(now);
+}
+TimeUs HostRuntime::alignmentDue() const {
+    TimeUs due = INT64_MAX;
+    for (int i = 0; i < followerCount_; ++i) due = std::min(due, followers_[i]->alignmentDue());
+    return due;
+}
 void HostRuntime::followScreen(TimeUs now) {
     // The shown screen's alert (host/Screen.h): what it asks now is what the
     // panel and the motor do, so leaving it lets go of both.
@@ -179,7 +197,7 @@ void HostRuntime::followScreen(TimeUs now) {
 void HostRuntime::applyVibration(TimeUs now) {
     if (vibration_ == appliedVibration_ || now < vibrationRetry_) return;
     if (hal_.setVibration(uint8_t(vibration_))) appliedVibration_ = vibration_;
-    else vibrationRetry_ = now + VibrationRetryUs;
+    else { appliedVibration_ = VibrationUnknown; vibrationRetry_ = now + VibrationRetryUs; }
 }
 bool HostRuntime::sleepAllowed() const {
     return power_.screenOff() && power_.usb.vbusValid && !power_.usb.powered();
@@ -198,9 +216,10 @@ void HostRuntime::wait(TimeUs also) {
     // postpone unsampled input forever under continuous processing overruns.
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
-    // The attention sources and the motor are waited for with the panel dark too.
+    // The attention sources, the motor and the followers' alignments are
+    // waited for with the panel dark too.
     auto deadline = std::min({nextInput_, power_.deadline(), nextService_, also,
-                              nextVibration()});
+                              nextVibration(), alignmentDue()});
     for (int i = 0; i < attentionCount_; ++i) deadline = std::min(deadline, attention_[i]->nextAttention());
     if (usbPolled(now)) deadline = std::min(deadline, nextUsb_);
     if (!power_.screenOff()) {

@@ -7,6 +7,7 @@ namespace launcher {
 void HostRuntime::begin() {
     const TimeUs now = hal_.now();
     power_.begin(now); nextInput_ = nextUsb_ = now; renderer_.invalidate();
+    for (int i = 0; i < routineCount_; ++i) routines_[i]->begin(now);
     alignClock(now);
 }
 void HostRuntime::step() {
@@ -98,6 +99,7 @@ void HostRuntime::step() {
         appliedBrightness_ = -1;
         fadeEnd_ = power_.screenOff() ? 0 : std::max(now, hal_.panelShowsAt()) + FadeUs;
         if (wasOff) alignClock(now);
+        else for (int i = 0; i < routineCount_; ++i) routines_[i]->panelOff(now);
     }
     if (sleepOk && !lightSleep_) { hal_.setLightSleepAllowed(true); lightSleep_ = true; }
     // A follower's own alignment, with the panel left dark: a timer counting
@@ -113,6 +115,14 @@ void HostRuntime::step() {
     // A clock that moved is drawn again, which also takes its new deadlines,
     // and its applications' labels with theirs.
     if (alignment.stepped && !power_.screenOff() && clockVisible(screens_.model())) dirty_ = true;
+    // After the alignment above, so a day that ends by the clock ends by the
+    // clock as just set. Dark or lit; a lit panel draws what moved.
+    nextRoutine_ = INT64_MAX;
+    for (int i = 0; i < routineCount_; ++i) {
+        bool moved = false;
+        nextRoutine_ = std::min(nextRoutine_, routines_[i]->service(now, moved));
+        if (moved && !power_.screenOff()) dirty_ = true;
+    }
     if (!power_.screenOff()) {
         dirty_ = screens_.update(now) || dirty_;
         // A provider's notification redraws a clock on screen. A covered
@@ -131,6 +141,7 @@ void HostRuntime::step() {
         // The applications' labels are sampled for a visible clock only, so a
         // stopwatch left running costs nothing behind a screen. A hidden clock
         // gets the last copy, which it does not draw.
+        if (clock) for (int i = 0; i < routineCount_; ++i) routines_[i]->beforeClock(now);
         if (background_) {
             if (clock) background_->collect(now);
             watch.background = background_->snapshot();
@@ -216,10 +227,10 @@ void HostRuntime::wait(TimeUs also) {
     // postpone unsampled input forever under continuous processing overruns.
     // step() rebases each serviced period to now, without replaying missed work.
     // waitDelay still guarantees at least one blocking tick when work is due.
-    // The attention sources, the motor and the followers' alignments are
-    // waited for with the panel dark too.
+    // The attention sources, the motor, the followers' alignments and the
+    // routines are waited for with the panel dark too.
     auto deadline = std::min({nextInput_, power_.deadline(), nextService_, also,
-                              nextVibration(), alignmentDue()});
+                              nextVibration(), alignmentDue(), nextRoutine_});
     for (int i = 0; i < attentionCount_; ++i) deadline = std::min(deadline, attention_[i]->nextAttention());
     if (usbPolled(now)) deadline = std::min(deadline, nextUsb_);
     if (!power_.screenOff()) {

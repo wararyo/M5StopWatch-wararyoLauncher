@@ -5,6 +5,7 @@
 #include "features/home/DisplayDataSource.h"
 #include "features/background/BackgroundInfoHub.h"
 #include "host/AttentionSource.h"
+#include "host/HostRoutine.h"
 #include <algorithm>
 namespace launcher {
 // The single UI task's loop: input, power, deadlines, slot results and when to
@@ -36,6 +37,14 @@ public:
         if (followerCount_ >= FollowerCapacity) return false;
         followers_[followerCount_++] = &follower; return true;
     }
+    // A feature's work beside the screens (host/HostRoutine.h): begun with the
+    // runtime, run every step, told when the panel goes dark and before a
+    // frame draws the clock, and waited for with the panel dark too. False
+    // when full.
+    bool bindRoutine(HostRoutine& routine) {
+        if (routineCount_ >= RoutineCapacity) return false;
+        routines_[routineCount_++] = &routine; return true;
+    }
     void begin();
     void step();
     // `also` is a deadline of the caller's own, such as an instrument's.
@@ -62,6 +71,10 @@ private:
     void alignClock(TimeUs now);
     // The earliest any follower wants the clock aligned.
     TimeUs alignmentDue() const;
+    static constexpr int RoutineCapacity = 4;
+    HostRoutine* routines_[RoutineCapacity]{};
+    int routineCount_ = 0;
+    TimeUs nextRoutine_ = INT64_MAX; // The earliest a routine asked for.
     InputController input_;
     ScreenManager& screens_;
     PowerManager power_;

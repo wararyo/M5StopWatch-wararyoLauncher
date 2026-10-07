@@ -38,11 +38,13 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 
 ### 所有権と寿命
 
-[HostApplication](../src/host/HostApplication.h) は `StopwatchService`、`TimerService`、`TimerPreferences`、`RuntimeSettings`、`HostShutdown`、
+[HostApplication](../src/host/HostApplication.h) は `StopwatchService`、`TimerService`、`TimerPreferences`、`PedometerService`、`PedometerRecord`、`PedometerRoutine`、`RuntimeSettings`、`HostShutdown`、
 `ScreenManager`、`HostRuntime` を所有する。宣言順に構築し、借用側のRuntime・画面が先に破棄される。
 `ScreenManager` は具体的な画面と `LauncherController` を所有するが、計測サービスは借りる。
 `TimerAttention` もここで所有し、`HostRuntime` に注意の要求元として登録する（2.1）。
-`StopwatchService` と `TimerService` は、時刻の合わせ直しで分かったずれを受け取る計時サービスとして `HostRuntime` に登録する（6章）。`HostShutdown` は外部起動の確定時にストップウォッチを止め、タイマーと振動も止める。
+`StopwatchService`・`TimerService`・`PedometerService` は、時刻の合わせ直しを求める計時サービスとして `HostRuntime` に登録する（6章）。
+`PedometerRoutine` は画面の外で動く処理の口（[HostRoutine](../src/host/HostRoutine.h)）として登録する（2.3）。
+`HostShutdown` は外部起動の確定時にストップウォッチを止め、タイマーと振動も止め、今日の歩数を保存する。
 文字盤へのバックグラウンド情報の提供元（`StopwatchBackgroundInfo`、`TimerBackgroundInfo`）と `BackgroundInfoHub` もここで所有する。登録順（ストップウォッチ→タイマー）が表示順になる。
 
 `main.cpp` はHAL、`HostRenderer`、時刻・設定・スロットのサービス、`HomeDataSource` を生成して注入する。
@@ -106,6 +108,22 @@ staticに置き、8KiBのUIタスクスタックを圧迫しない。新しい�
 - 文字盤: 計時中だけ [TimerBackgroundInfo](../src/features/timer/TimerBackgroundInfo.h) が残り時間を出す（一時停止・満了・入力中は出さない）。
   書式はストップウォッチと同じく1時間未満は `mm:ss`、以上は `HH:mm` だが、丸めは切り上げ（秒へ切り上げ、1時間以上はさらに分へ切り上げ）。
   期限は表示が変わる時刻で、最後の `00:01` の期限は満了時刻と一致する。上限の `99:59:59` は最初の59秒だけ `100:00` と出る。
+
+### 2.3 歩数計と画面の外の処理
+
+[HostRoutine](../src/host/HostRoutine.h) は、画面を持たず注意も求めない機能の処理をRuntimeに載せる口である。
+Runtimeは `begin()` を起動時に、`service()` を毎step（消灯中も）呼び、返された期限を消灯中も待つ。
+消灯した直後に `panelOff()`、時計を描くフレームで情報を集める前に `beforeClock()` を呼ぶ。上限は4つ。
+
+[PedometerService](../src/services/PedometerService.h) は、IMUのカウンタのうち今日の始まりの値と、それより前の分（再起動前の記録や、IMUが失った分）を持ち、
+「今日 = 引き継ぎ +（最後に読んだカウンタ − 今日の始まり）」で今日の歩数を求める。IMUはHALを借りて、求められたときだけ読む。
+1日はJSTの4時から翌日の4時まで（日の番号はその日の日付）で、毎step、システム時計から日の番号を求め、変わっていればそこで区切る。
+日時の手動設定で日が変わった場合も同じ扱いになる。時刻が未設定の間は日を持たず、設定されたらそれまでの歩数をその日に含める。
+区切りの期限はシステム時計を単調時刻に直したもので、消灯中に進みすぎる分は `ClockFollower` として区切りの10分前と1分前に合わせ直して小さくする。
+
+いつ読み、いつ保存するかは [PedometerRoutine](../src/features/pedometer/PedometerRoutine.h) が決める。
+起動時に同じ日の記録を引き継ぎ、消灯したときと外部起動の確定時（`HostShutdown`）に読んで保存する。
+時計を描くフレームでは、最後の読み取りから30秒以上経っていれば読む。歩数のために時計や消灯中の機器を起こさない。
 
 ここには二段階の変更判定がある。Runtimeの `dirty_` は「モデルを再評価する必要がある」という意味であり、
 液晶転送を確定しない。再評価後に `FramePlan` が実際のピクセル変更を判定し、変更がなければ描画・転送を省く。
@@ -307,6 +325,8 @@ Forestのグラデーションは縦方向に限り、各行の色は行の位�
   ホーム移動・消灯でも計測は続く。表示中の実行状態だけ25ms（40Hz）の表示期限を持つ。
 - **タイマーの前回値:** `TimerPreferences` が `launcher` 名前空間のキー `timer` に、正規化後の合計秒数を版付きで保存する。
   開始時に、最後に保存できた値と違うときだけ書く。キー `timer` は `reservedRecordKey()` で文字盤から使えない。
+- **今日の歩数:** `PedometerRecord` が同じ名前空間のキー `pedometer` に、日の番号と歩数を版付きで保存する（2.3）。
+  消灯時と外部起動の確定時に、最後に保存できた値と違うときだけ書く。時刻が未設定の間は書かない。キー `pedometer` も予約キーである。
 - **設定:** `SettingsStore` は値の検証とレコード化、`NvsBackend` は保存を担当する。
   保存成功後に現在値を更新し、失敗時は前の値を維持する。未知のスキーマは勝手に上書きしない。
 - **輝度プレビュー:** 編集中の値から実効値を返し、Runtimeが適用する。キャンセル・ホームで編集を終了すると保存値へ戻る。
@@ -342,11 +362,12 @@ light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、�
 | ストップウォッチ | 表示中・計測中のみ25ms。非表示でも計測の状態は保持 |
 | 時刻の合わせ直し | 起動時と点灯時。計時中のタイマーは残りに応じた予定（2.2）で、消灯したまま起きる。1回はRTCを5msごとに最大1.5秒読む |
 | 注意の要求 | 要求元の `nextAttention()`。タイマーは計時中の満了時刻と、通知中の振動の区切り（最短60ms）。消灯中も待つ。振動の書き込み失敗時は50ms後に再試行 |
+| 歩数計 | 4時の区切り（その10分前と1分前に合わせ直し）。消灯中も待つ。区切りで読めなければ1秒後に読み直す（3回まで）。時計を描くフレームでは最後の読み取りから30秒以上経っていれば読み、そのために起こさない。消灯時に1回読んで保存 |
 | 押し続け | 値の欄でBが単独で押されている間だけ、押した時点の1回の後、500ms後から100ms間隔（`HoldRepeat`）。遅れた分は追いかけない |
 | 消灯 | 最終入力から設定時間。初期値30秒、選択肢15/30/60/180秒 |
 | 復帰フェード | 復帰から300msだけ16ms間隔。描画は伴わない |
 
-`HostRuntime::wait()` は入力・USB・消灯・表示中の画面・時計・注意の要求元・計時サービスの合わせ直しの期限と、呼び出し側の期限（計測ビルドの記録）の最小値まで待つ。
+`HostRuntime::wait()` は入力・USB・消灯・表示中の画面・時計・注意の要求元・計時サービスの合わせ直し・画面の外の処理（`HostRoutine`）の期限と、呼び出し側の期限（計測ビルドの記録）の最小値まで待つ。
 消灯中は画面更新とその期限を待機対象から外す。過負荷で期限を超えても最低1msの待機を要求し、
 HALでtickへ切り上げてidleタスクに実行機会を与える。遅れた全フレームを追いかけて再生しない。
 新機能は「毎ループ描画する」のではなく、状態変更と `nextUpdate()` で更新を要求する。

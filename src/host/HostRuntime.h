@@ -91,9 +91,13 @@ private:
     void followScreen(TimeUs now);
     // Sets the motor to the wanted level, retrying a write that did not land.
     void applyVibration(TimeUs now);
-    // The level the shown screen wants and the one the motor was last set to.
-    // They differ only until a write lands; a failed one is retried shortly,
-    // even once nothing asks any more, so a motor is never left running.
+    // The level the shown screen wants and the one the motor is known to be
+    // at. They differ only until a write lands; a failed one is retried
+    // shortly, even once nothing asks any more, so a motor is never left
+    // running. A failed write may still have reached the motor (written, then
+    // not read back), so after one the level is unknown (-1) and whatever is
+    // wanted, off included, is written until a write is confirmed.
+    static constexpr int VibrationUnknown = -1;
     int vibration_ = 0, appliedVibration_ = 0;
     TimeUs vibrationRetry_ = 0;
     static constexpr TimeUs VibrationRetryUs = 50000;

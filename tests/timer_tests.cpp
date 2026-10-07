@@ -25,6 +25,9 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     // Every level the runtime asked the motor for, and whether writes land.
     std::vector<int> levels;
     bool motorWrites=true;
+    // The write reaches the motor, but the HAL reports a failure (written,
+    // then not read back): the level the runtime must not assume.
+    bool motorLandsButFails=false;
     int motor=0;
     TimeUs now() override { return time; }
     bool readRtc(CivilTime&) override { return false; }
@@ -45,8 +48,8 @@ struct FakeHal : Hal, RenderPort, DisplayDataSource {
     bool usbEvents() const override { return events; }
     bool setVibration(uint8_t level) override {
         levels.push_back(level);
-        if (motorWrites) motor=level;
-        return motorWrites;
+        if (motorWrites || motorLandsButFails) motor=level;
+        return motorWrites && !motorLandsButFails;
     }
 };
 // A monotonic clock that gains `ppm` while light sleep is allowed, as the
@@ -452,6 +455,25 @@ void retriesTheMotor() {
     const auto writes=r.hal.levels.size();           // Nothing left to retry.
     r.at(r.hal.time+Second); r.at(r.hal.time+Second);
     CHECK(r.hal.levels.size()==writes);
+    // A write that reached the motor but reported a failure leaves the level
+    // unknown: dismissed before any retry, the stop is still written, and
+    // written again until a write is confirmed (review 2026-10-07, P1).
+    Rig u;
+    CHECK(u.timer.start(u.hal.time,5));
+    u.hal.motorLandsButFails=true;
+    u.at(5*Second);
+    CHECK(u.hal.motor==VibrationWeak && u.hal.levels.size()==1);
+    u.hal.input.b=true; u.at(5*Second+10000);
+    u.hal.input.b=false; u.at(5*Second+20000);
+    // The stop waits only for the retry after the failed write.
+    CHECK(u.timer.state()==TimerState::Idle && u.hal.levels.size()==1 && u.hal.motor==VibrationWeak);
+    u.at(5*Second+50000); CHECK(u.hal.levels.size()==2 && u.hal.levels.back()==0 && u.hal.motor==0);
+    u.at(5*Second+100000); CHECK(u.hal.levels.size()==3 && u.hal.levels.back()==0);
+    u.hal.motorLandsButFails=false; u.at(5*Second+150000);
+    CHECK(u.hal.motor==0 && u.hal.levels.size()==4);
+    const auto settled=u.hal.levels.size();
+    u.at(u.hal.time+Second); u.at(u.hal.time+Second);
+    CHECK(u.hal.levels.size()==settled);
 }
 // The expiry is settled before the input of the same step: a release that
 // arrives with it reaches nothing (docs/task12/plan.md 2.4).
@@ -684,6 +706,25 @@ void setsUp() {
     CHECK(r.screens.timer.state()==TimerState::Running && r.t().view==TimerView::Countdown);
 }
 void setupEdges() {
+    // B let go in the same sample as a tap: the hold ends there, and nothing
+    // keeps counting with nothing held (review 2026-10-07, P2).
+    {
+        TimerRig r;
+        r.hold(Hold::B);
+        CHECK(r.t().fields[1]==4);
+        const Rect minutes=timerFieldBox(r.m(),1);
+        Events both{}; both.gesture=Gesture::Tap; both.x=minutes.x+minutes.w/2; both.y=minutes.y+minutes.h/2;
+        both.touchUs=100000; both.decide=true; both.holdChanged=true; both.pressUs=100000;
+        r.screens.handle(both,r.now);
+        CHECK(r.t().fields[1]==4 && r.screens.nextUpdate()==INT64_MAX);
+        r.advance(r.now+2*Second);
+        CHECK(r.t().fields[1]==4);
+        // A chord in the same sample as a tap ends it as well.
+        r.hold(Hold::B);
+        Events chord{}; chord.gesture=Gesture::Tap; chord.x=both.x; chord.y=both.y; chord.holdChanged=true;
+        r.screens.handle(chord,r.now);
+        CHECK(r.t().fields[1]==5 && r.screens.nextUpdate()==INT64_MAX);
+    }
     // 00:00:00 starts nothing, from the button or by B.
     {
         TimerRig r;

@@ -197,7 +197,7 @@ void HostRuntime::followScreen(TimeUs now) {
 void HostRuntime::applyVibration(TimeUs now) {
     if (vibration_ == appliedVibration_ || now < vibrationRetry_) return;
     if (hal_.setVibration(uint8_t(vibration_))) appliedVibration_ = vibration_;
-    else vibrationRetry_ = now + VibrationRetryUs;
+    else { appliedVibration_ = VibrationUnknown; vibrationRetry_ = now + VibrationRetryUs; }
 }
 bool HostRuntime::sleepAllowed() const {
     return power_.screenOff() && power_.usb.vbusValid && !power_.usb.powered();

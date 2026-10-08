@@ -19,6 +19,9 @@ public:
     const char* storageKey() const override { return "wf_noonish"; }
     void end() override;
     Rect opaqueArea() const override { return clip_; }
+    // The layout is the last frame's: the clock layer plans every frame,
+    // covered or not, before anything shows the band.
+    uint16_t homeGestureBackground(const WatchData& d) const override { return noonishTopColour(layout(),analogTime(d)); }
 private:
     class Regions final : public Backdrop {
     public:

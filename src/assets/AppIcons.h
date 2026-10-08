@@ -4,11 +4,13 @@
 namespace launcher {
 // The applications' own look, shared by every feature that shows an app: the
 // launcher's rows and the background information an app offers the watch face
-// (docs/task10/plan.md 4.1). Nothing here knows the launch registry.
+// (docs/task10/plan.md 4.1). Nothing here knows the launch registry. The mask
+// set also holds the system's own icons: WatchFace is the home gesture's
+// (docs/task14/plan.md 2.7).
 //
 // Index into the embedded mask set (tools/build_icons.py writes this order).
 // Entries are appended, never reordered: the asset is indexed by this value.
-enum class IconId : uint8_t { Stopwatch,Settings,App1,App2,App3,Timer,Pedometer,Count };
+enum class IconId : uint8_t { Stopwatch,Settings,App1,App2,App3,Timer,Pedometer,WatchFace,Count };
 // Each app's colours (RGB565): the circle under its icon in the list
 // (`background`, which is also the colour it suggests for its background
 // information) and the mask drawn on it (`foreground`). A light circle needs

@@ -1,4 +1,5 @@
 #include "HostRenderer.h"
+#include "assets/AppIcons.h"
 #include "ui/graphics/VlwFont.h"
 #include "ui/graphics/WatchFonts.h"
 #include <esp_timer.h>
@@ -30,6 +31,7 @@ RenderLayer* HostRenderer::layer(FrameLayer id) {
     case FrameLayer::Stopwatch: return &stopwatch_;
     case FrameLayer::Timer: return &timer_;
     case FrameLayer::Pedometer: return &pedometer_;
+    case FrameLayer::HomeGesture: return &homeGesture_;
     case FrameLayer::Toast: return &toast_;
     }
     return nullptr;
@@ -59,6 +61,8 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     stopwatch_.prepare(c.viewport,m.stopwatch,c.stopwatch);
     timer_.prepare(c.viewport,m.timer,c.timer);
     pedometer_.prepare(c.viewport,m.pedometer,c.pedometer);
+    homeGesture_.prepare(c.viewport,m.homeGesture.band,home_.homeGestureBackground(),
+                         home_.homeGestureForeground(),appIcon(IconId::WatchFace));
     toast_.prepare(c.viewport,m.toast);
     RenderLayer* layers[FrameLayerCount];
     for(int i=0;i<FrameLayerCount;++i) layers[i]=layer(FrameOrder[i]);

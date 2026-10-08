@@ -19,6 +19,7 @@ FrameModel ScreenManager::model() const {
     return m;
 }
 FrameActivity ScreenManager::activity() const {
+    if (gesture_.active()) return FrameActivity::HomeGesture;
     if (launcher_.transitioning()) return FrameActivity::Transition;
     if (active_==&settings_)
         return settings_.active() ? FrameActivity::SettingsScroll : FrameActivity::SettingsSingle;

@@ -7,10 +7,12 @@ namespace launcher {
 // The layers of a frame, back to front. The statistics chip is not among them:
 // it is painted after all of them, outside the plan (ui/overlays/StatsOverlay.h).
 // The list's background is no layer: it is the frame's base (HostRenderer::draw).
-enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Timer, Pedometer, Toast };
+// The home gesture's band lies over every screen and the list, under the notice.
+enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Timer, Pedometer, HomeGesture, Toast };
 inline constexpr FrameLayer FrameOrder[]={
     FrameLayer::Home,FrameLayer::AppList,FrameLayer::Settings,
-    FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Timer,FrameLayer::Pedometer,FrameLayer::Toast};
+    FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Timer,FrameLayer::Pedometer,
+    FrameLayer::HomeGesture,FrameLayer::Toast};
 inline constexpr int FrameLayerCount=int(sizeof(FrameOrder)/sizeof(FrameOrder[0]));
 // Where each part of a frame goes, derived from the frame model alone. The
 // renderer draws from it and the runtime takes the clock's deadline from it,

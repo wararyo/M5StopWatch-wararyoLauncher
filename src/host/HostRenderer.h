@@ -8,6 +8,7 @@
 #include "features/stopwatch/StopwatchLayer.h"
 #include "features/timer/TimerLayer.h"
 #include "features/pedometer/PedometerLayer.h"
+#include "ui/overlays/HomeGestureLayer.h"
 #include "ui/overlays/StatsOverlay.h"
 #include "ui/overlays/ToastLayer.h"
 #include "ui/rendering/Renderer.h"
@@ -71,6 +72,7 @@ private:
     StopwatchLayer stopwatch_;
     TimerLayer timer_;
     PedometerLayer pedometer_;
+    HomeGestureLayer homeGesture_;
     ToastLayer toast_;
     StatsOverlay stats_;
     FrameComposer composer_;

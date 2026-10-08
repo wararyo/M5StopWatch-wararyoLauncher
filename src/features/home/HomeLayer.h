@@ -52,6 +52,8 @@ public:
         return face_ ? face_->backgroundInterest(data.background) : BackgroundInterest{};
     }
     uint16_t listBackground() const { return face_ ? face_->listBackground(data_) : 0; }
+    uint16_t homeGestureBackground() const { return face_ ? face_->homeGestureBackground(data_) : 0x0000; }
+    uint16_t homeGestureForeground() const { return face_ ? face_->homeGestureForeground(data_) : 0xffff; }
     const DigitalWatchFace& digital() const { return digital_; }
     const ForestWatchFace& forest() const { return forest_; }
     const AnalogWatchFace& analog() const { return analog_; }

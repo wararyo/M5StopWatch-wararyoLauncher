@@ -19,6 +19,7 @@ enum class FrameActivity : uint8_t {
     SettingsScroll,  // The settings menu dragged, coasting or aligning.
     Stopwatch,       // A running measurement.
     SettingsSingle,  // Settings at rest: a selection or a value changing.
+    HomeGesture,     // The home gesture's band moving (docs/task14/plan.md).
 };
 // One frame, composed by the app from each feature's own model. It holds only
 // state: where each part is drawn follows from it in one place

@@ -58,5 +58,12 @@ public:
     // face paints opaque wherever it shows (opaqueArea). A new colour repaints
     // the whole frame.
     virtual uint16_t listBackground(const WatchData&) const { return 0x0000; }
+    // The band at the top of the panel that shows home on its way: a swipe
+    // down from the top edge, or A and B held (docs/task14/plan.md 2.3). Its
+    // ground and the colour of the face icon on it (RGB565), asked with the
+    // frame's data like listBackground. When home arrives, the band gives way
+    // to the face at once, so a face picks the colour that shows there.
+    virtual uint16_t homeGestureBackground(const WatchData&) const { return 0x0000; }
+    virtual uint16_t homeGestureForeground(const WatchData&) const { return 0xffff; }
 };
 }

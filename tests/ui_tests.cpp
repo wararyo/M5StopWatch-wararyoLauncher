@@ -320,11 +320,11 @@ void composition() {
         CHECK(c.settings==(screen==ScreenId::Settings) && c.external==(screen==ScreenId::External));
     }
     // Back to front: the clock, the list's rows on the frame's base, the
-    // screens that cover it, and the notice over everything. Each layer
-    // exactly once.
-    CHECK(FrameLayerCount==8);
+    // screens that cover it, the home gesture's band over them, and the
+    // notice over everything. Each layer exactly once.
+    CHECK(FrameLayerCount==9);
     CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppList);
-    CHECK(FrameOrder[FrameLayerCount-1]==FrameLayer::Toast);
+    CHECK(FrameOrder[FrameLayerCount-2]==FrameLayer::HomeGesture && FrameOrder[FrameLayerCount-1]==FrameLayer::Toast);
     for (int i=0;i<FrameLayerCount;++i) for (int j=0;j<i;++j) CHECK(FrameOrder[i]!=FrameOrder[j]);
     // Another screen is a full repaint; anything within the same screen is
     // left to the differential plan (or to the layer, for the settings views).

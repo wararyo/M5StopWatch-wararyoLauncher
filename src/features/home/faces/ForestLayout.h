@@ -178,6 +178,9 @@ inline int forestHour(const WatchData& d) {
 // The list over Forest lies on the hour's plain ground under the row, the
 // darkest of the ground's gradient.
 inline uint16_t forestListBackground(int hour) { return forest::rgb565(forestPalette(hour).groundBottom); }
+// The home gesture's band over Forest is the hour's sky at the top of the
+// panel, where the band gives way to it.
+inline uint16_t forestHomeGestureBackground(int hour) { return forest::rgb565(forestPalette(hour).skyTop); }
 // Forest's behaviour without its drawing: the variant (kept in Forest's own
 // record), the battery rule, which layout applies, the hour its colours follow
 // and when to draw again. A tap means nothing on Forest: the list opens with

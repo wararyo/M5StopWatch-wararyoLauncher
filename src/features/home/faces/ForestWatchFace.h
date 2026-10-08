@@ -39,6 +39,7 @@ public:
     // The frame's own hour: a list open across the hour takes the new ground
     // with the next frame drawn.
     uint16_t listBackground(const WatchData& d) const override { return forestListBackground(forestHour(d)); }
+    uint16_t homeGestureBackground(const WatchData& d) const override { return forestHomeGestureBackground(forestHour(d)); }
     TimeVariant variant() const { return control_.variant(); }
     const ForestLayout& layout() const { return layout_; }
     int cachedParts() const { return digits_.cached(); }

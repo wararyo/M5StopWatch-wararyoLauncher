@@ -43,7 +43,7 @@ struct Distribution {
 // A frame is classified by the activity the app composed into its model, so
 // one window can mix scenarios and still report each of them separately.
 // `scroll` keeps its name for the launcher so earlier records stay comparable.
-enum Mode { ModeTransition, ModeScroll, ModeSettingsScroll, ModeStopwatch,
+enum Mode { ModeTransition, ModeScroll, ModeSettingsScroll, ModeStopwatch, ModeHomeGesture,
             ModeSettingsSingle, ModeSingle, ModeCount };
 constexpr int IntervalModes=ModeSettingsSingle; // Continuous by nature; single frames are not.
 Mode modeOf(FrameActivity activity) {
@@ -52,6 +52,7 @@ Mode modeOf(FrameActivity activity) {
     case FrameActivity::LauncherScroll: return ModeScroll;
     case FrameActivity::SettingsScroll: return ModeSettingsScroll;
     case FrameActivity::Stopwatch: return ModeStopwatch;
+    case FrameActivity::HomeGesture: return ModeHomeGesture;
     case FrameActivity::SettingsSingle: return ModeSettingsSingle;
     default: return ModeSingle;
     }
@@ -262,9 +263,9 @@ void reportRenderDiagnostics(const HostRenderer& renderer,TimeUs now) {
     if(!windowStart) { windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0; return; }
     if(now-windowStart<60000000) return;
     const char* drawNames[]={"transition-draw","scroll-draw","settings-scroll-draw","stopwatch-draw",
-                             "settings-single-draw","single-draw"};
+                             "home-gesture-draw","settings-single-draw","single-draw"};
     const char* gapNames[]={"transition-interval","scroll-interval","settings-scroll-interval",
-                            "stopwatch-interval"};
+                            "stopwatch-interval","home-gesture-interval"};
     for(int i=0;i<ModeCount;++i) drawTime[i].print(drawNames[i]);
     for(int i=0;i<IntervalModes;++i) {
         interval[i].print(gapNames[i]);
@@ -1424,6 +1425,38 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 if(renderer.noonishSeconds()) renderer.handle(hold);
                 renderer.selectFace("digital"); check("noonish-to-digital",nm,d);
             }
+            // Work 14-2: the home gesture's band on every face, over an app
+            // screen and over the list, growing past the icon and back down to
+            // nothing (docs/task14/plan.md 2.2). Each height is drawn over the
+            // last, so the rows the band leaves have to come back as a full
+            // repaint draws them; Noonish's colour follows its hands.
+            {
+                FrameModel bm; bm.viewport={w,h};
+                static WatchData bd; bd=d;
+                char name[48];
+                for(const char* face:{"digital","forest","analog","noonish"}) {
+                    if(!renderer.selectFace(face)) { ++failures; std::printf("[Verify] FAIL %s did not begin\n",face); continue; }
+                    for(const ScreenId screen:{ScreenId::Timer,ScreenId::Pedometer,ScreenId::AppList}) {
+                        bm.screen=screen; bm.timer=TimerModel{}; bm.timer.fields[1]=3; bm.pedometer={true,12345};
+                        bm.launcher=AppListModel{}; bm.launcher.transition=screen==ScreenId::AppList ? 1 : 0;
+                        bm.homeGesture={}; renderer.invalidate(); renderer.draw(bm,bd);
+                        for(const int band:{6,21,22,23,44,45,63,80,52,17,3,0}) {
+                            bm.homeGesture.band=band;
+                            std::snprintf(name,sizeof(name),"home-band-%s-%d-%d",face,int(screen),band);
+                            check(name,bm,bd);
+                        }
+                        vTaskDelay(1);
+                    }
+                    // The colour changing under a shown band (Forest's hour,
+                    // Noonish's hands) repaints it alone.
+                    bm.screen=ScreenId::Timer; bm.homeGesture.band=60; check("home-band-colour-before",bm,bd);
+                    bd.localTime.tm_hour=(bd.localTime.tm_hour+6)%24; bd.localTime.tm_min=(bd.localTime.tm_min+23)%60;
+                    std::snprintf(name,sizeof(name),"home-band-colour-%s",face); check(name,bm,bd);
+                    bm.homeGesture.band=0; check("home-band-colour-gone",bm,bd);
+                    bd=d;
+                }
+                renderer.selectFace("digital"); bm=FrameModel{}; bm.viewport={w,h}; check("home-band-done",bm,d);
+            }
             // Repeated cache release/recreation gives before/after heap evidence.
             const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }
@@ -1738,6 +1771,21 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 sm.launcher.list.selection=2; sm.launcher.list.scroll=2*rowSpacing(sm.viewport);
                 shoot("pedometer-row",sm,scene);
                 sm.screen=ScreenId::Home; sm.launcher=AppListModel{};
+                // Work 14-2: the home gesture's band on each face, over the
+                // timer: full, and lower than its icon.
+                sm.screen=ScreenId::Timer; sm.timer=TimerModel{}; sm.timer.fields[1]=3; scene=sampleData();
+                for(const char* face:{"digital","forest","analog","noonish"}) {
+                    renderer.selectFace(face);
+                    char name[40];
+                    for(const int band:{80,30}) {
+                        sm.homeGesture.band=band;
+                        std::snprintf(name,sizeof(name),"home-band-%s-%d",face,band); shoot(name,sm,scene);
+                    }
+                }
+                sm.homeGesture.band=80; sm.screen=ScreenId::AppList; sm.launcher.transition=1;
+                shoot("home-band-list",sm,scene);
+                renderer.selectFace("digital");
+                sm=FrameModel{}; sm.viewport={w,h};
             }
 #endif
         }

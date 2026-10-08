@@ -42,7 +42,9 @@ public:
     void begin(TimeUs now,int64_t restoredDay,uint32_t restoredSteps,bool restored);
     // Reads the IMU. False when it could not be read; the count stays.
     bool refresh(TimeUs now);
-    // Reads only when the last read is at least `age` old (or never was).
+    // Reads only when the last attempt, succeeded or not, is at least `age`
+    // old (or there was none), so a failing IMU is not asked again on every
+    // frame of the clock.
     bool refreshIfOlder(TimeUs now,TimeUs age);
     // The day's bookkeeping, every step: a clock that is newly set, or that
     // reached (or was set to) another day. Returns when it is next due:
@@ -78,7 +80,8 @@ private:
     uint32_t dayStart_=0,last_=0;
     // Today's steps that the count does not hold.
     uint32_t carried_=0;
-    TimeUs readAt_=INT64_MIN;
+    TimeUs readAt_=INT64_MIN;   // The last read that succeeded,
+    TimeUs triedAt_=INT64_MIN;  // and the last one tried.
     int failures_=0;
     TimeUs retryAt_=0;
     // What is left until the day ends at the next alignment, 0: none.

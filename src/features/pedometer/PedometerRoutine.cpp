@@ -9,6 +9,10 @@ void PedometerRoutine::begin(TimeUs now) {
                 static_cast<unsigned long>(record_.steps()));
 }
 PrefResult PedometerRoutine::save(TimeUs now) {
+    // A save that lands on 04:00 (a boot committed then, say) ends the day
+    // first, so today's steps are kept under today's number.
+    bool changed=false;
+    service_.service(now,changed);
     service_.refresh(now);
     if (!service_.dated()) return PrefResult::Unavailable;
     const int32_t day=int32_t(service_.day());

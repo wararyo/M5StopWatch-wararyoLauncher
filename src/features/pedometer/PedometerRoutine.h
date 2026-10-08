@@ -19,9 +19,10 @@ public:
     TimeUs service(TimeUs now,bool& changed) override { return service_.service(now,changed); }
     void panelOff(TimeUs now) override { save(now); }
     void beforeClock(TimeUs now) override { service_.refreshIfOlder(now,ClockReadUs); }
-    // Reads the count and writes today's steps if they moved since the last
-    // save. Nothing is written while the date is unknown: the steps belong to
-    // no day yet. A failed write is only logged; the next save tries again.
+    // Ends the day if it is due, reads the count and writes today's steps if
+    // they moved since the last save. Nothing is written while the date is
+    // unknown: the steps belong to no day yet. A failed write is only logged;
+    // the next save tries again.
     PrefResult save(TimeUs now);
 private:
     PedometerService& service_;

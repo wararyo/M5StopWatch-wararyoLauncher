@@ -12,6 +12,7 @@ struct PedometerModel {
 // The count with a comma every three digits, in both languages ("12,345"),
 // or "--" when there is nothing to count.
 inline void formatSteps(const PedometerModel& m,char* out,size_t size) {
+    if (size==0) return;
     if (!m.available) { std::snprintf(out,size,"--"); return; }
     char digits[12];
     const int length=std::snprintf(digits,sizeof(digits),"%lu",static_cast<unsigned long>(m.steps));

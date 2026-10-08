@@ -15,6 +15,7 @@ void PedometerService::begin(TimeUs now,int64_t restoredDay,uint32_t restoredSte
 }
 bool PedometerService::refresh(TimeUs now) {
     uint32_t count=0;
+    triedAt_=now;
     if (!hal_.readStepCount(count)) return false;
     // Less than before: the IMU began again and counts from 0. What it had
     // counted today stays today's.
@@ -25,7 +26,7 @@ bool PedometerService::refresh(TimeUs now) {
     return true;
 }
 bool PedometerService::refreshIfOlder(TimeUs now,TimeUs age) {
-    if (readAt_!=INT64_MIN && now-readAt_<age) return false;
+    if (triedAt_!=INT64_MIN && now-triedAt_<age) return false;
     return refresh(now);
 }
 TimeUs PedometerService::service(TimeUs now,bool& changed) {

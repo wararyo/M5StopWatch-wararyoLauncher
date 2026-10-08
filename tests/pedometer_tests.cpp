@@ -484,12 +484,55 @@ void reachesTheFaceLast() {
     CHECK(s.count==2 && s.items[0].appId==LaunchTargetId::Timer && s.items[1].appId==LaunchTargetId::Pedometer);
     CHECK(std::string(s.items[1].label)=="10.0K");
 }
+void waitsAfterAFailedRead() {
+    // A read that fails is not tried again on every frame of the clock: the
+    // 30s run from the attempt, as they do from a read.
+    PedometerHal hal;
+    PedometerService service(hal); service.begin(0,0,0,false);
+    CHECK(hal.reads==1 && service.lastReadAt()==0);
+    hal.imu=false;
+    CHECK(!service.refreshIfOlder(30*Second,30*Second) && hal.reads==2);
+    for (TimeUs t=30*Second+16000;t<31*Second;t+=16000) service.refreshIfOlder(t,30*Second);
+    CHECK(hal.reads==2);
+    CHECK(!service.refreshIfOlder(60*Second-1,30*Second) && hal.reads==2);
+    CHECK(!service.refreshIfOlder(60*Second,30*Second) && hal.reads==3);
+    hal.imu=true;
+    CHECK(service.refreshIfOlder(90*Second,30*Second) && hal.reads==4 && service.lastReadAt()==90*Second);
+    // The screen's own second and a save still read when asked.
+    hal.imu=false;
+    CHECK(!service.refresh(90*Second+Second) && hal.reads==5);
+}
+void writesNothingIntoNothing() {
+    char untouched[2]={'x','y'};
+    formatSteps({true,12345},untouched,0); CHECK(untouched[0]=='x' && untouched[1]=='y');
+    formatSteps({false,0},untouched,0); CHECK(untouched[0]=='x');
+    formatSteps({true,12345},nullptr,0);
+}
+void savesOnTheNewDay() {
+    // A save that lands just after 04:00, before any step ended the day (a
+    // boot committed then): the day ends first, so the morning's steps are
+    // kept under the new day's number, not yesterday's.
+    Rig r(jstUs(2026,10,7,3,59,59));
+    auto& p=r.pedometer;
+    r.hal.steps=100; p.refresh(r.hal.time);
+    CHECK(p.day()==dayOf(2026,10,6));
+    r.hal.time+=2*Second; r.hal.steps=130;
+    CHECK(r.app.pedometerRoutine().save(r.hal.time)==PrefResult::Ok);
+    int32_t day=0; uint32_t steps=0;
+    CHECK(p.day()==dayOf(2026,10,7));
+    CHECK(r.records.saved(day,steps) && day==int32_t(dayOf(2026,10,7)) && steps==0);
+    r.hal.steps=150;
+    CHECK(r.app.pedometerRoutine().save(r.hal.time+Second)==PrefResult::Ok);
+    CHECK(r.records.saved(day,steps) && day==int32_t(dayOf(2026,10,7)) && steps==20);
+}
 }
 int main() {
     numbersDays(); plansAlignments(); keepsTheRecord(); counts(); carriesOverRestarts(); savesGoingDark();
     endsTheDayInTheDark(); retriesTheRead(); followsTheClock(); readsBesideTheClock(); savesForAnExternalBoot();
     formatsTheCount(); sitsAfterTheTimer(); showsTheCount(); opensWithoutAnImu(); labelsTheFace(); reachesTheFaceLast();
+    waitsAfterAFailedRead(); writesNothingIntoNothing(); savesOnTheNewDay();
     std::cout << "PASS: day numbers, alignment plan, record, counting, restarts, save going dark, "
                  "day end in the dark, read retry, clock changes, reads beside the clock, external boot, "
-                 "count format, list position, pedometer screen, screen without an IMU, face label, face order\n";
+                 "count format, list position, pedometer screen, screen without an IMU, face label, face order, "
+                 "retry after a failed read, empty buffer, save on the new day\n";
 }

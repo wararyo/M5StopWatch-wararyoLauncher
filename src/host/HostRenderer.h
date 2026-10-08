@@ -51,6 +51,8 @@ public:
     // The chip carries a clock, so two draws of the same model differ. The
     // pixel comparison turns it off and checks the settings row instead.
     void suppressStatsForTest(bool suppress) { statsSuppressed_=suppress; invalidate(); }
+    void statsCacheForTest(bool allowed) { stats_.cacheForTest(allowed); }
+    void statsReadingForTest(const char* fps) { stats_.readingForTest(fps); }
     ListView& listViewForTest() { return appList_.view(); }
     SettingsLayer& settingsForTest() { return settings_; }
     int digitalCachedParts() const { return home_.digital().cachedParts(); }

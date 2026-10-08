@@ -3,6 +3,7 @@
 #include "ui/rendering/Scale.h"
 #include <algorithm>
 #include <cmath>
+#include <optional>
 namespace launcher {
 // The home gesture's geometry and timing (docs/task14/plan.md 2): where a
 // swipe down from the top edge starts, how tall its band grows, where it is let
@@ -61,16 +62,15 @@ struct HomeGestureModel {
     bool shown() const { return band>0; }
 };
 // How one frame of the clock coming in is drawn (docs/task14/plan.md 2.6).
+// Its first frame is the change of screen, which repaints in full as any does,
+// only inside `within`: that turns the band into the clock.
 struct HomeRevealFrame {
-    // The first frame: everything inside `confine` is painted afresh, which
-    // turns the band into the clock.
-    bool start=false;
-    // Where the frame may draw: from the top down to the edge. Empty when the
-    // clock is not coming in, which leaves the frame unconfined.
-    Rect confine{};
+    // Where the frame may draw (Renderer::draw): from the top down to the
+    // edge. None when the clock is not coming in.
+    std::optional<Rect> within;
     // The rows the edge moved over since the last frame: new to the clock,
     // though none of its elements changed. On the frame after the last one it
-    // is the rest of the panel, drawn unconfined.
+    // is the rest of the panel, drawn with no range.
     Rect strip{};
 };
 // Follows the edge from frame to frame, so each frame draws only the rows it
@@ -81,10 +81,10 @@ public:
     HomeRevealFrame next(const HomeGestureModel& g,Viewport v) {
         HomeRevealFrame f;
         if (g.revealing) {
-            const int edge=std::clamp(g.edge,1,v.height);
-            if (shown_<0) { f.start=true; shown_=edge; }
+            const int edge=std::clamp(g.edge,0,v.height);
+            if (shown_<0) shown_=edge;
             else if (edge>shown_) { f.strip={0,shown_,v.width,edge-shown_}; shown_=edge; }
-            f.confine={0,0,v.width,shown_};
+            f.within=Rect{0,0,v.width,shown_};
         } else if (shown_>=0) {
             if (shown_<v.height) f.strip={0,shown_,v.width,v.height-shown_};
             shown_=-1;

@@ -1,17 +1,21 @@
 #include "HomeGesture.h"
 namespace launcher {
-void HomeGesture::reset() {
+void HomeGesture::cancel() {
     phase_=Phase::Idle; band_=0; edge_=0; frame_=INT64_MAX;
-    touch_=follow_=false;
+    follow_=false;
+}
+void HomeGesture::reset() {
+    cancel();
+    touch_=false;
 }
 void HomeGesture::reveal(float from,TimeUs now) {
-    reset();
+    cancel();
     phase_=Phase::Reveal; revealFrom_=from; revealStart_=now;
     edge_=homeRevealEdge(viewport_,from,0);
     frame_=now+HomeGestureFrameUs;
 }
 void HomeGesture::shrink(TimeUs now) {
-    if (band_<=0) { reset(); return; }
+    if (band_<=0) { cancel(); return; }
     phase_=Phase::Shrink; shrinkFrom_=band_; shrinkStart_=now;
     frame_=now+HomeGestureFrameUs;
 }
@@ -71,7 +75,7 @@ bool HomeGesture::update(TimeUs now) {
         const TimeUs elapsed=now-revealStart_;
         // At the bottom it is over: the next frame draws what is left of the
         // panel and the clock is simply home.
-        if (elapsed>=HomeRevealUs) reset();
+        if (elapsed>=HomeRevealUs) cancel();
         else { edge_=homeRevealEdge(viewport_,revealFrom_,elapsed); frame_=now+HomeGestureFrameUs; }
         return true;
     }

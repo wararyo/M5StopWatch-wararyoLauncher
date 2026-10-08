@@ -67,8 +67,14 @@ void StatsOverlay::paint(Gfx& g,const Rect& dirty) {
         shown_=true;
         return;
     }
-    // No cache: draw straight to the panel rather than lose the reading.
-    g.setClipRect(b.x,b.y,b.w,b.h);
+    // No cache: draw straight to the panel rather than lose the reading, but
+    // only where the frame lets it (the clip it was handed, narrowed to the
+    // chip; setClipRect replaces a clip rather than narrowing it).
+    int32_t cx=0,cy=0,cw=0,ch=0;
+    g.getClipRect(&cx,&cy,&cw,&ch);
+    const Rect clip=intersect(b,{int(cx),int(cy),int(cw),int(ch)});
+    if (clip.empty()) return;
+    g.setClipRect(clip.x,clip.y,clip.w,clip.h);
     g.fillRect(b.x,b.y,b.w,b.h,Chip);
     g.setFont(&fonts::Font0); g.setTextSize(TextSize);
     g.setTextDatum(top_right); g.setTextColor(Ink,Chip);

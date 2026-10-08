@@ -236,40 +236,104 @@ void reveal() {
     g.reveal(80,0); g.update(100000); g.reset();
     CHECK(!g.revealing() && !g.model().revealing);
 }
-// Turning the edge into what each frame draws: everything up to the edge on
-// the first frame, then the rows the edge moved over, then the rest.
+// Turning the edge into what each frame draws: the range down to the edge
+// (the first frame repaints all of it, as any change of screen does), then the
+// rows the edge moved over, then the rest with no range.
 void revealFrames() {
     HomeRevealTracker t;
     HomeGestureModel g;
     auto f=t.next(g,View);
-    CHECK(!f.start && f.confine.empty() && f.strip.empty());
+    CHECK(!f.within && f.strip.empty());
     g.revealing=true; g.edge=70;
     f=t.next(g,View);
-    CHECK(f.start && f.confine==rect(0,0,468,70) && f.strip.empty());
+    CHECK(f.within && *f.within==rect(0,0,468,70) && f.strip.empty());
     g.edge=110; f=t.next(g,View);
-    CHECK(!f.start && f.confine==rect(0,0,468,110) && f.strip==rect(0,70,468,40));
+    CHECK(f.within && *f.within==rect(0,0,468,110) && f.strip==rect(0,70,468,40));
     f=t.next(g,View); // The edge stood still: nothing new.
-    CHECK(f.confine==rect(0,0,468,110) && f.strip.empty());
+    CHECK(f.within && *f.within==rect(0,0,468,110) && f.strip.empty());
     g.edge=468; f=t.next(g,View);
-    CHECK(f.strip==rect(0,110,468,358) && f.confine==rect(0,0,468,468));
+    CHECK(f.strip==rect(0,110,468,358) && *f.within==rect(0,0,468,468));
     g.revealing=false; f=t.next(g,View);
-    CHECK(!f.start && f.confine.empty() && f.strip.empty());
-    // Over before the edge reached the bottom: the rest, unconfined.
+    CHECK(!f.within && f.strip.empty());
+    // A range of no height draws nothing, rather than everything; over
+    // before the edge reached the bottom, the rest is drawn with no range.
     g.revealing=true; g.edge=0; f=t.next(g,View);
-    CHECK(f.start && f.confine==rect(0,0,468,1));
-    g.edge=300; t.next(g,View);
+    CHECK(f.within && f.within->empty());
+    g.edge=300; f=t.next(g,View);
+    CHECK(*f.within==rect(0,0,468,300) && f.strip==rect(0,0,468,300));
     g.revealing=false; f=t.next(g,View);
-    CHECK(f.confine.empty() && f.strip==rect(0,300,468,168));
+    CHECK(!f.within && f.strip==rect(0,300,468,168));
     CHECK(t.next(g,View).strip.empty());
-    // Coming in is no full repaint; anything else that changes the screen is.
+    // Coming in is a change of screen like any other: a full repaint, which
+    // the range keeps above the edge.
     FrameComposer c;
     FrameModel m; m.viewport=View; m.screen=ScreenId::Timer;
     CHECK(c.compose(m).changed);
     m.screen=ScreenId::Home; m.homeGesture.revealing=true; m.homeGesture.edge=80;
-    CHECK(!c.compose(m).changed);
+    CHECK(c.compose(m).changed);
     m.homeGesture={};
     CHECK(!c.compose(m).changed);
-    m.screen=ScreenId::Timer; CHECK(c.compose(m).changed);
+}
+// The cases docs/review-home-gesture found.
+struct FakeSlots : SlotService {
+    void requestScan() override {}
+    bool poll(SlotCatalog&) override { return false; }
+    bool boot(int,const char**) override { return false; }
+};
+void reviewCases() {
+    // 1. The screen left by its own input mid-swipe: the band goes, and the
+    // rest of that touch moves nothing and goes nowhere.
+    {
+        TestScreens s; FakeSlots slots; s.bindSlots(&slots);
+        Events next{}; next.next=true; Events decide{}; decide.decide=true;
+        TimeUs now=0;
+        s.handle(next,now); now+=200000; s.update(now);
+        while (LaunchRegistry[s.model().launcher.list.selection].id!=LaunchTargetId::External1) {
+            s.handle(next,now); now+=200000; s.update(now);
+        }
+        s.handle(decide,now); now+=10000;
+        CHECK(s.model().screen==ScreenId::External);
+        s.handle(touchEvent(Gesture::TouchStart,20),now);
+        s.handle(touchEvent(Gesture::DragStart,200),now+10000);
+        CHECK(s.model().homeGesture.band>0);
+        s.handle(decide,now+20000);                       // its back button
+        CHECK(s.model().screen==ScreenId::AppList && s.model().homeGesture.band==0);
+        const float transition=s.model().launcher.transition;
+        s.handle(touchEvent(Gesture::DragMove,300),now+30000);
+        s.handle(touchEvent(Gesture::DragEnd,300),now+40000);
+        CHECK(s.model().screen==ScreenId::AppList && s.model().homeCount==0 && !s.revealing());
+        CHECK(s.model().launcher.transition==transition && s.model().homeGesture.band==0);
+    }
+    // 2. A+B let go before the band showed anything: the touch at the top
+    // edge stays the system's.
+    {
+        HomeGesture g(View);
+        g.handle(touchEvent(Gesture::TouchStart,20),0,true,true);
+        g.handle(chordEvent(true,10000),10000,true,true);
+        g.handle(chordEvent(false,10000),20000,true,true);
+        CHECK(!g.active() && g.model().band==0);
+        auto out=g.handle(touchEvent(Gesture::DragStart,200),30000,true,true);
+        CHECK(out.consumed && !out.changed);
+        out=g.handle(touchEvent(Gesture::DragEnd,300),40000,true,true);
+        CHECK(out.consumed && !out.home);
+        // Only the input spending it lets it go.
+        g.handle(touchEvent(Gesture::TouchStart,20),50000,true,true);
+        g.reset();
+        CHECK(!g.handle(touchEvent(Gesture::DragStart,200),60000,true,true).consumed);
+    }
+    // 4. A press that arrives as the clock finishes coming in is the clock's
+    // from its start: delivered whole, not cut in two.
+    {
+        TestScreens s;
+        s.present(ScreenId::Timer,0);
+        s.handle(touchEvent(Gesture::TouchStart,20),10000);
+        s.handle(touchEvent(Gesture::DragStart,200),20000);
+        s.handle(touchEvent(Gesture::DragEnd,200),30000);
+        CHECK(s.revealing());
+        Events next{}; next.next=true;
+        s.handle(next,30000+HomeRevealUs);
+        CHECK(!s.revealing() && s.model().screen==ScreenId::AppList);
+    }
 }
 // Nothing gets through while the clock comes in, and home comes in only
 // over something.
@@ -332,7 +396,7 @@ void topEdgeHasNoTargets() {
     }
 }
 int main() {
-    layout(); chordInput(); swipe(); chord(); manager(); topEdgeHasNoTargets(); reveal(); revealFrames(); revealInput();
+    layout(); chordInput(); swipe(); chord(); manager(); topEdgeHasNoTargets(); reveal(); revealFrames(); revealInput(); reviewCases();
     std::cout << "PASS: home gesture layout, chord input, swipe, chord band, screen manager, top edge free of targets, "
-                 "reveal, reveal frames, input while revealing\n";
+                 "reveal, reveal frames, input while revealing, review cases\n";
 }

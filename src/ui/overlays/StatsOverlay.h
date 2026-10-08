@@ -3,6 +3,7 @@
 #include "ui/graphics/Gfx.h"
 #include "ui/rendering/Renderer.h"
 #include "ui/rendering/Viewport.h"
+#include <cstdio>
 namespace launcher {
 // The on-screen frame statistics of docs/plan.md 6.3, for reading real fps on a
 // normal build without a serial console.
@@ -39,7 +40,18 @@ public:
     void record(TimeUs start,TimeUs end);
     // Inside the frame's startWrite/endWrite, after every layer. `dirty` is
     // everything the frame erased and repainted.
+    // The clip it is handed bounds it as it does every layer: a frame drawn
+    // in a range (Renderer::draw) leaves the chip's pixels outside it alone.
     void paint(Gfx& g,const Rect& dirty) override;
+#ifdef LAUNCHER_RENDER_DIAGNOSTICS
+    // Drawn straight to the panel, as when its cache cannot be had, or back
+    // to trying the cache.
+    void cacheForTest(bool allowed) {
+        cache_.deleteSprite(); cacheTried_=!allowed; cacheReady_=false; stale_=true;
+    }
+    // A reading of the test's own, so the chip's pixels change at once.
+    void readingForTest(const char* fps) { std::snprintf(fps_,sizeof(fps_),"%s",fps); stale_=true; }
+#endif
 private:
     void render();
     // Both lines hold seven characters, so the chip never resizes as the

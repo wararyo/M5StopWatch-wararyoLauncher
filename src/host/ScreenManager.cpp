@@ -58,7 +58,7 @@ bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
 void ScreenManager::leaveAll() {
     toast_=nullptr; toastUntil_=INT64_MAX;
     launcher_.home();
-    gesture_.reset();
+    gesture_.cancel();
     settings_.exit(); external_.exit(); stopwatchScreen_.exit(); timerScreen_.exit(); pedometerScreen_.exit();
     active_=nullptr;
 }
@@ -83,7 +83,7 @@ bool ScreenManager::present(ScreenId id,TimeUs now) {
     // Already shown: entered again, so it takes up what it is asked to show
     // (a countdown that rang) without first being left, which would end it.
     if (target && target==active_) {
-        toast_=nullptr; toastUntil_=INT64_MAX; gesture_.reset();
+        toast_=nullptr; toastUntil_=INT64_MAX; gesture_.cancel();
         target->enter(now); return true;
     }
     leaveAll();
@@ -109,14 +109,18 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
     // A boot commit is not cancellable, so nothing reaches the screen and home
     // itself is suppressed until the API answers (plan.md 8.2 step 3).
     if (active_ && active_->exclusive()) return false;
+    // Brought up to now first, so a clock that has just come in takes this
+    // sample whole: a press is delivered from its start or not at all
+    // (docs/review-home-gesture).
+    bool changed=update(now);
     // On its way home: nothing is taken, home included (the A+B that fired
-    // it is still held), until the clock is in.
-    if (gesture_.revealing()) return update(now);
+    // it is still held), until the clock is in. The runtime spends whatever
+    // is pressed meanwhile.
+    if (gesture_.revealing()) return changed;
     if (e.home) {
         goHome(now);
         return true;
     }
-    bool changed=update(now);
     // The way home by touch, ahead of the screens as home is: a touch at the
     // top edge of an app screen never reaches it.
     const auto gesture=gesture_.handle(e,now,active_!=nullptr,screen()!=ScreenId::Home);
@@ -135,7 +139,9 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         // outlives the screen. It only ever turns on (docs/plan.md 6.3).
         if (out.enableStats) runtime_.stats=true;
         if (out.notice) notify(out.notice,now);
-        if (out.leave) { active_->exit(); active_=nullptr; }
+        // A screen left by its own input takes the gesture's band with it; a
+        // touch at the top edge stays the system's until it lifts.
+        if (out.leave) { active_->exit(); active_=nullptr; gesture_.cancel(); }
         return out.changed || out.leave || out.notice!=nullptr || out.enableStats || changed;
     }
     // Decided before the launcher sees the event: a tap that lands as a

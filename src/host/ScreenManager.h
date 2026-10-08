@@ -61,7 +61,8 @@ public:
     // be presented; false for the rest, which leaves everything as it was.
     bool present(ScreenId id,TimeUs now);
     // Whatever was held has been spent (InputController::discardHeld), so no
-    // end of it will come: the home gesture's band goes at once.
+    // end of it will come: the home gesture's band goes at once, and the
+    // touch it followed is forgotten.
     void inputDiscarded() { gesture_.reset(); }
     bool update(TimeUs now);
     // The open screen re-samples what it measures (host/Screen.h). A hidden

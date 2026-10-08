@@ -1554,6 +1554,34 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     check("reveal-interrupted",start,rd);
                     check("reveal-interrupted-home",home,rd);
                 }
+                // The statistics chip on, drawn straight to the panel as when
+                // its cache cannot be had: its new reading every frame stays
+                // above the edge too (docs/review-home-gesture). Only the rows
+                // below the edge are compared; above it the chip's clock differs.
+                {
+                    renderer.suppressStatsForTest(false); renderer.statsCacheForTest(false);
+                    FrameModel start=screenOf(ScreenId::Timer); start.stats=true;
+                    renderer.invalidate(); renderer.draw(start,rd);
+                    start.homeGesture.band=70; renderer.draw(start,rd);
+                    display.readRect(0,0,w,h,left);
+                    FrameModel r; r.viewport=rv; r.stats=true; r.homeGesture.revealing=true;
+                    int frames=0;
+                    for(TimeUs t=0;t<HomeRevealUs;t+=HomeGestureFrameUs,++frames) {
+                        r.homeGesture.edge=homeRevealEdge(rv,70,t);
+                        // A new reading every frame (its window turns only once
+                        // a second), so the chip's pixels change each time.
+                        renderer.statsReadingForTest(frames%2 ? "  11fps" : "  88fps");
+                        renderer.draw(r,rd);
+                        if(frames>=12) continue; // Past the chip by then.
+                        display.readRect(0,0,w,h,incremental);
+                        ++checks; size_t count=0;
+                        for(int y=std::max(0,r.homeGesture.edge);y<h;++y)
+                            for(int x=0;x<w;++x) if(incremental[size_t(y)*w+x]!=left[size_t(y)*w+x]) ++count;
+                        if(count) { ++failures; std::printf("[Verify] FAIL reveal-stats-direct-frame-%d pixels=%u\n",frames,unsigned(count)); }
+                    }
+                    r.homeGesture={}; renderer.draw(r,rd);
+                    renderer.statsCacheForTest(true); renderer.suppressStatsForTest(true);
+                }
                 heap_caps_free(left);
             } else { ++failures; std::printf("[Verify] FAIL reveal comparison allocation\n"); }
             // Repeated cache release/recreation gives before/after heap evidence.

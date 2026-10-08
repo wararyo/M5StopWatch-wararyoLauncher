@@ -3,6 +3,7 @@
 #include "ui/rendering/PaintContext.h"
 #include "ui/graphics/Gfx.h"
 #include <cstdint>
+#include <optional>
 namespace launcher {
 // What a frame lies on unless its owner says otherwise (Renderer::setBase).
 inline constexpr uint16_t DefaultBase=0x0000;
@@ -58,15 +59,18 @@ public:
     // all of it (HostRenderer::begin). Nothing outside it is ever written, so
     // no transfer reaches it; a full repaint covers this area.
     void limitTo(Rect area) { limit_=area; invalidate(); }
-    // The next frames draw inside `area` alone, until it is set empty again:
-    // damage is clipped to it, a full repaint covers just it, and the overlay
-    // writes nothing outside it. Unlike limitTo it repaints nothing, so what
-    // lies outside stays exactly as the panel holds it (the home gesture's
-    // clock coming in over a screen, docs/task14/plan.md 2.6).
-    void confine(Rect area) { confine_=area; }
+
     // True when anything reached the panel. Returns after endWrite, where this
     // panel flushes, so a time taken right after covers the transfer too.
-    bool draw(RenderLayer* const* layers,int count,FrameOverlay* overlay=nullptr);
+    //
+    // `within`, when given, is where this one frame may draw: the frame's area
+    // is the panel's lasting limit (limitTo) and it together. Damage is clipped
+    // to it, a full repaint covers just it, and the overlay writes nothing
+    // outside it; what lies outside stays exactly as the panel holds it (the
+    // home gesture's clock coming in over a screen, docs/task14/plan.md 2.6).
+    // An empty one draws nothing, and a full repaint asked for waits for a
+    // frame that has room. Without it the frame has the whole limit.
+    bool draw(RenderLayer* const* layers,int count,FrameOverlay* overlay=nullptr,std::optional<Rect> within={});
     uint32_t layouts() const { return layouts_; }
     // What the last frame sent to the panel: the whole screen, its damage,
     // or nothing.
@@ -82,6 +86,6 @@ private:
     int capacity_=FramePlan::Capacity;
     uint16_t base_=DefaultBase;
     uint32_t layouts_=0,paints_=0;
-    Rect lastDirty_{},limit_{},confine_{};
+    Rect lastDirty_{},limit_{};
 };
 }

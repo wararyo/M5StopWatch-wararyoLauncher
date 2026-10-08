@@ -56,10 +56,7 @@ class FrameComposer {
 public:
     FrameComposition compose(const FrameModel& m) {
         auto c=composeFrame(m);
-        // The clock coming in after home is the one change of screen that is
-        // not a full repaint: it is drawn row by row over what the screen
-        // left (host/HomeGestureLayout.h, HomeRevealTracker).
-        c.changed=m.screen!=previous_ && !m.homeGesture.revealing;
+        c.changed=m.screen!=previous_;
         previous_=m.screen;
         return c;
     }

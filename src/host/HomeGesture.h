@@ -25,9 +25,13 @@ public:
     bool update(TimeUs now);
     TimeUs nextUpdate() const { return frame_; }
     bool active() const { return phase_!=Phase::Idle; }
-    // Something replaced the screen under the gesture (an attention request):
-    // the band or the clock coming in goes at once, and so does a touch the
-    // system was following, whose end the input no longer reports.
+    // What the gesture shows goes at once: the band, a swipe on its way home,
+    // the clock coming in. A touch that began at the top edge stays the
+    // system's until it lifts, but no longer moves anything, so nothing of it
+    // reaches what is shown now (a screen that was left, docs/review-home-gesture).
+    void cancel();
+    // As cancel, and the touch is forgotten too: the input has spent whatever
+    // was held (InputController::discardHeld) and will report no end of it.
     void reset();
     // The band's height now, which is where the clock starts coming in.
     float band() const { return band_; }

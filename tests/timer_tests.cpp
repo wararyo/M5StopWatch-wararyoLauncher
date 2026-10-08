@@ -642,7 +642,8 @@ struct TimerRig {
     }
     // From home, through the list, as the wearer opens it.
     void open() {
-        Events home{}; home.home=true; screens.handle(home,now); now+=1000;
+        // Over a screen the clock comes in first (docs/task14/plan.md 2.5).
+        Events home{}; home.home=true; screens.handle(home,now); now+=HomeRevealUs; screens.update(now);
         Events next{}; next.next=true;
         screens.handle(next,now); now+=200000; screens.update(now);
         while (LaunchRegistry[screens.model().launcher.list.selection].id!=LaunchTargetId::Timer) {

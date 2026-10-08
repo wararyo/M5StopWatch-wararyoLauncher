@@ -70,7 +70,9 @@ void navigation() {
     e.gesture=Gesture::DragEnd; s.handle(e,now); CHECK(!s.model().toast);
     e={}; e.next=true; s.handle(e,now);
     e={}; e.home=true; s.handle(e,now+10000);
-    now+=10000000; CHECK(!s.update(now));
+    // The clock comes in over the list (docs/task14/plan.md 2.5), then rests.
+    CHECK(s.revealing());
+    now+=10000000; CHECK(s.update(now) && !s.revealing()); CHECK(!s.update(now));
     CHECK(s.model().screen==ScreenId::Home && s.nextUpdate()==INT64_MAX);
     // Timing is elapsed-time based, not dependent on the number of frames.
     TestScreens a,b; e={}; e.next=true;
@@ -179,7 +181,9 @@ void flick() {
     e={}; e.next=true; buttons.handle(e,282000); buttons.update(462000);
     CHECK(buttons.model().launcher.list.scroll==buttons.model().launcher.list.selection*84);
     e={}; e.home=true; buttons.handle(e,470000);
-    CHECK(!buttons.active() && buttons.model().screen==ScreenId::Home);
+    // The list stops at once; what still moves is the clock coming in.
+    CHECK(buttons.model().screen==ScreenId::Home && buttons.revealing() && !buttons.model().launcher.list.animating);
+    buttons.update(470000+HomeRevealUs); CHECK(!buttons.active());
 }
 // The launcher's use of the shared list: leaving for a screen mid-animation,
 // and presses that must not open anything.
@@ -212,7 +216,8 @@ void launcherList() {
     CHECK(scroll.model().launcher.list.scroll==scroll.model().launcher.list.selection*84);
     // Home resets the list to its first row, with nothing left running.
     e={}; e.home=true; scroll.handle(e,600000);
-    CHECK(scroll.model().launcher.list.selection==0 && scroll.model().launcher.list.scroll==0 && !scroll.active());
+    CHECK(scroll.model().launcher.list.selection==0 && scroll.model().launcher.list.scroll==0);
+    scroll.update(600000+HomeRevealUs); CHECK(!scroll.active()); // Once the clock is in.
 }
 // The launcher on its own: the slide, who owns a drag, input that lands while
 // the slide is still moving, and what leaving and home keep or reset.
@@ -707,6 +712,9 @@ void homeInput() {
     now+=400000; s.update(now);
     // On the way back to the clock nothing reaches the face until it settles.
     Events e{}; e.home=true; s.handle(e,now);
+    // The clock comes in over the list first (docs/task14/plan.md 2.5).
+    CHECK(!s.homeAtRest());
+    now+=HomeRevealUs; s.update(now);
     CHECK(s.homeAtRest());
     e={}; e.next=true; s.handle(e,now);
     now+=50000; s.update(now);

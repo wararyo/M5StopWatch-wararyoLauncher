@@ -58,6 +58,12 @@ public:
     // all of it (HostRenderer::begin). Nothing outside it is ever written, so
     // no transfer reaches it; a full repaint covers this area.
     void limitTo(Rect area) { limit_=area; invalidate(); }
+    // The next frames draw inside `area` alone, until it is set empty again:
+    // damage is clipped to it, a full repaint covers just it, and the overlay
+    // writes nothing outside it. Unlike limitTo it repaints nothing, so what
+    // lies outside stays exactly as the panel holds it (the home gesture's
+    // clock coming in over a screen, docs/task14/plan.md 2.6).
+    void confine(Rect area) { confine_=area; }
     // True when anything reached the panel. Returns after endWrite, where this
     // panel flushes, so a time taken right after covers the transfer too.
     bool draw(RenderLayer* const* layers,int count,FrameOverlay* overlay=nullptr);
@@ -76,6 +82,6 @@ private:
     int capacity_=FramePlan::Capacity;
     uint16_t base_=DefaultBase;
     uint32_t layouts_=0,paints_=0;
-    Rect lastDirty_{},limit_{};
+    Rect lastDirty_{},limit_{},confine_{};
 };
 }

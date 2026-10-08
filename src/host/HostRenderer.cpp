@@ -40,6 +40,14 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     const TimeUs start=esp_timer_get_time();
     const auto c=composer_.compose(m);
     if(c.changed) { renderer_.invalidate(); home_.resume(); }
+    // Home by the gesture: the clock comes in from the top, each frame
+    // drawing only the rows it uncovers, and the screen's pixels under the
+    // edge are left alone (docs/task14/plan.md 2.6). The clock is composed at
+    // rest, so none of its elements moves as the edge passes them.
+    const auto reveal=reveal_.next(m.homeGesture,c.viewport);
+    if(reveal.start) { renderer_.invalidate(); home_.resume(); }
+    renderer_.confine(reveal.confine);
+    if(!reveal.strip.empty()) home_.uncover(reveal.strip);
     // Every layer's input is fixed here, before anything plans, and stays
     // untouched until the frame has been painted.
     home_.prepare(c.home,watch);

@@ -62,6 +62,13 @@ void ScreenManager::leaveAll() {
     settings_.exit(); external_.exit(); stopwatchScreen_.exit(); timerScreen_.exit(); pedometerScreen_.exit();
     active_=nullptr;
 }
+void ScreenManager::goHome(TimeUs now) {
+    ++homeCount_;
+    const bool covered=screen()!=ScreenId::Home;
+    const float from=gesture_.band();
+    leaveAll();
+    if (covered) gesture_.reveal(from,now);
+}
 bool ScreenManager::present(ScreenId id,TimeUs now) {
     Screen* target=nullptr;
     switch (id) {
@@ -102,9 +109,11 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
     // A boot commit is not cancellable, so nothing reaches the screen and home
     // itself is suppressed until the API answers (plan.md 8.2 step 3).
     if (active_ && active_->exclusive()) return false;
+    // On its way home: nothing is taken, home included (the A+B that fired
+    // it is still held), until the clock is in.
+    if (gesture_.revealing()) return update(now);
     if (e.home) {
-        ++homeCount_;
-        leaveAll();
+        goHome(now);
         return true;
     }
     bool changed=update(now);
@@ -112,8 +121,7 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
     // top edge of an app screen never reaches it.
     const auto gesture=gesture_.handle(e,now,active_!=nullptr,screen()!=ScreenId::Home);
     if (gesture.home) {
-        ++homeCount_;
-        leaveAll();
+        goHome(now);
         return true;
     }
     changed=gesture.changed || changed;

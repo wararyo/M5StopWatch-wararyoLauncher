@@ -76,6 +76,7 @@ private:
     ToastLayer toast_;
     StatsOverlay stats_;
     FrameComposer composer_;
+    HomeRevealTracker reveal_;
     bool statsSuppressed_=false;
 };
 }

@@ -248,9 +248,12 @@ void screens() {
     e={}; e.gesture=Gesture::DragStart; e.totalY=-40;
     s.handle(e,1900000); CHECK(s.active());
     e.home=e.next=e.decide=true;
-    s.handle(e,2000000); CHECK(s.model().screen==ScreenId::Home && !s.active() && s.model().homeCount==1);
+    s.handle(e,2000000); CHECK(s.model().screen==ScreenId::Home && s.model().homeCount==1);
+    // Over the list, the clock comes in first (docs/task14/plan.md 2.5).
+    CHECK(s.revealing() && s.active());
+    s.update(2800000); CHECK(!s.revealing() && !s.active());
     e={}; e.gesture=Gesture::Tap; e.x=234; e.y=390;
-    s.handle(e,2100000); CHECK(s.model().screen==ScreenId::AppList && s.model().launcher.list.selection==0);
+    s.handle(e,2900000); CHECK(s.model().screen==ScreenId::AppList && s.model().launcher.list.selection==0);
 }
 void runtime() {
     FakeHal h;
@@ -312,7 +315,17 @@ void homeBand() {
     CHECK(last > 70 && r.model().screen == ScreenId::AppList);
     while (r.model().screen != ScreenId::Home) { r.wait(); r.step(); }
     CHECK(h.time - since >= 600000 && h.rendered.homeGesture.band == 0 && r.model().homeCount == 1);
+    // The clock comes in from the full band, frame by frame, for 800ms.
+    const TimeUs home = h.time;
+    CHECK(h.rendered.homeGesture.revealing && h.rendered.homeGesture.edge == 80);
     h.input = {}; r.wait(); r.step();
+    int edge = 80;
+    while (r.model().homeGesture.revealing) {
+        r.wait(); CHECK(h.waited <= 16000); r.step();
+        CHECK(h.rendered.homeGesture.edge >= edge || !h.rendered.homeGesture.revealing);
+        edge = h.rendered.homeGesture.edge;
+    }
+    CHECK(h.time - home >= 800000 && h.time - home < 820000 && !h.rendered.homeGesture.revealing);
     // Let go early over the list: the band shrinks away, and the runtime
     // goes back to waiting for its interrupts.
     h.input.b = true; r.wait(); r.step();
@@ -637,6 +650,10 @@ void homeGestures() {
     h.time += 600000; r.step();
     h.time += 10000; h.input = {}; r.step();
     CHECK(r.model().screen == ScreenId::Home);
+    // The clock comes in over the list first; a touch then would be spent.
+    CHECK(r.model().homeGesture.revealing);
+    h.time += 800000; r.step();
+    CHECK(!r.model().homeGesture.revealing);
     h.time += 10000; h.input = {false, false, true, 100, 234}; r.step();
     for (int i = 0; i < 70; ++i) { h.time += 10000; r.step(); }
     h.time += 10000; h.input = {}; r.step();

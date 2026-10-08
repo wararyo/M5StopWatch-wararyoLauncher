@@ -40,6 +40,9 @@ void HostRuntime::step() {
 #endif
             dirty_ = changed || dirty_;
         }
+        // Whatever is pressed while the clock comes in is spent until it is
+        // let go, so nothing pressed then acts on the clock afterwards.
+        if (screens_.revealing()) input_.discardHeld();
         // A held button or finger is followed at the input period: its
         // release, the 600ms home hold and drags need samples between
         // interrupts. So is the short stretch after an interrupt, because the

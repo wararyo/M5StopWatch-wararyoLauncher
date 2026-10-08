@@ -4,7 +4,9 @@ namespace launcher {
 bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay) {
     ++layouts_;
     const Rect screen{0,0,int(display_.width()),int(display_.height())};
-    frame_.begin(full_,limit_.empty() ? screen : intersect(limit_,screen),capacity_);
+    Rect bounds=limit_.empty() ? screen : intersect(limit_,screen);
+    if(!confine_.empty()) bounds=intersect(bounds,confine_);
+    frame_.begin(full_,bounds,capacity_);
     for(int i=0;i<count;++i) layers[i]->plan(frame_,display_);
     frame_.resolve();
     const bool painted=frame_.anyPaint();
@@ -32,7 +34,8 @@ bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay) 
         // Last of all, and outside the plan: the overlay owns its rectangle
         // and is told what the frame touched, so it can leave its pixels
         // alone when nothing reached them.
-        display_.clearClipRect();
+        if(confine_.empty()) display_.clearClipRect();
+        else display_.setClipRect(bounds.x,bounds.y,bounds.w,bounds.h);
         if(overlay) overlay->paint(display_,area);
         display_.endWrite(); ++paints_;
     }

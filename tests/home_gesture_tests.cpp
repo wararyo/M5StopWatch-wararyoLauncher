@@ -1,5 +1,6 @@
 #include "TestScreens.h"
 #include "host/HomeGesture.h"
+#include "host/FrameComposer.h"
 #include "features/external/ExternalLayout.h"
 #include "features/pedometer/PedometerLayout.h"
 #include "features/settings/SettingsLayout.h"
@@ -15,6 +16,7 @@ const Viewport View{468,468};
 Events touchEvent(Gesture g,int y,int x=234) { Events e{}; e.gesture=g; e.x=x; e.y=y; return e; }
 Events chordEvent(bool held,TimeUs since) { Events e{}; e.chord=held; e.chordChanged=true; e.chordSince=since; return e; }
 bool near(float a,float b,float within=0.6f) { return std::fabs(a-b)<=within; }
+Rect rect(int x,int y,int w,int h) { return {x,y,w,h}; }
 }
 // docs/task14/plan.md 2.1, 2.2, 2.4, 2.5: the numbers themselves.
 void layout() {
@@ -176,7 +178,11 @@ void manager() {
     s.handle(touchEvent(Gesture::DragStart,90),310000);
     s.handle(touchEvent(Gesture::DragMove,200),320000);
     CHECK(s.handle(touchEvent(Gesture::DragEnd,200),330000));
-    CHECK(s.model().screen==ScreenId::Home && s.model().homeCount==1 && s.model().homeGesture.band==0 && !s.active());
+    CHECK(s.model().screen==ScreenId::Home && s.model().homeCount==1 && s.model().homeGesture.band==0);
+    // The clock comes in over what the timer left, and then it is home.
+    CHECK(s.revealing() && s.model().homeGesture.revealing && s.active() && !s.homeAtRest());
+    s.update(330000+HomeRevealUs);
+    CHECK(!s.revealing() && !s.model().homeGesture.revealing && !s.active() && s.homeAtRest());
     // On the clock and the list the edge is theirs: the list's own pull home.
     Events next{}; next.next=true;
     s.handle(next,400000); s.update(600000);
@@ -204,6 +210,104 @@ void manager() {
     Events home{}; home.home=true; home.chordChanged=true;
     CHECK(s.handle(home,2400000));
     CHECK(s.model().screen==ScreenId::Home && s.model().homeCount==2 && s.model().homeGesture.band==0);
+    CHECK(s.model().homeGesture.revealing);
+}
+// The clock coming in after home (docs/task14/plan.md 2.5).
+void reveal() {
+    HomeGesture g(View);
+    g.reveal(70,1000000);
+    auto m=g.model();
+    CHECK(g.revealing() && g.active() && m.revealing && m.band==0 && m.edge==70);
+    CHECK(g.nextUpdate()==1000000+HomeGestureFrameUs);
+    int edge=70;
+    TimeUs now=1000000;
+    while (g.revealing()) {
+        now+=HomeGestureFrameUs;
+        CHECK(g.update(now));
+        if (!g.revealing()) break;
+        m=g.model();
+        CHECK(m.edge>=edge && m.edge<=468 && g.nextUpdate()==now+HomeGestureFrameUs);
+        edge=m.edge;
+    }
+    // Over at 800ms, no sooner, and then nothing more to draw.
+    CHECK(now-1000000>=HomeRevealUs && now-1000000<HomeRevealUs+HomeGestureFrameUs);
+    CHECK(!g.active() && !g.model().revealing && g.nextUpdate()==INT64_MAX && !g.update(now+100000));
+    // An attention request ends it at once.
+    g.reveal(80,0); g.update(100000); g.reset();
+    CHECK(!g.revealing() && !g.model().revealing);
+}
+// Turning the edge into what each frame draws: everything up to the edge on
+// the first frame, then the rows the edge moved over, then the rest.
+void revealFrames() {
+    HomeRevealTracker t;
+    HomeGestureModel g;
+    auto f=t.next(g,View);
+    CHECK(!f.start && f.confine.empty() && f.strip.empty());
+    g.revealing=true; g.edge=70;
+    f=t.next(g,View);
+    CHECK(f.start && f.confine==rect(0,0,468,70) && f.strip.empty());
+    g.edge=110; f=t.next(g,View);
+    CHECK(!f.start && f.confine==rect(0,0,468,110) && f.strip==rect(0,70,468,40));
+    f=t.next(g,View); // The edge stood still: nothing new.
+    CHECK(f.confine==rect(0,0,468,110) && f.strip.empty());
+    g.edge=468; f=t.next(g,View);
+    CHECK(f.strip==rect(0,110,468,358) && f.confine==rect(0,0,468,468));
+    g.revealing=false; f=t.next(g,View);
+    CHECK(!f.start && f.confine.empty() && f.strip.empty());
+    // Over before the edge reached the bottom: the rest, unconfined.
+    g.revealing=true; g.edge=0; f=t.next(g,View);
+    CHECK(f.start && f.confine==rect(0,0,468,1));
+    g.edge=300; t.next(g,View);
+    g.revealing=false; f=t.next(g,View);
+    CHECK(f.confine.empty() && f.strip==rect(0,300,468,168));
+    CHECK(t.next(g,View).strip.empty());
+    // Coming in is no full repaint; anything else that changes the screen is.
+    FrameComposer c;
+    FrameModel m; m.viewport=View; m.screen=ScreenId::Timer;
+    CHECK(c.compose(m).changed);
+    m.screen=ScreenId::Home; m.homeGesture.revealing=true; m.homeGesture.edge=80;
+    CHECK(!c.compose(m).changed);
+    m.homeGesture={};
+    CHECK(!c.compose(m).changed);
+    m.screen=ScreenId::Timer; CHECK(c.compose(m).changed);
+}
+// Nothing gets through while the clock comes in, and home comes in only
+// over something.
+void revealInput() {
+    TestScreens s;
+    s.present(ScreenId::Timer,0);
+    s.handle(touchEvent(Gesture::TouchStart,20),10000);
+    s.handle(touchEvent(Gesture::DragStart,200),20000);
+    s.handle(touchEvent(Gesture::DragEnd,200),30000);
+    CHECK(s.revealing());
+    CHECK(s.model().homeGesture.edge==int(std::lround(homeBandHeight(View,200))));
+    // A, B, a tap on the clock's APPS, A+B: none of it lands.
+    Events next{}; next.next=true;
+    s.handle(next,100000);
+    Events tap=touchEvent(Gesture::Tap,380); tap.touchUs=50000;
+    s.handle(touchEvent(Gesture::TouchStart,380),200000); s.handle(tap,250000);
+    Events home{}; home.home=true;
+    s.handle(home,300000);
+    CHECK(s.model().screen==ScreenId::Home && s.home.events==0 && s.model().homeCount==1 && s.revealing());
+    s.update(30000+HomeRevealUs);
+    CHECK(!s.revealing());
+    s.handle(touchEvent(Gesture::TouchStart,380),900000); s.handle(tap,950000);
+    CHECK(s.home.events==1 && s.model().screen==ScreenId::AppList); // APPS, now the clock's.
+    // A+B over the list: the clock comes in from the full band.
+    s.update(2000000);
+    s.handle(chordEvent(true,2000000),2000000);
+    s.update(2600000);
+    home=Events{}; home.home=true; home.chordChanged=true;
+    s.handle(home,2600000);
+    CHECK(s.revealing() && s.model().homeGesture.edge==80);
+    // An attention request while it comes in: the timer, as usual.
+    CHECK(s.present(ScreenId::Timer,2700000) && !s.revealing() && s.model().screen==ScreenId::Timer);
+    // A+B on the clock itself: nothing to come in over.
+    home=Events{}; home.home=true;
+    s.handle(home,2800000);
+    s.update(2800000+HomeRevealUs);
+    s.handle(home,3700000);
+    CHECK(!s.revealing() && s.model().homeCount==4);
 }
 // A touch that lands at the top edge is the system's, so no screen puts a
 // target there (docs/plan.md 5.1). The menus' rows scroll through it and are
@@ -228,6 +332,7 @@ void topEdgeHasNoTargets() {
     }
 }
 int main() {
-    layout(); chordInput(); swipe(); chord(); manager(); topEdgeHasNoTargets();
-    std::cout << "PASS: home gesture layout, chord input, swipe, chord band, screen manager, top edge free of targets\n";
+    layout(); chordInput(); swipe(); chord(); manager(); topEdgeHasNoTargets(); reveal(); revealFrames(); revealInput();
+    std::cout << "PASS: home gesture layout, chord input, swipe, chord band, screen manager, top edge free of targets, "
+                 "reveal, reveal frames, input while revealing\n";
 }

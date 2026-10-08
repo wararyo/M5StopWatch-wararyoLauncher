@@ -52,6 +52,7 @@ void HomeLayer::plan(FramePlan& frame,Gfx& g) {
     if(resumed_) changes|=WatchResumed;
     if(switched_) { frame.forceFull(); changes|=WatchSelected|WatchResumed; switched_=false; }
     resumed_=false; previous_=data_; previousProgress_=environment_.listProgress;
+    if(!uncovered_.empty()) { frame.damage(uncovered_); uncovered_={}; }
     if(face_) {
         face_->update(data_,environment_,changes);
         face_->plan(frame,g,environment_,data_);

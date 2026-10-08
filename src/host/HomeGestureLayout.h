@@ -51,9 +51,47 @@ inline int homeRevealEdge(Viewport v,float from,TimeUs elapsed) {
     const float t=easeOutQuint(float(elapsed)/float(HomeRevealUs));
     return std::clamp(int(std::lround(from+(v.height-from)*t)),0,v.height);
 }
-// What a frame shows of the gesture: the band's height, 0 when there is none.
+// What a frame shows of the gesture: the band's height, 0 when there is none,
+// and, once home was reached, the clock coming in from the top down to `edge`
+// over what the screen left on the panel (docs/task14/plan.md 2.5).
 struct HomeGestureModel {
     int band=0;
+    bool revealing=false;
+    int edge=0;
     bool shown() const { return band>0; }
+};
+// How one frame of the clock coming in is drawn (docs/task14/plan.md 2.6).
+struct HomeRevealFrame {
+    // The first frame: everything inside `confine` is painted afresh, which
+    // turns the band into the clock.
+    bool start=false;
+    // Where the frame may draw: from the top down to the edge. Empty when the
+    // clock is not coming in, which leaves the frame unconfined.
+    Rect confine{};
+    // The rows the edge moved over since the last frame: new to the clock,
+    // though none of its elements changed. On the frame after the last one it
+    // is the rest of the panel, drawn unconfined.
+    Rect strip{};
+};
+// Follows the edge from frame to frame, so each frame draws only the rows it
+// uncovered: the screen under the edge is never drawn again, and the whole
+// way home paints about one panel's worth.
+class HomeRevealTracker {
+public:
+    HomeRevealFrame next(const HomeGestureModel& g,Viewport v) {
+        HomeRevealFrame f;
+        if (g.revealing) {
+            const int edge=std::clamp(g.edge,1,v.height);
+            if (shown_<0) { f.start=true; shown_=edge; }
+            else if (edge>shown_) { f.strip={0,shown_,v.width,edge-shown_}; shown_=edge; }
+            f.confine={0,0,v.width,shown_};
+        } else if (shown_>=0) {
+            if (shown_<v.height) f.strip={0,shown_,v.width,v.height-shown_};
+            shown_=-1;
+        }
+        return f;
+    }
+private:
+    int shown_=-1; // The rows painted so far, -1 while the clock is not coming in.
 };
 }

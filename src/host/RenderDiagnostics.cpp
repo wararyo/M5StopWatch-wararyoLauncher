@@ -1457,6 +1457,105 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 }
                 renderer.selectFace("digital"); bm=FrameModel{}; bm.viewport={w,h}; check("home-band-done",bm,d);
             }
+            // Work 14-3: the clock coming in after home (docs/task14/plan.md
+            // 2.6). Every frame, the rows above the edge must be the clock at
+            // rest as a full repaint draws it, and the rows below exactly what
+            // the screen left; the last frame must be the full repaint. Each
+            // frame's time and flush are recorded as it goes.
+            if(auto* left=static_cast<uint16_t*>(heap_caps_malloc(bytes,MALLOC_CAP_SPIRAM))) {
+                const Viewport rv{w,h};
+                static WatchData rd,late;
+                rd=d; late=d; late.localTime.tm_min=(late.localTime.tm_min+1)%60;
+                char name[64];
+                auto split=[&](const char* label,int edge) {
+                    ++checks; size_t count=0; int y0=h,y1=-1;
+                    for(int y=0;y<h;++y) {
+                        const uint16_t* want=(y<edge ? reference : left)+size_t(y)*w;
+                        const uint16_t* got=incremental+size_t(y)*w;
+                        if(std::memcmp(want,got,size_t(w)*2)==0) continue;
+                        for(int x=0;x<w;++x) if(want[x]!=got[x]) ++count;
+                        y0=std::min(y0,y); y1=std::max(y1,y);
+                    }
+                    if(count) { ++failures; std::printf("[Verify] FAIL %s pixels=%u rows=%d-%d\n",label,unsigned(count),y0,y1); }
+                };
+                auto screenOf=[&](ScreenId from) {
+                    FrameModel s; s.viewport=rv; s.screen=from;
+                    s.timer.fields[1]=3;
+                    s.settings.savedBrightness=Settings{}.brightness; s.settings.savedScreenOffSec=Settings{}.screenOffSec;
+                    if(from==ScreenId::AppList) s.launcher.transition=1;
+                    return s;
+                };
+                // From the screen with the band at 70px, as a swipe lets go:
+                // `atRest` draws the clock the reveal must end on, `during`
+                // changes what it may (the data, the capacity) part way.
+                auto run=[&](const char* label,ScreenId from,const WatchData& atRest,bool compareEach,auto&& during) {
+                    FrameModel home; home.viewport=rv;
+                    renderer.invalidate(); renderer.draw(home,atRest); display.readRect(0,0,w,h,reference);
+                    FrameModel start=screenOf(from);
+                    renderer.invalidate(); renderer.draw(start,rd);
+                    start.homeGesture.band=70; renderer.draw(start,rd);
+                    display.readRect(0,0,w,h,left);
+                    FrameModel r=home; r.homeGesture.revealing=true;
+                    TimeUs total=0,longest=0; uint64_t area=0; int frames=0,shown=0;
+                    const WatchData* data=&rd;
+                    for(TimeUs t=0;t<HomeRevealUs;t+=HomeGestureFrameUs,++frames) {
+                        during(t,data);
+                        r.homeGesture.edge=homeRevealEdge(rv,70,t);
+                        const TimeUs begun=esp_timer_get_time();
+                        renderer.draw(r,*data);
+                        const TimeUs spent=esp_timer_get_time()-begun;
+                        total+=spent; longest=std::max(longest,spent);
+                        const Rect dirty=renderer.lastDirty(); area+=uint64_t(dirty.w)*dirty.h;
+                        if(compareEach && (frames<4 || frames%6==0)) {
+                            display.readRect(0,0,w,h,incremental);
+                            std::snprintf(name,sizeof(name),"%s-frame-%d",label,frames); split(name,r.homeGesture.edge);
+                            ++shown;
+                        }
+                        if(frames%8==7) vTaskDelay(1);
+                    }
+                    // Home: the rest of the panel, unconfined, and nothing else.
+                    r.homeGesture={}; renderer.draw(r,*data);
+                    const Rect last=renderer.lastDirty();
+                    display.readRect(0,0,w,h,incremental);
+                    std::snprintf(name,sizeof(name),"%s-done",label); compare(name);
+                    std::printf("[Perf] reveal-%s frames=%d avg_us=%lld max_us=%lld avg_dirty_px=%llu last_dirty=%d,%d,%dx%d compared=%d\n",
+                        label,frames,(long long)(total/frames),(long long)longest,(unsigned long long)(area/frames),
+                        last.x,last.y,last.w,last.h,shown);
+                };
+                auto still=[](TimeUs,const WatchData*&) {};
+                for(const char* face:{"digital","forest","analog","noonish"}) {
+                    if(!renderer.selectFace(face)) { ++failures; std::printf("[Verify] FAIL %s did not begin\n",face); continue; }
+                    const char* names[]={"timer","settings","list"};
+                    int i=0;
+                    for(const ScreenId from:{ScreenId::Timer,ScreenId::Settings,ScreenId::AppList}) {
+                        char label[40]; std::snprintf(label,sizeof(label),"%s-%s",face,names[i++]);
+                        run(label,from,rd,true,still);
+                    }
+                    // The minute turning while it comes in: the last frame is
+                    // the new minute's clock.
+                    char label[40]; std::snprintf(label,sizeof(label),"%s-minute",face);
+                    run(label,ScreenId::Timer,late,false,[&](TimeUs t,const WatchData*& data) { if(t>=HomeRevealUs/3) data=&late; });
+                }
+                // Too many elements for a few frames: full repaints inside the
+                // edge, and still the screen untouched below it.
+                renderer.selectFace("digital");
+                run("digital-overflow",ScreenId::Timer,rd,true,[&](TimeUs t,const WatchData*&) {
+                    renderer.capacityForTest(t>=HomeRevealUs/4 && t<HomeRevealUs/2 ? 4 : FramePlan::Capacity);
+                });
+                renderer.capacityForTest(FramePlan::Capacity);
+                // An alert while it comes in: the timer, drawn as any screen is.
+                {
+                    FrameModel home; home.viewport=rv;
+                    FrameModel start=screenOf(ScreenId::Timer);
+                    renderer.invalidate(); renderer.draw(start,rd);
+                    FrameModel r=home; r.homeGesture.revealing=true;
+                    for(TimeUs t=0;t<HomeRevealUs/2;t+=HomeGestureFrameUs) { r.homeGesture.edge=homeRevealEdge(rv,70,t); renderer.draw(r,rd); }
+                    start.timer.view=TimerView::Ringing; start.timer.seconds=1;
+                    check("reveal-interrupted",start,rd);
+                    check("reveal-interrupted-home",home,rd);
+                }
+                heap_caps_free(left);
+            } else { ++failures; std::printf("[Verify] FAIL reveal comparison allocation\n"); }
             // Repeated cache release/recreation gives before/after heap evidence.
             const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }

@@ -47,6 +47,9 @@ public:
     }
     // The next frame is a full repaint (a wake, another screen before it).
     void resume() { resumed_=true; }
+    // Rows that show the clock this frame for the first time although nothing
+    // of it changed: the edge of the clock coming in moved over them.
+    void uncover(Rect rows) { uncovered_=unite(uncovered_,rows); }
     HomeOutcome handle(const HomeEvent& event) { return face_ ? face_->handle(event) : HomeOutcome{}; }
     BackgroundInterest backgroundInterest(const WatchData& data) const {
         return face_ ? face_->backgroundInterest(data.background) : BackgroundInterest{};
@@ -76,6 +79,7 @@ private:
     WatchEnvironment environment_{};
     WatchData data_{},previous_{};
     float previousProgress_=0;
+    Rect uncovered_{};
     bool resumed_=true;
 };
 }

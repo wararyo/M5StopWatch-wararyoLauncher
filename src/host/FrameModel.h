@@ -6,6 +6,7 @@
 #include "features/stopwatch/StopwatchModel.h"
 #include "features/timer/TimerModel.h"
 #include "features/pedometer/PedometerModel.h"
+#include "host/HomeGestureLayout.h"
 #include "ui/rendering/Viewport.h"
 namespace launcher {
 // What a frame shows happening, for the render metrics. The app decides it
@@ -33,6 +34,8 @@ struct FrameModel {
     TimerModel timer{};
     PedometerModel pedometer{};
     const char* toast=nullptr;
+    // The band of the home gesture over whatever is shown.
+    HomeGestureModel homeGesture{};
     // The statistics overlay, an application-wide runtime setting.
     bool stats=false;
     FrameActivity activity=FrameActivity::Single;

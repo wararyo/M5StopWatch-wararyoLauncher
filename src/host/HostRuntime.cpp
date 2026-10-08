@@ -31,7 +31,7 @@ void HostRuntime::step() {
         power_.update(now, e.activity, screens_.active());
         // A hold that starts or ends is passed on as well: a screen that
         // repeats or fills while a button is held times it from there.
-        if (e.home || e.next || e.decide || e.holdChanged || e.gesture != Gesture::None) {
+        if (e.home || e.next || e.decide || e.holdChanged || e.chordChanged || e.gesture != Gesture::None) {
             // A long press changes the clock's own deadline (seconds shown or
             // not); the redraw below takes the new one in this same step.
             const bool changed = screens_.handle(e, now);
@@ -183,6 +183,7 @@ void HostRuntime::attend(TimeUs now) {
         attended_[i] = true;
         // Whatever is held was meant for what was shown before.
         input_.discardHeld();
+        screens_.inputDiscarded();
         // A dark panel lights as for a press.
         power_.update(now, true, screens_.active());
         if (request.present) screens_.present(request.screen, now);

@@ -291,6 +291,44 @@ void runtime() {
           LaunchRegistry[2].id == LaunchTargetId::Pedometer && LaunchRegistry[4].slot == 1 && LaunchRegistry[6].slot == 3);
     for (const auto& entry : LaunchRegistry) CHECK(entry.name && entry.name[0]);
 }
+// The A+B band reaches the frames through the runtime, which samples the
+// chord's start and end and draws the band's frames (docs/task14/plan.md 2.4).
+void homeBand() {
+    FakeHal h;
+    HostApplication application(h, h, h, 468, 468); auto& r = application.runtime(); r.begin(); r.step();
+    h.input.a = true; r.wait(); r.step();
+    h.input.a = false; r.wait(); r.step();
+    h.time += 200000; r.step();
+    CHECK(r.model().screen == ScreenId::AppList);
+    // Held: the band grows frame by frame and is full as home fires.
+    h.time += 10000; h.input = {true, true}; r.step();
+    const TimeUs since = h.time;
+    int last = 0;
+    while (h.time - since < 590000) {
+        r.wait(); r.step();
+        CHECK(h.waited <= 16000 && h.rendered.homeGesture.band >= last);
+        last = h.rendered.homeGesture.band;
+    }
+    CHECK(last > 70 && r.model().screen == ScreenId::AppList);
+    while (r.model().screen != ScreenId::Home) { r.wait(); r.step(); }
+    CHECK(h.time - since >= 600000 && h.rendered.homeGesture.band == 0 && r.model().homeCount == 1);
+    h.input = {}; r.wait(); r.step();
+    // Let go early over the list: the band shrinks away, and the runtime
+    // goes back to waiting for its interrupts.
+    h.input.b = true; r.wait(); r.step();
+    h.input.b = false; r.wait(); r.step();
+    h.time += 200000; r.step();
+    CHECK(r.model().screen == ScreenId::AppList);
+    h.time += 10000; h.input = {true, true}; r.step();
+    h.time += 300000; r.step();
+    CHECK(h.rendered.homeGesture.band == 40);
+    h.time += 10000; h.input = {true}; r.step();
+    h.time += 20000; h.input = {}; r.step();
+    CHECK(h.rendered.homeGesture.band > 0 && h.rendered.homeGesture.band < 40);
+    h.time += 100000; r.step();
+    CHECK(h.rendered.homeGesture.band == 0 && r.model().screen == ScreenId::AppList);
+    r.wait(); CHECK(h.waited > 16000);
+}
 void lightSleep() {
     // Work 8-5: light sleep only with the panel asleep and a VBUS reading that
     // says no USB power, and never while a panel command or draw runs.
@@ -629,8 +667,8 @@ void simultaneousHomeInputs() {
     }
 }
 int main() {
-    buttons(); holds(); discardHeld(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep(); wristWake(); usbEvents(); statusLed();
+    buttons(); holds(); discardHeld(); touch(); releaseVelocity(); power(); screens(); runtime(); homeBand(); interrupts(); lightSleep(); wristWake(); usbEvents(); statusLed();
     overload(); longPress(); homeGestures(); simultaneousHomeInputs();
-    std::cout << "PASS: buttons, holds, discard, touch, power, screens, runtime/registry, interrupts, light sleep, wrist wake, usb events, status led, overload/early-wake, "
+    std::cout << "PASS: buttons, holds, discard, touch, power, screens, runtime/registry, home band, interrupts, light sleep, wrist wake, usb events, status led, overload/early-wake, "
                  "long press, home gestures\n";
 }

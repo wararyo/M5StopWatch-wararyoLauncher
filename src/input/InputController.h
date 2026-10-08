@@ -23,11 +23,19 @@ struct Events {
     Hold hold = Hold::None;
     TimeUs holdSince = 0;
     bool holdChanged = false;
+    // A and B held together on their way to home, and since when: from the
+    // moment both are down until home fires, either is let go or the pair is
+    // spent. `chordChanged` marks the sample in which that starts or ends, so
+    // the system can show how far the hold has got (docs/task14/plan.md 2.4).
+    bool chord = false, chordChanged = false;
+    TimeUs chordSince = 0;
 };
 class InputController {
 public:
     // A touch held still this long on the resting clock (docs/task10/plan.md 3.1).
     static constexpr TimeUs LongPressUs = 600000;
+    // A and B held together this long are home (docs/plan.md 5.1).
+    static constexpr TimeUs HomeHoldUs = 600000;
     explicit InputController(int dragThreshold = 9) : threshold_(dragThreshold) {}
     // `longPress` says whether the clock is at rest and takes a long press now.
     // Only a touch that starts while it does can become one, so the other
@@ -46,7 +54,7 @@ private:
     bool chordGroup_ = false, timing_ = false, homeSent_ = false;
     bool spent_ = false;
     bool swallowed_ = false, dragging_ = false;
-    bool homeTouch_ = false, longPressArmed_ = false;
+    bool homeTouch_ = false, longPressArmed_ = false, chord_ = false;
     Hold hold_ = Hold::None;
     TimeUs chordSince_ = 0, touchSince_ = 0, pressA_ = 0, pressB_ = 0;
     TimeUs sampleTime_ = 0, lastMoveTime_ = 0;

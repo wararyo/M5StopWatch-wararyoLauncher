@@ -14,6 +14,7 @@ FrameModel ScreenManager::model() const {
     m.stopwatch=stopwatchScreen_.model();
     m.timer=timerScreen_.model();
     m.pedometer=pedometerScreen_.model();
+    m.homeGesture=gesture_.model();
     m.activity=activity();
     return m;
 }
@@ -56,6 +57,7 @@ bool ScreenManager::launch(const LaunchEntry* entry,TimeUs now) {
 void ScreenManager::leaveAll() {
     toast_=nullptr; toastUntil_=INT64_MAX;
     launcher_.home();
+    gesture_.reset();
     settings_.exit(); external_.exit(); stopwatchScreen_.exit(); timerScreen_.exit(); pedometerScreen_.exit();
     active_=nullptr;
 }
@@ -72,7 +74,10 @@ bool ScreenManager::present(ScreenId id,TimeUs now) {
     if (target && !target->available()) return false;
     // Already shown: entered again, so it takes up what it is asked to show
     // (a countdown that rang) without first being left, which would end it.
-    if (target && target==active_) { toast_=nullptr; toastUntil_=INT64_MAX; target->enter(now); return true; }
+    if (target && target==active_) {
+        toast_=nullptr; toastUntil_=INT64_MAX; gesture_.reset();
+        target->enter(now); return true;
+    }
     leaveAll();
     return !target || open(*target,id,now);
 }
@@ -85,11 +90,12 @@ bool ScreenManager::update(TimeUs now) {
     // The launcher's motion is stopped whenever a screen opens (open()), so
     // this only ever runs while the launcher is what is shown.
     if (!active_) changed=launcher_.update(now) || changed;
+    changed=gesture_.update(now) || changed;
     return changed;
 }
 TimeUs ScreenManager::nextUpdate() const {
     const TimeUs shown=active_ ? active_->nextUpdate() : launcher_.nextUpdate();
-    return std::min(shown,toastUntil_);
+    return std::min({shown,toastUntil_,gesture_.nextUpdate()});
 }
 bool ScreenManager::handle(const Events& e,TimeUs now) {
     // A boot commit is not cancellable, so nothing reaches the screen and home
@@ -100,11 +106,22 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
         leaveAll();
         return true;
     }
-    const bool changed=update(now);
+    bool changed=update(now);
+    // The way home by touch, ahead of the screens as home is: a touch at the
+    // top edge of an app screen never reaches it.
+    const auto gesture=gesture_.handle(e,now,active_!=nullptr,screen()!=ScreenId::Home);
+    if (gesture.home) {
+        ++homeCount_;
+        leaveAll();
+        return true;
+    }
+    changed=gesture.changed || changed;
+    Events in=e;
+    if (gesture.consumed) in.gesture=Gesture::None;
     // An open screen owns its own input. Gestures it does not use simply do
     // nothing, so a stray drag cannot move the list underneath it.
     if (active_) {
-        const auto out=active_->handle(e,now);
+        const auto out=active_->handle(in,now);
         // The screen only asks; the setting is the application's, and it
         // outlives the screen. It only ever turns on (docs/plan.md 6.3).
         if (out.enableStats) runtime_.stats=true;
@@ -115,13 +132,13 @@ bool ScreenManager::handle(const Events& e,TimeUs now) {
     // Decided before the launcher sees the event: a tap that lands as a
     // drag or a slide settles is not the clock's.
     const bool atRest=homeAtRest();
-    const auto out=launcher_.handle(e,now);
+    const auto out=launcher_.handle(in,now);
     if (out.open) return launch(out.target,now);
     bool homeChanged=false;
-    if (atRest && home_ && (e.gesture==Gesture::Tap || e.gesture==Gesture::LongPress)) {
+    if (atRest && home_ && (in.gesture==Gesture::Tap || in.gesture==Gesture::LongPress)) {
         HomeEvent event;
-        event.kind=e.gesture==Gesture::Tap ? HomeEventKind::Tap : HomeEventKind::LongPress;
-        event.x=e.x; event.y=e.y; event.at=now;
+        event.kind=in.gesture==Gesture::Tap ? HomeEventKind::Tap : HomeEventKind::LongPress;
+        event.x=in.x; event.y=in.y; event.at=now;
         const auto face=home_->handle(event);
         homeChanged=face.changed;
         // The face keeps showing its change; only the saving failed.

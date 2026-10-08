@@ -505,8 +505,10 @@ void statisticsRequest() {
 }
 namespace {
 bool near(float a,float b) { return std::abs(a-b)<0.001f; }
+// A finger in the middle of the panel: a touch that lands at the top edge is
+// the system's way home, not the screen's (docs/task14/plan.md 2.1).
 Events gesture(Gesture kind,int totalY=0,float velocityY=0) {
-    Events e{}; e.gesture=kind; e.totalY=totalY; e.velocityY=velocityY; return e;
+    Events e{}; e.gesture=kind; e.x=234; e.y=234; e.totalY=totalY; e.velocityY=velocityY; return e;
 }
 // Where the menu draws row `index` this frame: input and drawing share it.
 RowLayout menuRow(const ScreenManager& s,int index) {

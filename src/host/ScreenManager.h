@@ -6,6 +6,7 @@
 #include "features/timer/TimerScreen.h"
 #include "features/pedometer/PedometerScreen.h"
 #include "host/FrameModel.h"
+#include "host/HomeGesture.h"
 #include "host/EffectiveSettings.h"
 #include "features/launcher/AppListRows.h"
 #include "features/launcher/LauncherController.h"
@@ -19,7 +20,7 @@ namespace launcher {
 class ScreenManager {
 public:
     ScreenManager(StopwatchService& stopwatch,RuntimeSettings& runtime,int width=468,int height=468)
-        :runtime_(runtime),viewport_{width,height},launcher_(viewport_) {
+        :runtime_(runtime),viewport_{width,height},launcher_(viewport_),gesture_(viewport_) {
         settings_.resize(width,height); external_.resize(width,height);
         stopwatchScreen_.resize(width,height); stopwatchScreen_.bind(&stopwatch);
         timerScreen_.resize(width,height); pedometerScreen_.resize(width,height);
@@ -55,6 +56,9 @@ public:
     // let go. Only the built-in screens that need no choice of their own can
     // be presented; false for the rest, which leaves everything as it was.
     bool present(ScreenId id,TimeUs now);
+    // Whatever was held has been spent (InputController::discardHeld), so no
+    // end of it will come: the home gesture's band goes at once.
+    void inputDiscarded() { gesture_.reset(); }
     bool update(TimeUs now);
     // The open screen re-samples what it measures (host/Screen.h). A hidden
     // one samples afresh when it is entered.
@@ -73,7 +77,7 @@ public:
     // answers for itself, and the launcher only while it is showing, so a
     // hidden list's motion never keeps settings awake or drawing.
     TimeUs nextUpdate() const;
-    bool active() const { return active_ ? active_->active() : launcher_.active(); }
+    bool active() const { return gesture_.active() || (active_ ? active_->active() : launcher_.active()); }
     // Whether the open screen is in a stretch nothing may interrupt (a boot
     // commit, plan.md 8.2).
     bool exclusive() const { return active_ && active_->exclusive(); }
@@ -100,6 +104,9 @@ private:
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.
     LauncherController launcher_;
+    // The swipe down from the top edge and the band of home on its way
+    // (docs/task14/plan.md), asked before any screen.
+    HomeGesture gesture_;
     HomeControlPort* home_=nullptr;
     Screen* active_=nullptr;
     ScreenId activeId_=ScreenId::Home;

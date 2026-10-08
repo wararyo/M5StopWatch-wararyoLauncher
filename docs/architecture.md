@@ -40,7 +40,7 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 
 [HostApplication](../src/host/HostApplication.h) は `StopwatchService`、`TimerService`、`TimerPreferences`、`PedometerService`、`PedometerRecord`、`PedometerRoutine`、`RuntimeSettings`、`HostShutdown`、
 `ScreenManager`、`HostRuntime` を所有する。宣言順に構築し、借用側のRuntime・画面が先に破棄される。
-`ScreenManager` は具体的な画面と `LauncherController` を所有するが、計測サービスは借りる。
+`ScreenManager` は具体的な画面と `LauncherController`、ホームジェスチャー（`HomeGesture`、3章）を所有するが、計測サービスは借りる。
 `TimerAttention` もここで所有し、`HostRuntime` に注意の要求元として登録する（2.1）。
 `StopwatchService`・`TimerService`・`PedometerService` は、時刻の合わせ直しを求める計時サービスとして `HostRuntime` に登録する（6章）。
 `PedometerRoutine` は画面の外で動く処理の口（[HostRoutine](../src/host/HostRoutine.h)）として登録する（2.3）。
@@ -174,6 +174,16 @@ A/Bは `next` / `decide` として届くが、ストップウォッチでは左/
 画面を差し替えるときは `InputController::discardHeld()` で押下中のボタン・タッチをリリースまで捨てられる。
 A+Bの連続600ms長押しは共通のホーム操作で、通常は個別画面より優先する。
 ホーム・一覧のジェスチャー所有権は `LauncherController`、各画面内の操作はその画面が管理する。
+
+もう一つの共通のホーム操作が、アプリ画面の上端からの下スワイプ（ホームジェスチャー、[作業14](task14/plan.md)）である。
+`ScreenManager` が所有する [HomeGesture](../src/host/HomeGesture.h) が、画面より先にイベントを受け取る。
+アプリ画面が開いているとき、上端の帯（y ≤ 40px）で始まったタッチは、`TouchStart` から指を離すまでシステムのものになり、画面には届かない。
+そのため画面は上端の帯に操作対象を置かない（`home_gesture_tests` が各画面のヒット判定を走査する）。時計と一覧では上端を取らない。
+ドラッグ中は指のYから帯の高さ（最大80px）を求め、y ≥ 120pxで離すと A+B と同じく `leaveAll()` でホームへ戻る。それより上で離すと帯は100msで縮む。
+A+B を押している間も、ホームが時計以外を閉じるとき（アプリ画面・一覧）は、同じ帯を600msかけて80pxまで広げる。
+入力は同時押しの始まりの時刻（`chordSince`）と、始まり・終わりのサンプル（`chord` / `chordChanged`）を報告し、ホストはその印でも `handle()` を呼ぶ。
+600ms未満で離すか押下が捨てられると、帯は縮む。注意の要求が画面を前に出したとき（`ScreenManager::present()`・`inputDiscarded()`）は、帯をすぐ消す。
+寸法・曲線・時間は [HomeGestureLayout.h](../src/host/HomeGestureLayout.h) の純関数にまとめている。帯の高さは `FrameModel::homeGesture` で描画へ渡す。
 
 ### 内蔵機能を追加する手順
 
@@ -365,6 +375,7 @@ light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、�
 | 時計 | 時計が実際に見える場合だけ文字盤とデータ供給側の期限を採用 |
 | 電池情報 | `HomeDataSource` が描画経路で最大30秒ごとに取得。消灯中は取得しない。残量は `BatteryEstimator` が実測の放電カーブから求め、充電中は電圧から充電による上昇分44mVを引く。充電の開始・停止から1分は、その直前1分以内に読んだ値を保つ（消灯前の古い値は保たず読み直す） |
 | リストアニメーション | 動作中は16ms間隔を要求。補間はフレーム数ではなく経過時間で計算 |
+| ホームジェスチャーの帯 | A+B で広がる間（600msまで）と縮む間（100ms）だけ16ms間隔。スワイプ中は入力の追従に従う |
 | ストップウォッチ | 表示中・計測中のみ25ms。非表示でも計測の状態は保持 |
 | 時刻の合わせ直し | 起動時と点灯時。計時中のタイマーは残りに応じた予定（2.2）で、消灯したまま起きる。1回はRTCを5msごとに最大1.5秒読む |
 | 注意の要求 | 要求元の `nextAttention()`。タイマーは計時中の満了時刻と、通知中の振動の区切り（最短60ms）。消灯中も待つ。振動の書き込み失敗時は50ms後に再試行 |

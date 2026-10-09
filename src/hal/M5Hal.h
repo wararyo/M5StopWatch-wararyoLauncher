@@ -11,6 +11,7 @@ public:
     void waitUs(TimeUs delay) override;
     bool inputPending() override;
     bool takeWristWake() override;
+    bool readStepCount(uint32_t& steps) override;
     bool usbEvents() const override { return inputWake_ && pm1Irq_; }
     bool takeUsbEvent() override;
     void setLightSleepAllowed(bool allowed) override;
@@ -29,6 +30,7 @@ public:
     void setBrightness(int level) override;
 private:
     bool inputWake_ = false, pending_ = false, imuWake_ = false, imuRetry_ = false, pm1Irq_ = false;
+    bool imuSteps_ = false; // The step counter started (hal/ImuWake.h).
     bool wrist_ = false, usbEvent_ = false; // Taken by the calls above.
     TimeUs panelShowsAt_ = 0;
     void servicePm1Irq();

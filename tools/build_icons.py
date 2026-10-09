@@ -30,7 +30,8 @@ SIZE = 44
 
 # Order and meaning of `launcher::IconId` in src/assets/AppIcons.h. The firmware
 # indexes this file by that enum, so entries are appended, never reordered.
-ICONS = ("ic_stopwatch.png", "ic_settings.png", "ic_app1.png", "ic_app2.png", "ic_app3.png", "ic_timer.png")
+ICONS = ("ic_stopwatch.png", "ic_settings.png", "ic_app1.png", "ic_app2.png", "ic_app3.png", "ic_timer.png",
+         "ic_pedometer.png")
 
 CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
 

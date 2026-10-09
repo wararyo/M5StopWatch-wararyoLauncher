@@ -205,7 +205,8 @@ void M5Hal::setLightSleepAllowed(bool allowed) {
         sleepAllowed = allowed;
 }
 void M5Hal::beginInputWake() {
-    imuWake_ = beginImuWake();
+    const auto imu = beginImuWake();
+    imuWake_ = imu.wrist; imuSteps_ = imu.steps;
     // Routed without the IMU too: USB power events use the same line.
     pm1Irq_ = M5.getBoard() == m5::board_t::board_M5StopWatch && beginPm1Irq(imuWake_);
     inputWake_ = launcher::beginInputWake(xTaskGetCurrentTaskHandle(), pm1Irq_);
@@ -235,6 +236,9 @@ bool M5Hal::takeWristWake() {
     const bool wrist = wrist_;
     wrist_ = false;
     return wrist;
+}
+bool M5Hal::readStepCount(uint32_t& steps) {
+    return imuSteps_ && readImuSteps(steps);
 }
 bool M5Hal::takeUsbEvent() {
     servicePm1Irq();

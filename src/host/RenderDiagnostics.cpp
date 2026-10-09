@@ -85,6 +85,14 @@ void timerItems(WatchData& d,const char* left) {
     t.icon=appIcon(IconId::Timer); t.suggestedColor=TimerColors.background;
     d.background.count=2;
 }
+// A running stopwatch's line and the pedometer's, as its provider writes it
+// from 10,000 steps (work 13-4).
+void pedometerItems(WatchData& d,const char* steps) {
+    timerItems(d,"00:00");
+    auto& p=d.background.items[1];
+    p=BackgroundInfo{}; p.appId=LaunchTargetId::Pedometer; std::snprintf(p.label,sizeof(p.label),"%s",steps);
+    p.icon=appIcon(IconId::Pedometer); p.suggestedColor=PedometerColors.background;
+}
 #ifdef LAUNCHER_RENDER_SHOTS
 // One frame as text: "[Shot] name w h", then base64 lines of run-length
 // pairs (run-1, then the pixel as read back, high byte first), then
@@ -673,6 +681,19 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             m.timer=TimerModel{}; m.timer.fields[1]=3; check("timer-setup-again",m,d);
             m.screen=ScreenId::AppList; m.timer=TimerModel{};
             check("timer-left",m,d);
+            // The pedometer (work 13-4): entered from the list, the count
+            // growing a digit and a comma at a time (only the count is
+            // repainted), no IMU, a notice over it, and back to the list.
+            m.screen=ScreenId::Pedometer; m.pedometer={true,0}; check("pedometer",m,d);
+            for(const uint32_t steps:{9u,10u,999u,1000u,9999u,12345u,123456u,1234567u,12u}) {
+                m.pedometer.steps=steps; check("pedometer-count",m,d);
+            }
+            m.pedometer.available=false; check("pedometer-none",m,d);
+            m.pedometer={true,12345}; check("pedometer-back",m,d);
+            m.toast="保存しました"; check("pedometer-toast-on",m,d);
+            m.toast=nullptr; check("pedometer-toast-off",m,d);
+            m.screen=ScreenId::AppList; m.pedometer=PedometerModel{};
+            check("pedometer-left",m,d);
             // Work 12-4: the alert over whatever was on screen, and what
             // dismissing it leaves. The interrupted frame is drawn, then the
             // alert differentially over it, so anything the replaced screen
@@ -799,6 +820,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 }
                 shown.background.count=1; check("item-timer-gone",m,shown);
                 check("item-timer-none",m,d);
+                vTaskDelay(1);   // Each check is two full frames read back: keep the idle task fed.
+                // Work 13-4: the pedometer's line in the timer's place.
+                shown=d; pedometerItems(shown,"10.0K"); check("item-pedometer",m,shown);
+                for(const char* steps:{"10.1K","99.9K","100K","123K"}) {
+                    std::snprintf(shown.background.items[1].label,BackgroundLabelBytes,"%s",steps);
+                    check("item-pedometer-label",m,shown);
+                }
+                shown.background.count=1; check("item-pedometer-gone",m,shown);
+                check("item-pedometer-none",m,d);
                 withItems(2);
                 m.toast="保存しました"; check("item-toast-on",m,shown);
                 m.toast=nullptr; check("item-toast-off",m,shown);
@@ -826,6 +856,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 faceDirect("digital-direct-seconds",m,withItems(1));
                 renderer.handle(hold);
             }
+            vTaskDelay(1);
             display.fillScreen(0x1234); renderer.invalidate(); check("wake-invalidate",m,d);
             renderer.selectFace("digital",true); check("cache-disabled",m,d);
             m.launcher.transition=0.45f; check("cache-disabled-transition",m,d);
@@ -851,6 +882,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 };
                 FrameModel bm;
                 for(const uint16_t colour:{uint16_t(0x0000),uint16_t(0x18c9)}) {
+                    vTaskDelay(1);
                     backdrop.listBackgroundForTest(colour);
                     renderer.selectFace(backdrop.id());
                     bm=FrameModel{}; bm.viewport={w,h}; scene=sampleData();
@@ -960,6 +992,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 fm.toast="保存しました"; check("forest-toast-on",fm,fd);
                 fm.toast=nullptr; check("forest-toast-off",fm,fd);
                 items(1); check("forest-item-removed",fm,fd);
+                vTaskDelay(1);   // Each check is two full frames read back: keep the idle task fed.
                 // Work 12-4: the timer's line under the stopwatch's, and gone.
                 timerItems(fd,"03:00"); check("forest-timer",fm,fd);
                 for(const char* left:{"02:59","100:00","00:01"}) {
@@ -967,6 +1000,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     check("forest-timer-label",fm,fd);
                 }
                 items(1); check("forest-timer-gone",fm,fd);
+                vTaskDelay(1);   // Each check is two full frames read back: keep the idle task fed.
+                // Work 13-4: the pedometer's line in the timer's place.
+                pedometerItems(fd,"10.0K"); check("forest-pedometer",fm,fd);
+                for(const char* steps:{"99.9K","100K"}) {
+                    std::snprintf(fd.background.items[1].label,BackgroundLabelBytes,"%s",steps);
+                    check("forest-pedometer-label",fm,fd);
+                }
+                items(1); check("forest-pedometer-gone",fm,fd);
+                vTaskDelay(1);
                 fd.background.count=0; fd.batteryPercent=82; check("forest-plain-again",fm,fd);
                 vTaskDelay(1);
                 renderer.handle(hold); check("forest-seconds",fm,fd);
@@ -1123,6 +1165,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 // the hands.
                 at(6,32,0);
                 for(int percent:{31,30,29,5,0,100,-1,30}) { ad.batteryPercent=percent; check("analog-battery",am,ad); }
+                vTaskDelay(1);
                 ad.charging=true; check("analog-charging",am,ad);
                 ad.batteryPercent=-1; check("analog-charging-unknown",am,ad);
                 ad.charging=false; ad.batteryPercent=82; check("analog-discharging",am,ad);
@@ -1144,6 +1187,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 am.toast="保存しました"; check("analog-toast-on",am,ad);
                 am.toast=nullptr; check("analog-toast-off",am,ad);
                 items(1); check("analog-item-removed",am,ad);
+                vTaskDelay(1);   // Each check is two full frames read back: keep the idle task fed.
                 // Work 12-4: the timer's line under the stopwatch's, and gone.
                 timerItems(ad,"03:00"); check("analog-timer",am,ad);
                 for(const char* left:{"02:59","100:00","00:01"}) {
@@ -1151,6 +1195,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     check("analog-timer-label",am,ad);
                 }
                 items(1); check("analog-timer-gone",am,ad);
+                vTaskDelay(1);   // Each check is two full frames read back: keep the idle task fed.
+                // Work 13-4: the pedometer's line in the timer's place.
+                pedometerItems(ad,"10.0K"); check("analog-pedometer",am,ad);
+                for(const char* steps:{"99.9K","100K"}) {
+                    std::snprintf(ad.background.items[1].label,BackgroundLabelBytes,"%s",steps);
+                    check("analog-pedometer-label",am,ad);
+                }
+                items(1); check("analog-pedometer-gone",am,ad);
+                vTaskDelay(1);
                 ad.background.count=0; ad.batteryPercent=82; check("analog-plain-again",am,ad);
                 vTaskDelay(1);
                 // The dot: shown, every second of a minute, across the steps,
@@ -1281,6 +1334,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 nm.toast="保存しました"; check("noonish-toast-on",nm,nd);
                 nm.toast=nullptr; check("noonish-toast-off",nm,nd);
                 items(1); check("noonish-item-removed",nm,nd);
+                vTaskDelay(1);   // Each check is two full frames read back: keep the idle task fed.
                 // Work 12-4: the timer's line under the stopwatch's, and gone.
                 timerItems(nd,"03:00"); check("noonish-timer",nm,nd);
                 for(const char* left:{"02:59","100:00","00:01"}) {
@@ -1288,6 +1342,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     check("noonish-timer-label",nm,nd);
                 }
                 items(1); check("noonish-timer-gone",nm,nd);
+                vTaskDelay(1);   // Each check is two full frames read back: keep the idle task fed.
+                // Work 13-4: the pedometer's line in the timer's place.
+                pedometerItems(nd,"10.0K"); check("noonish-pedometer",nm,nd);
+                for(const char* steps:{"99.9K","100K"}) {
+                    std::snprintf(nd.background.items[1].label,BackgroundLabelBytes,"%s",steps);
+                    check("noonish-pedometer-label",nm,nd);
+                }
+                items(1); check("noonish-pedometer-gone",nm,nd);
+                vTaskDelay(1);
                 vTaskDelay(1);
                 // The dot: every second over the regions, on a boundary at
                 // 12:00, and at a step together with the regions turning.
@@ -1535,6 +1598,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 shoot("digital-items",sm,scene);
                 timerItems(scene,"03:00"); shoot("digital-timer",sm,scene);
+                pedometerItems(scene,"12.3K"); shoot("digital-pedometer",sm,scene);
                 renderer.handle(hold);
                 scene=sampleData(); shoot("digital-seconds",sm,scene);
                 item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
@@ -1571,6 +1635,8 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 renderer.selectFace("forest");
                 scene=sampleData(); shoot("forest",sm,scene);
                 timerItems(scene,"03:00"); shoot("forest-timer",sm,scene);
+                pedometerItems(scene,"12.3K"); shoot("forest-pedometer",sm,scene);
+                timerItems(scene,"03:00");
                 scene.batteryPercent=18;
                 item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
@@ -1608,6 +1674,8 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 };
                 scene=sampleData(); setTime(6,0,0); scene.localTime.tm_mday=20; shoot("analog",sm,scene);
                 timerItems(scene,"03:00"); shoot("analog-timer",sm,scene);
+                pedometerItems(scene,"12.3K"); shoot("analog-pedometer",sm,scene);
+                timerItems(scene,"03:00");
                 scene.batteryPercent=18;
                 item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
@@ -1631,6 +1699,8 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 if(!renderer.noonishSeconds()) renderer.handle(hold);
                 scene=sampleData(); setTime(10,7,0); scene.localTime.tm_mday=20; shoot("noonish",sm,scene);
                 timerItems(scene,"03:00"); shoot("noonish-timer",sm,scene);
+                pedometerItems(scene,"12.3K"); shoot("noonish-pedometer",sm,scene);
+                timerItems(scene,"03:00");
                 scene.batteryPercent=18;
                 item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
                 item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
@@ -1659,6 +1729,15 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 sm.timer.resetFill=0; sm.timer.paused=true; shoot("timer-paused",sm,scene);
                 sm.timer.view=TimerView::Ringing; sm.timer.seconds=1; shoot("timer-ringing",sm,scene);
                 sm.screen=ScreenId::Home; sm.timer=TimerModel{};
+                // Work 13-3: the pedometer screen as docs/Images/Pedometer
+                // draws it, a longer count, no IMU, and its row in the list.
+                sm.screen=ScreenId::Pedometer; sm.pedometer={true,12345}; shoot("pedometer",sm,scene);
+                sm.pedometer={true,1234567}; shoot("pedometer-long",sm,scene);
+                sm.pedometer={false,0}; shoot("pedometer-none",sm,scene);
+                sm.screen=ScreenId::AppList; sm.pedometer=PedometerModel{}; sm.launcher.transition=1;
+                sm.launcher.list.selection=2; sm.launcher.list.scroll=2*rowSpacing(sm.viewport);
+                shoot("pedometer-row",sm,scene);
+                sm.screen=ScreenId::Home; sm.launcher=AppListModel{};
             }
 #endif
         }

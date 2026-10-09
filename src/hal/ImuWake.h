@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 namespace launcher {
 // BMI270 wrist-wear wake-up, delivered to the ESP32 as a level on GPIO12.
 // On the StopWatch the IMU's INT1 drives the gate of Q7 (R50 pulls it down),
@@ -6,8 +7,17 @@ namespace launcher {
 // up by R46. M5PM1 reports the change on its IRQ output (hal/Pm1Irq.h). So
 // INT1 is push-pull and active high, the opposite of a line the IMU would
 // drive itself.
+// The same feature engine counts steps (docs/task13/plan.md 2.1).
 // Everything here is I2C: call it on the UI task, after M5.begin().
-bool beginImuWake();
+// Starting it soft-resets the IMU, so the step count begins again at 0.
+struct ImuFeatures {
+    bool wrist = false;   // Wrist-wear wake-up drives INT1.
+    bool steps = false;   // The step counter counts, and readImuSteps reads it.
+};
+ImuFeatures beginImuWake();
+// The steps counted since beginImuWake(). A burst read and nothing else,
+// cheap enough in advanced power save. False when the read failed.
+bool readImuSteps(uint32_t& steps);
 struct ImuWakeStatus {
     // The IMU's status was read, which releases the latched INT1. Until it
     // is, G0 stays low and no further change can raise the IRQ: the caller

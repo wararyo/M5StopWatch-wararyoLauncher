@@ -27,9 +27,16 @@ constexpr uint8_t WristPage = 7, WristByte = 0, WristEnable = 0x10;
 constexpr uint8_t AxisMapPage = 1, AxisMapByte = 4;
 constexpr uint8_t WatchAxes = 0x01 | (0x00 << 3) | 0x20 | (0x02 << 6);  // x=+y, y=-x, z=+z
 constexpr uint8_t WristStatus = 0x08;  // INT_STATUS_0 and INT1_MAP_FEAT
-// Low-power accelerometer (filter_perf 0), 4-sample average, 50Hz: the
-// feature engine runs at 50Hz.
-constexpr uint8_t AccLowPower50Hz = 0x27;
+// Step counter (bmi270.c's feature table): enabled by bit 4 of the high byte
+// of STEP_CNT_4, page 6 bytes 2-3; the count is the first four bytes of the
+// output page 0, little endian.
+constexpr uint8_t StepPage = 6, StepEnableByte = 3, StepEnable = 0x10, StepOutPage = 0;
+// Accelerometer in performance mode (filter_perf 1), normal filter, 50Hz: the
+// feature engine runs at 50Hz. Low power (0x27, a 4-sample average) was
+// enough for the wrist gesture, but the engine then flags bit 7 of
+// INTERNAL_STATUS and the output page reads back as zeros most of the time,
+// so the step count could not be read (docs/task13/13-1-validation.md).
+constexpr uint8_t AccPerformance50Hz = 0xA7;
 
 bool imuWrite(uint8_t reg, uint8_t value) { return M5.In_I2C.writeRegister8(Imu, reg, value, ImuHz); }
 bool imuRead(uint8_t reg, uint8_t* data, size_t length) { return M5.In_I2C.readRegister(Imu, reg, data, length, ImuHz); }
@@ -68,7 +75,7 @@ bool loadFeatureEngine() {
 
 bool enableWristWear() {
     // Accelerometer on: the feature engine reads it.
-    if (!imuWrite(AccConf, AccLowPower50Hz) || !imuWrite(PwrCtrl, 0x04)) return false;
+    if (!imuWrite(AccConf, AccPerformance50Hz) || !imuWrite(PwrCtrl, 0x04)) return false;
     // The gesture assumes a watch frame (datasheet Figure 3): x to 3 o'clock,
     // y to 12, z out of the dial. The StopWatch is worn with the screen's top
     // at 12 o'clock on the left wrist, and its sensor has +x towards the
@@ -94,6 +101,26 @@ bool enableWristWear() {
         return false;
     uint8_t clear[2];
     imuRead(IntStatus0, clear, sizeof(clear));
+    return true;
+}
+
+// The step counter runs on the same engine input as the wrist gesture, and
+// only counts: no watermark, so no interrupt and no wake per step. Its own
+// page is written whole like the wrist's, leaving the step detector, the
+// activity output and the counter's tuning at the image's defaults.
+bool enableStepCounter() {
+    uint8_t page[16]{};
+    if (!imuWrite(FeatPage, StepPage) || !imuRead(Features, page, sizeof(page))) return false;
+    page[StepEnableByte] |= StepEnable;
+    if (!M5.In_I2C.writeRegister(Imu, Features, page, sizeof(page), ImuHz)) return false;
+    uint8_t check[16]{};
+    return imuRead(Features, check, sizeof(check)) && (check[StepEnableByte] & StepEnable);
+}
+
+bool finishFeatures() {
+    // The output page stays selected for good: a step read is then a plain
+    // burst read, with none of the writes advanced power save slows down.
+    if (!imuWrite(FeatPage, StepOutPage)) return false;
     // Advanced power save last: every register write above would need 450us in it.
     uint8_t pwrConf = 0, status = 0;
     if (!imuRead(PwrConf, &pwrConf, 1) || !imuWrite(PwrConf, uint8_t(pwrConf | 0x01))) return false;
@@ -107,10 +134,23 @@ bool enableWristWear() {
 
 }
 
-bool beginImuWake() {
-    const bool imu = loadFeatureEngine() && enableWristWear();
-    std::printf("[ImuWake] imu=%s\n", imu ? "ok" : "FAILED");
-    return imu;
+ImuFeatures beginImuWake() {
+    ImuFeatures f{};
+    if (loadFeatureEngine() && enableWristWear()) {
+        // A step counter that would not start leaves the wake-up working.
+        const bool steps = enableStepCounter();
+        f.wrist = finishFeatures();
+        f.steps = steps && f.wrist;
+    }
+    std::printf("[ImuWake] imu=%s steps=%s\n", f.wrist ? "ok" : "FAILED", f.steps ? "ok" : "FAILED");
+    return f;
+}
+
+bool readImuSteps(uint32_t& steps) {
+    uint8_t count[4]{};
+    if (!imuRead(Features, count, sizeof(count))) return false;
+    steps = uint32_t(count[0]) | uint32_t(count[1]) << 8 | uint32_t(count[2]) << 16 | uint32_t(count[3]) << 24;
+    return true;
 }
 
 ImuWakeStatus readImuWake() {

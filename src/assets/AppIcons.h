@@ -8,7 +8,7 @@ namespace launcher {
 //
 // Index into the embedded mask set (tools/build_icons.py writes this order).
 // Entries are appended, never reordered: the asset is indexed by this value.
-enum class IconId : uint8_t { Stopwatch,Settings,App1,App2,App3,Timer,Count };
+enum class IconId : uint8_t { Stopwatch,Settings,App1,App2,App3,Timer,Pedometer,Count };
 // Each app's colours (RGB565): the circle under its icon in the list
 // (`background`, which is also the colour it suggests for its background
 // information) and the mask drawn on it (`foreground`). A light circle needs
@@ -18,7 +18,8 @@ inline constexpr uint16_t AppIconWhite=0xf7be;
 struct AppColors { uint16_t background=0,foreground=AppIconWhite; };
 inline constexpr AppColors StopwatchColors{0x349f,AppIconWhite},SettingsColors{0x632c,AppIconWhite},
                            ExternalColors{0x2e17,AppIconWhite},
-                           TimerColors{0xfd03,0x3080}; // #FFA31F under #361000
+                           TimerColors{0xfd03,0x3080}, // #FFA31F under #361000
+                           PedometerColors{0x2d87,AppIconWhite}; // #28B33D
 // The embedded icon set, built by tools/build_icons.py from the PNGs in icons/.
 // The masks are static and never change while the app runs, so a caller may
 // keep the pointer. Returns nullptr when the asset is missing or malformed;

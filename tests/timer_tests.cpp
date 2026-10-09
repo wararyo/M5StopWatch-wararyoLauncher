@@ -545,7 +545,8 @@ void externalBoot() {
     }
     // Ringing as well, with the motor running.
     TimerService timer; StopwatchService stopwatch; FakeHal hal;
-    HostShutdown shutdown(stopwatch,timer,hal);
+    PedometerService pedometer(hal); PedometerRecord record; PedometerRoutine routine(pedometer,record);
+    HostShutdown shutdown(stopwatch,timer,routine,hal);
     timer.start(0,1); timer.expire(Second);
     shutdown.onBootCommitted();
     CHECK(timer.state()==TimerState::Idle && hal.levels.size()==1 && hal.levels[0]==0);

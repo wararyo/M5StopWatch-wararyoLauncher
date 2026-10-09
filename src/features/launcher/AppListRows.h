@@ -28,6 +28,7 @@ inline AppColors appColors(const LaunchEntry& entry) {
     switch (entry.id) {
     case LaunchTargetId::Stopwatch: return StopwatchColors;
     case LaunchTargetId::Timer: return TimerColors;
+    case LaunchTargetId::Pedometer: return PedometerColors;
     case LaunchTargetId::Settings: return SettingsColors;
     default: return ExternalColors;
     }

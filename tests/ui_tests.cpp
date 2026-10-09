@@ -53,8 +53,13 @@ void navigation() {
     e={}; e.gesture=Gesture::Tap; e.x=0; e.y=0;
     CHECK(!s.handle(e,now) && !s.model().toast);
     // Settings, unavailable here without its store: the tap is acknowledged.
-    const int settingsRow=2;
-    CHECK(LaunchRegistry[settingsRow].id==LaunchTargetId::Settings);
+    int settingsRow=0;
+    while (LaunchRegistry[settingsRow].id!=LaunchTargetId::Settings) ++settingsRow;
+    // Two rows below the selection, where the tap lands on screen.
+    for (int i=s.model().launcher.list.selection;i<settingsRow-2;++i) {
+        e={}; e.next=true; s.handle(e,now); now+=180000; s.update(now);
+    }
+    e={}; e.gesture=Gesture::Tap;
     const auto row=layoutListRow(placementOf(s.model()),settingsRow);
     e.x=row.labelX; e.y=row.centerY; s.handle(e,now);
     CHECK(s.model().launcher.list.selection==settingsRow && s.model().toast);
@@ -305,18 +310,19 @@ void composition() {
     CHECK(!clockVisible(m) && composeFrame(m).list);
     // An open screen covers the clock and the list whatever the slide says,
     // and only its own layer shows.
-    for (const auto screen:{ScreenId::Settings,ScreenId::External,ScreenId::Stopwatch,ScreenId::Timer}) {
+    for (const auto screen:{ScreenId::Settings,ScreenId::External,ScreenId::Stopwatch,ScreenId::Timer,
+                              ScreenId::Pedometer}) {
         m.screen=screen; m.launcher.transition=0.5f;
         c=composeFrame(m);
         CHECK(!c.clockVisible() && !clockVisible(m) && !c.list);
-        CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)+int(c.timer)==1);
-        CHECK(c.timer==(screen==ScreenId::Timer));
+        CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)+int(c.timer)+int(c.pedometer)==1);
+        CHECK(c.timer==(screen==ScreenId::Timer) && c.pedometer==(screen==ScreenId::Pedometer));
         CHECK(c.settings==(screen==ScreenId::Settings) && c.external==(screen==ScreenId::External));
     }
     // Back to front: the clock, the list's rows on the frame's base, the
     // screens that cover it, and the notice over everything. Each layer
     // exactly once.
-    CHECK(FrameLayerCount==7);
+    CHECK(FrameLayerCount==8);
     CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppList);
     CHECK(FrameOrder[FrameLayerCount-1]==FrameLayer::Toast);
     for (int i=0;i<FrameLayerCount;++i) for (int j=0;j<i;++j) CHECK(FrameOrder[i]!=FrameOrder[j]);

@@ -303,6 +303,203 @@ void reportRenderDiagnostics(const HostRenderer& renderer,TimeUs now) {
     windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0;
 }
 #ifdef LAUNCHER_RENDER_DIAGNOSTICS
+#ifdef LAUNCHER_RENDER_SHOTS
+// Pictures of the faces for looking at on the PC (tools/render_shots.py),
+// taken after the check so they change nothing. A function of its own and
+// never inlined: runRepaintCheck already runs deep on the 8KiB main stack,
+// and these locals in its frame overflowed it (work 15-3).
+[[gnu::noinline]] void shootPictures(HostRenderer& renderer,M5GFX& display,int w,int h,
+                                    uint16_t* incremental,BackdropFace& backdrop) {
+    auto shoot=[&](const char* name,const FrameModel& fm,const WatchData& fd) {
+        renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
+        dumpShot(name,incremental,w,h);
+    };
+    HomeEvent hold; hold.kind=HomeEventKind::LongPress;
+    static WatchData scene;
+    auto item=[](int i,const char* label,const IconBitmap* icon,std::optional<uint16_t> colour) {
+        auto& it=scene.background.items[i];
+        it=BackgroundInfo{}; it.appId=static_cast<LaunchTargetId>(i==0 ? 0 : 41);
+        std::snprintf(it.label,sizeof(it.label),"%s",label);
+        it.icon=icon; it.suggestedColor=colour;
+        scene.background.count=uint8_t(std::max<int>(scene.background.count,i+1));
+    };
+    display.fillScreen(0xf800); display.readRect(0,0,1,1,incremental);
+    std::printf("[ShotProbe] red=%04x\n",unsigned(incremental[0]));
+    // Static, like the check's frames: this runs on top of the check's own.
+    static FrameModel sm; sm=FrameModel{}; sm.viewport={w,h};
+    scene=sampleData(); shoot("digital",sm,scene);
+    item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+    item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    shoot("digital-items",sm,scene);
+    timerItems(scene,"03:00"); shoot("digital-timer",sm,scene);
+    pedometerItems(scene,"12.3K"); shoot("digital-pedometer",sm,scene);
+    renderer.handle(hold);
+    scene=sampleData(); shoot("digital-seconds",sm,scene);
+    item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    shoot("digital-seconds-item",sm,scene);
+    renderer.handle(hold);
+    scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1;
+    shoot("digital-unknown",sm,scene);
+    scene=sampleData(); scene.charging=true; scene.batteryPercent=5;
+    item(0,"A very long label the chip has to shorten",nullptr,std::nullopt);
+    item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+    shoot("digital-mixed",sm,scene);
+    scene=sampleData(); scene.batteryPercent=100;
+    item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    shoot("digital-full",sm,scene);
+    scene=sampleData();
+    item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+    item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    sm.launcher.transition=0.45f; shoot("digital-transition",sm,scene);
+    // Work 10-4: the list laid over scenery, on black and on a
+    // colour, drawn differentially after a slide from rest.
+    auto slide=[&](const char* name,float to) {
+        sm.screen=ScreenId::AppList; sm.launcher.transition=0;
+        renderer.invalidate(); renderer.draw(sm,scene);
+        for(int i=1;i<=10;++i) { sm.launcher.transition=to*float(i)/10; renderer.draw(sm,scene); }
+        display.readRect(0,0,w,h,incremental); dumpShot(name,incremental,w,h);
+    };
+    renderer.selectFace(backdrop.id());
+    scene=sampleData();
+    backdrop.listBackgroundForTest(0x0000); slide("backdrop-transition",0.45f);
+    backdrop.listBackgroundForTest(0x18c9); slide("backdrop-transition-colour",0.6f);
+    item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    sm.screen=ScreenId::Home; sm.launcher.transition=0; shoot("backdrop-info",sm,scene);
+    // Work 10-5: Forest, like the reference pictures and around them.
+    renderer.selectFace("forest");
+    scene=sampleData(); shoot("forest",sm,scene);
+    timerItems(scene,"03:00"); shoot("forest-timer",sm,scene);
+    pedometerItems(scene,"12.3K"); shoot("forest-pedometer",sm,scene);
+    timerItems(scene,"03:00");
+    scene.batteryPercent=18;
+    item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+    shoot("forest-info",sm,scene);
+    // The provisional palettes through the day (docs/forest-gradient/plan.md 4).
+    for(int hour:{5,6,7,17,18,19,22}) {
+        char name[24]; std::snprintf(name,sizeof(name),"forest-hour-%02d",hour);
+        scene.localTime.tm_hour=hour; shoot(name,sm,scene);
+    }
+    renderer.handle(hold);
+    scene=sampleData(); shoot("forest-seconds",sm,scene);
+    scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    shoot("forest-seconds-info",sm,scene);
+    renderer.handle(hold);
+    scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
+    shoot("forest-unknown",sm,scene);
+    scene=sampleData(); scene.batteryPercent=100; scene.charging=true;
+    item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
+    item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+    shoot("forest-mixed",sm,scene);
+    scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    slide("forest-transition",0.45f);
+    // The list fully up on each part of the day's ground.
+    for(int hour:{12,6,18,22}) {
+        char name[24]; std::snprintf(name,sizeof(name),"forest-list-%02d",hour);
+        scene.localTime.tm_hour=hour; slide(name,1.0f);
+    }
+    sm.screen=ScreenId::Home; sm.launcher.transition=0;
+    // Work 11-2: Analog, like the reference pictures (6:00:00 on
+    // the 20th, the dot shown) and around them.
+    renderer.selectFace("analog");
+    if(!renderer.analogSeconds()) renderer.handle(hold);
+    auto setTime=[&](int hour,int minute,int second) {
+        scene.localTime.tm_hour=hour; scene.localTime.tm_min=minute; scene.localTime.tm_sec=second;
+    };
+    scene=sampleData(); setTime(6,0,0); scene.localTime.tm_mday=20; shoot("analog",sm,scene);
+    timerItems(scene,"03:00"); shoot("analog-timer",sm,scene);
+    pedometerItems(scene,"12.3K"); shoot("analog-pedometer",sm,scene);
+    timerItems(scene,"03:00");
+    scene.batteryPercent=18;
+    item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+    shoot("analog-info",sm,scene);
+    scene=sampleData(); setTime(10,8,37); shoot("analog-seconds",sm,scene);
+    setTime(3,15,0); scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    shoot("analog-over-date",sm,scene);
+    renderer.handle(hold);
+    scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
+    shoot("analog-unknown",sm,scene);
+    scene=sampleData(); setTime(6,32,0); scene.batteryPercent=100; scene.charging=true;
+    item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
+    item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+    shoot("analog-mixed",sm,scene);
+    scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    slide("analog-transition",0.45f);
+    sm.screen=ScreenId::Home; sm.launcher.transition=0;
+    // Work 11-3: Noonish at the references' 10:07 on the 20th, the
+    // dot at the top, and around them.
+    renderer.selectFace("noonish");
+    if(!renderer.noonishSeconds()) renderer.handle(hold);
+    scene=sampleData(); setTime(10,7,0); scene.localTime.tm_mday=20; shoot("noonish",sm,scene);
+    timerItems(scene,"03:00"); shoot("noonish-timer",sm,scene);
+    pedometerItems(scene,"12.3K"); shoot("noonish-pedometer",sm,scene);
+    timerItems(scene,"03:00");
+    scene.batteryPercent=18;
+    item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
+    shoot("noonish-info",sm,scene);
+    setTime(12,0,0); shoot("noonish-together",sm,scene);
+    setTime(6,0,15); shoot("noonish-opposite",sm,scene);
+    setTime(7,30,0); scene.charging=true; shoot("noonish-row-boundary",sm,scene);
+    scene=sampleData(); setTime(10,8,37); shoot("noonish-seconds",sm,scene);
+    renderer.handle(hold);
+    scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
+    shoot("noonish-unknown",sm,scene);
+    scene=sampleData(); setTime(4,40,0); scene.batteryPercent=100; scene.charging=true;
+    item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
+    item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
+    shoot("noonish-mixed",sm,scene);
+    scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
+    slide("noonish-transition",0.45f);
+    sm.screen=ScreenId::Home; sm.launcher.transition=0;
+    renderer.selectFace("digital");
+    // The timer's three views, as docs/Images/Timer draws them.
+    sm.screen=ScreenId::Timer; sm.timer=TimerModel{};
+    sm.timer.fields[1]=3; sm.timer.focus=1; shoot("timer-setup",sm,scene);
+    sm.timer.focus=TimerFocusSet; shoot("timer-setup-set",sm,scene);
+    sm.timer.view=TimerView::Countdown; sm.timer.seconds=161; shoot("timer-countdown",sm,scene);
+    sm.timer.resetFill=500; shoot("timer-countdown-reset",sm,scene);
+    sm.timer.resetFill=0; sm.timer.paused=true; shoot("timer-paused",sm,scene);
+    sm.timer.view=TimerView::Ringing; sm.timer.seconds=1; shoot("timer-ringing",sm,scene);
+    sm.screen=ScreenId::Home; sm.timer=TimerModel{};
+    // Work 13-3: the pedometer screen as docs/Images/Pedometer
+    // draws it, a longer count, no IMU, and its row in the list.
+    sm.screen=ScreenId::Pedometer; sm.pedometer={true,12345}; shoot("pedometer",sm,scene);
+    sm.pedometer={true,1234567}; shoot("pedometer-long",sm,scene);
+    sm.pedometer={false,0}; shoot("pedometer-none",sm,scene);
+    sm.screen=ScreenId::AppList; sm.pedometer=PedometerModel{}; sm.launcher.transition=1;
+    sm.launcher.list.selection=2; sm.launcher.list.scroll=2*rowSpacing(sm.viewport);
+    shoot("pedometer-row",sm,scene);
+    sm.screen=ScreenId::Home; sm.launcher=AppListModel{};
+    // Work 15-3: the tutorial's date step and the way home.
+    sm.screen=ScreenId::Tutorial; sm.tutorial.step=TutorialStep::DateTime;
+    sm.tutorial.editor.view=SettingsView::DateTime;
+    {
+        const int fields[5]={2024,1,1,0,0};
+        std::copy(fields,fields+5,sm.tutorial.editor.fields);
+    }
+    shoot("tutorial-date",sm,scene);
+    sm.tutorial.step=TutorialStep::Guide; shoot("tutorial-guide",sm,scene);
+    sm.homeGesture.band=80; shoot("tutorial-guide-band",sm,scene);
+    sm.homeGesture.band=0; sm.screen=ScreenId::Home; sm.tutorial=TutorialModel{};
+    // Work 14-2: the home gesture's band on each face, over the
+    // timer: full, and lower than its icon.
+    sm.screen=ScreenId::Timer; sm.timer=TimerModel{}; sm.timer.fields[1]=3; scene=sampleData();
+    for(const char* face:{"digital","forest","analog","noonish"}) {
+        renderer.selectFace(face);
+        char name[40];
+        for(const int band:{80,30}) {
+            sm.homeGesture.band=band;
+            std::snprintf(name,sizeof(name),"home-band-%s-%d",face,band); shoot(name,sm,scene);
+        }
+    }
+    sm.homeGesture.band=80; sm.screen=ScreenId::AppList; sm.launcher.transition=1;
+    shoot("home-band-list",sm,scene);
+    renderer.selectFace("digital");
+    sm=FrameModel{}; sm.viewport={w,h};
+}
+#endif
 void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& catalog) {
     recording=false;
     // The statistics chip carries a clock, so the two draws a comparison makes
@@ -696,6 +893,29 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
             m.toast=nullptr; check("pedometer-toast-off",m,d);
             m.screen=ScreenId::AppList; m.pedometer=PedometerModel{};
             check("pedometer-left",m,d);
+            // The tutorial (work 15-3): the date step as settings draws it,
+            // the focus and a field changing, the step changing under the
+            // notice the save shows, the way home under the home gesture's
+            // band, and the clock after it.
+            {
+                auto date=[&] {
+                    TutorialModel t; t.step=TutorialStep::DateTime; t.editor.view=SettingsView::DateTime;
+                    const int fields[5]={2024,1,1,0,0};
+                    std::copy(fields,fields+5,t.editor.fields);
+                    return t;
+                };
+                m.screen=ScreenId::Tutorial; m.tutorial=date(); check("tutorial-date",m,d);
+                m.tutorial.editor.cursor=1; check("tutorial-date-focus",m,d);
+                m.tutorial.editor.fields[1]=2; check("tutorial-date-field",m,d);
+                m.tutorial.editor.cursor=5; check("tutorial-date-save",m,d);
+                m.toast=text::TimeSaved; m.tutorial.step=TutorialStep::Guide; check("tutorial-guide-toast",m,d);
+                m.toast=nullptr; check("tutorial-guide",m,d);
+                for(const int band:{30,80}) { m.homeGesture.band=band; check("tutorial-guide-band",m,d); }
+                m.homeGesture.band=0; check("tutorial-guide-band-gone",m,d);
+                m.toast=text::InvalidDate; m.tutorial=date(); check("tutorial-date-again",m,d);
+                m.toast=nullptr; check("tutorial-date-toast-off",m,d);
+                m.screen=ScreenId::Home; m.tutorial=TutorialModel{}; check("tutorial-left",m,d);
+            }
             // Work 12-4: the alert over whatever was on screen, and what
             // dismissing it leaves. The interrupted frame is drawn, then the
             // alert differentially over it, so anything the replaced screen
@@ -1756,186 +1976,7 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                     unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)));
             }
 #ifdef LAUNCHER_RENDER_SHOTS
-            // Pictures of the faces for looking at on the PC
-            // (tools/render_shots.py), after the check so they change nothing.
-            {
-                auto shoot=[&](const char* name,const FrameModel& fm,const WatchData& fd) {
-                    renderer.invalidate(); renderer.draw(fm,fd); display.readRect(0,0,w,h,incremental);
-                    dumpShot(name,incremental,w,h);
-                };
-                HomeEvent hold; hold.kind=HomeEventKind::LongPress;
-                static WatchData scene;
-                auto item=[](int i,const char* label,const IconBitmap* icon,std::optional<uint16_t> colour) {
-                    auto& it=scene.background.items[i];
-                    it=BackgroundInfo{}; it.appId=static_cast<LaunchTargetId>(i==0 ? 0 : 41);
-                    std::snprintf(it.label,sizeof(it.label),"%s",label);
-                    it.icon=icon; it.suggestedColor=colour;
-                    scene.background.count=uint8_t(std::max<int>(scene.background.count,i+1));
-                };
-                display.fillScreen(0xf800); display.readRect(0,0,1,1,incremental);
-                std::printf("[ShotProbe] red=%04x\n",unsigned(incremental[0]));
-                FrameModel sm; sm.viewport={w,h};
-                scene=sampleData(); shoot("digital",sm,scene);
-                item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                shoot("digital-items",sm,scene);
-                timerItems(scene,"03:00"); shoot("digital-timer",sm,scene);
-                pedometerItems(scene,"12.3K"); shoot("digital-pedometer",sm,scene);
-                renderer.handle(hold);
-                scene=sampleData(); shoot("digital-seconds",sm,scene);
-                item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                shoot("digital-seconds-item",sm,scene);
-                renderer.handle(hold);
-                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1;
-                shoot("digital-unknown",sm,scene);
-                scene=sampleData(); scene.charging=true; scene.batteryPercent=5;
-                item(0,"A very long label the chip has to shorten",nullptr,std::nullopt);
-                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
-                shoot("digital-mixed",sm,scene);
-                scene=sampleData(); scene.batteryPercent=100;
-                item(0,"100:00",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                shoot("digital-full",sm,scene);
-                scene=sampleData();
-                item(0,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                item(1,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                sm.launcher.transition=0.45f; shoot("digital-transition",sm,scene);
-                // Work 10-4: the list laid over scenery, on black and on a
-                // colour, drawn differentially after a slide from rest.
-                auto slide=[&](const char* name,float to) {
-                    sm.screen=ScreenId::AppList; sm.launcher.transition=0;
-                    renderer.invalidate(); renderer.draw(sm,scene);
-                    for(int i=1;i<=10;++i) { sm.launcher.transition=to*float(i)/10; renderer.draw(sm,scene); }
-                    display.readRect(0,0,w,h,incremental); dumpShot(name,incremental,w,h);
-                };
-                renderer.selectFace(backdrop.id());
-                scene=sampleData();
-                backdrop.listBackgroundForTest(0x0000); slide("backdrop-transition",0.45f);
-                backdrop.listBackgroundForTest(0x18c9); slide("backdrop-transition-colour",0.6f);
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                sm.screen=ScreenId::Home; sm.launcher.transition=0; shoot("backdrop-info",sm,scene);
-                // Work 10-5: Forest, like the reference pictures and around them.
-                renderer.selectFace("forest");
-                scene=sampleData(); shoot("forest",sm,scene);
-                timerItems(scene,"03:00"); shoot("forest-timer",sm,scene);
-                pedometerItems(scene,"12.3K"); shoot("forest-pedometer",sm,scene);
-                timerItems(scene,"03:00");
-                scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                shoot("forest-info",sm,scene);
-                // The provisional palettes through the day (docs/forest-gradient/plan.md 4).
-                for(int hour:{5,6,7,17,18,19,22}) {
-                    char name[24]; std::snprintf(name,sizeof(name),"forest-hour-%02d",hour);
-                    scene.localTime.tm_hour=hour; shoot(name,sm,scene);
-                }
-                renderer.handle(hold);
-                scene=sampleData(); shoot("forest-seconds",sm,scene);
-                scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                shoot("forest-seconds-info",sm,scene);
-                renderer.handle(hold);
-                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
-                shoot("forest-unknown",sm,scene);
-                scene=sampleData(); scene.batteryPercent=100; scene.charging=true;
-                item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
-                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
-                shoot("forest-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                slide("forest-transition",0.45f);
-                // The list fully up on each part of the day's ground.
-                for(int hour:{12,6,18,22}) {
-                    char name[24]; std::snprintf(name,sizeof(name),"forest-list-%02d",hour);
-                    scene.localTime.tm_hour=hour; slide(name,1.0f);
-                }
-                sm.screen=ScreenId::Home; sm.launcher.transition=0;
-                // Work 11-2: Analog, like the reference pictures (6:00:00 on
-                // the 20th, the dot shown) and around them.
-                renderer.selectFace("analog");
-                if(!renderer.analogSeconds()) renderer.handle(hold);
-                auto setTime=[&](int hour,int minute,int second) {
-                    scene.localTime.tm_hour=hour; scene.localTime.tm_min=minute; scene.localTime.tm_sec=second;
-                };
-                scene=sampleData(); setTime(6,0,0); scene.localTime.tm_mday=20; shoot("analog",sm,scene);
-                timerItems(scene,"03:00"); shoot("analog-timer",sm,scene);
-                pedometerItems(scene,"12.3K"); shoot("analog-pedometer",sm,scene);
-                timerItems(scene,"03:00");
-                scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                shoot("analog-info",sm,scene);
-                scene=sampleData(); setTime(10,8,37); shoot("analog-seconds",sm,scene);
-                setTime(3,15,0); scene.charging=true; item(0,"12:34",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                shoot("analog-over-date",sm,scene);
-                renderer.handle(hold);
-                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
-                shoot("analog-unknown",sm,scene);
-                scene=sampleData(); setTime(6,32,0); scene.batteryPercent=100; scene.charging=true;
-                item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
-                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
-                shoot("analog-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                slide("analog-transition",0.45f);
-                sm.screen=ScreenId::Home; sm.launcher.transition=0;
-                // Work 11-3: Noonish at the references' 10:07 on the 20th, the
-                // dot at the top, and around them.
-                renderer.selectFace("noonish");
-                if(!renderer.noonishSeconds()) renderer.handle(hold);
-                scene=sampleData(); setTime(10,7,0); scene.localTime.tm_mday=20; shoot("noonish",sm,scene);
-                timerItems(scene,"03:00"); shoot("noonish-timer",sm,scene);
-                pedometerItems(scene,"12.3K"); shoot("noonish-pedometer",sm,scene);
-                timerItems(scene,"03:00");
-                scene.batteryPercent=18;
-                item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                item(1,"02:40",appIcon(IconId::Stopwatch),uint16_t(0xfd03));
-                shoot("noonish-info",sm,scene);
-                setTime(12,0,0); shoot("noonish-together",sm,scene);
-                setTime(6,0,15); shoot("noonish-opposite",sm,scene);
-                setTime(7,30,0); scene.charging=true; shoot("noonish-row-boundary",sm,scene);
-                scene=sampleData(); setTime(10,8,37); shoot("noonish-seconds",sm,scene);
-                renderer.handle(hold);
-                scene=sampleData(); scene.timeValid=false; scene.batteryPercent=-1; scene.charging=true;
-                shoot("noonish-unknown",sm,scene);
-                scene=sampleData(); setTime(4,40,0); scene.batteryPercent=100; scene.charging=true;
-                item(0,"A very long label the row has to shorten",nullptr,std::nullopt);
-                item(1,"計測中",appIcon(IconId::Settings),uint16_t(0x0000));
-                shoot("noonish-mixed",sm,scene);
-                scene=sampleData(); item(0,"02:40",appIcon(IconId::Stopwatch),StopwatchColors.background);
-                slide("noonish-transition",0.45f);
-                sm.screen=ScreenId::Home; sm.launcher.transition=0;
-                renderer.selectFace("digital");
-                // The timer's three views, as docs/Images/Timer draws them.
-                sm.screen=ScreenId::Timer; sm.timer=TimerModel{};
-                sm.timer.fields[1]=3; sm.timer.focus=1; shoot("timer-setup",sm,scene);
-                sm.timer.focus=TimerFocusSet; shoot("timer-setup-set",sm,scene);
-                sm.timer.view=TimerView::Countdown; sm.timer.seconds=161; shoot("timer-countdown",sm,scene);
-                sm.timer.resetFill=500; shoot("timer-countdown-reset",sm,scene);
-                sm.timer.resetFill=0; sm.timer.paused=true; shoot("timer-paused",sm,scene);
-                sm.timer.view=TimerView::Ringing; sm.timer.seconds=1; shoot("timer-ringing",sm,scene);
-                sm.screen=ScreenId::Home; sm.timer=TimerModel{};
-                // Work 13-3: the pedometer screen as docs/Images/Pedometer
-                // draws it, a longer count, no IMU, and its row in the list.
-                sm.screen=ScreenId::Pedometer; sm.pedometer={true,12345}; shoot("pedometer",sm,scene);
-                sm.pedometer={true,1234567}; shoot("pedometer-long",sm,scene);
-                sm.pedometer={false,0}; shoot("pedometer-none",sm,scene);
-                sm.screen=ScreenId::AppList; sm.pedometer=PedometerModel{}; sm.launcher.transition=1;
-                sm.launcher.list.selection=2; sm.launcher.list.scroll=2*rowSpacing(sm.viewport);
-                shoot("pedometer-row",sm,scene);
-                sm.screen=ScreenId::Home; sm.launcher=AppListModel{};
-                // Work 14-2: the home gesture's band on each face, over the
-                // timer: full, and lower than its icon.
-                sm.screen=ScreenId::Timer; sm.timer=TimerModel{}; sm.timer.fields[1]=3; scene=sampleData();
-                for(const char* face:{"digital","forest","analog","noonish"}) {
-                    renderer.selectFace(face);
-                    char name[40];
-                    for(const int band:{80,30}) {
-                        sm.homeGesture.band=band;
-                        std::snprintf(name,sizeof(name),"home-band-%s-%d",face,band); shoot(name,sm,scene);
-                    }
-                }
-                sm.homeGesture.band=80; sm.screen=ScreenId::AppList; sm.launcher.transition=1;
-                shoot("home-band-list",sm,scene);
-                renderer.selectFace("digital");
-                sm=FrameModel{}; sm.viewport={w,h};
-            }
+            shootPictures(renderer,display,w,h,incremental,backdrop);
 #endif
         }
     }

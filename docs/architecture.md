@@ -199,6 +199,8 @@ A+B を押している間も、ホームが時計以外を閉じるとき（ア�
 流れは [TutorialScreen](../src/features/tutorial/TutorialScreen.h) の中で閉じる。時刻が未設定なら日時の段階（設定と同じ `SettingsEditor`。保存かキャンセルで次へ）から、設定済みなら案内の段階から始まる。
 案内の段階には押せるものがなく、A+B かスワイプでホームへ戻ったとき（`wentHome()`）に完了の記録を書く。
 日時の段階でのホーム、注意の要求による打ち切り、記録の書き込みの失敗では完了とせず、次の起動でもう一度出る。
+描画は [TutorialLayer](../src/features/tutorial/TutorialLayer.h)。日時の段階は設定と同じ `SettingsEditorView`、案内の段階は上端の帯の中の下向きの印・見出し・3行の本文（[TutorialLayout.h](../src/features/tutorial/TutorialLayout.h)）を要素にする。
+印は描くだけでヒット判定を持たないので、上端の帯に置いてよい。段階の切り替えは、設定のリストと編集の切り替えと同じく Layer が全面再描画にする。
 
 ### 内蔵機能を追加する手順
 

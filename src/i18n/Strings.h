@@ -45,6 +45,11 @@
     X(Save,               "保存",                   "Save") \
     X(Cancel,             "キャンセル",             "Cancel") \
     X(Back,               "戻る",                   "Back") \
+    /* Tutorial: the way home (docs/task15/plan.md 2.6) */ \
+    X(TutorialTitle,      "ホームへの戻り方",       "Going home") \
+    X(TutorialLine1,      "画面の上端から下へ",     "Swipe down from") \
+    X(TutorialLine2,      "スワイプするか",         "the top edge,") \
+    X(TutorialLine3,      "A+B を長押しします",     "or hold A+B.") \
     /* External app slots */ \
     X(SlotFormat,         "スロット%d",             "Slot %d") \
     X(SlotScanning,       "検証中",                 "Checking") \

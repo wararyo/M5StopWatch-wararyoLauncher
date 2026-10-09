@@ -1,10 +1,17 @@
 #include "Renderer.h"
 #include <cstdio>
 namespace launcher {
-bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay) {
+bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay,std::optional<Rect> within) {
     ++layouts_;
     const Rect screen{0,0,int(display_.width()),int(display_.height())};
-    frame_.begin(full_,limit_.empty() ? screen : intersect(limit_,screen),capacity_);
+    Rect bounds=limit_.empty() ? screen : intersect(limit_,screen);
+    if(within) {
+        bounds=intersect(bounds,*within);
+        // Nothing of the panel is this frame's: no layer plans, so each keeps
+        // the last frame it did draw as its history.
+        if(bounds.empty()) { lastDirty_={}; return false; }
+    }
+    frame_.begin(full_,bounds,capacity_);
     for(int i=0;i<count;++i) layers[i]->plan(frame_,display_);
     frame_.resolve();
     const bool painted=frame_.anyPaint();
@@ -32,7 +39,8 @@ bool Renderer::draw(RenderLayer* const* layers,int count,FrameOverlay* overlay) 
         // Last of all, and outside the plan: the overlay owns its rectangle
         // and is told what the frame touched, so it can leave its pixels
         // alone when nothing reached them.
-        display_.clearClipRect();
+        if(!within) display_.clearClipRect();
+        else display_.setClipRect(bounds.x,bounds.y,bounds.w,bounds.h);
         if(overlay) overlay->paint(display_,area);
         display_.endWrite(); ++paints_;
     }

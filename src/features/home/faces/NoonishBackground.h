@@ -69,6 +69,13 @@ inline uint16_t noonishColour(const NoonishSplit& s,int x,int y) {
     }
     return uint16_t(((r+2)/4)<<11|((g+2)/4)<<5|((b+2)/4));
 }
+// The middle pixel of the panel's top row: the home gesture's band over
+// Noonish, which gives way to it. Its region's colour, or the blend of two
+// while a hand's line passes through it (at half past three, say), exactly
+// as the background draws it there.
+inline uint16_t noonishTopColour(const AnalogLayout& l,const AnalogTime& t) {
+    return noonishColour(noonishSplit(l,t),int(l.centre.x),0);
+}
 // Row y from x0 to x1 (exclusive) as runs of one colour, left to right: the
 // colours noonishColour gives pixel by pixel, found without asking every
 // pixel. Only where a line comes within reach of a pixel's samples can the

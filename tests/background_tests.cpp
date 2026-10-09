@@ -320,6 +320,8 @@ void homeGetsTheLabelAfterTheScreenCloses() {
         hal.time+=600000; runtime.step();
         hal.input={}; hal.time+=10000; runtime.step();
         CHECK(runtime.model().screen==ScreenId::Home);
+        // The clock comes in over the screen first (docs/task14/plan.md 2.5).
+        while (runtime.model().homeGesture.revealing) { hal.time+=16000; runtime.step(); }
     };
     pressButton(true);                                   // clock -> list, row 0
     pressButton(false);                                  // open the stopwatch
@@ -405,6 +407,8 @@ void labelsWakeOnlyAFaceThatShowsThem() {
     hal.input.a=hal.input.b=true; hal.time+=10000; runtime.step();
     hal.time+=600000; runtime.step();
     hal.input={}; hal.time+=10000; runtime.step();
+    // The clock comes in over the screen first (docs/task14/plan.md 2.5).
+    while (runtime.model().homeGesture.revealing) { hal.time+=16000; runtime.step(); }
     CHECK(runtime.model().screen==ScreenId::Home && render.watch.background.count==1);
     CHECK(!render.watch.timeValid);
     // A face that leaves the label out is not woken for it.
@@ -432,6 +436,7 @@ void labelsWakeOnlyAFaceThatShowsThem() {
     hal.input.a=hal.input.b=true; hal.time+=10000; runtime.step();
     hal.time+=600000; runtime.step();
     hal.input={}; hal.time+=10000; runtime.step();
+    while (runtime.model().homeGesture.revealing) { hal.time+=16000; runtime.step(); }
     CHECK(framesOver(5)==5);
     hal.time+=31*Second; runtime.step();
     CHECK(runtime.power().screenOff());
@@ -524,6 +529,8 @@ void homeShowsTheTimeLeft() {
         hal.time+=600000; runtime.step();
         hal.input={}; hal.time+=10000; runtime.step();
         CHECK(runtime.model().screen==ScreenId::Home);
+        // The clock comes in over the screen first (docs/task14/plan.md 2.5).
+        while (runtime.model().homeGesture.revealing) { hal.time+=16000; runtime.step(); }
     };
     auto openTimer=[&] {
         pressButton(true);                               // clock -> list
@@ -539,7 +546,8 @@ void homeShowsTheTimeLeft() {
     goHome();
     const auto& shown=render.watch.background;
     CHECK(shown.count==1 && shown.items[0].appId==LaunchTargetId::Timer);
-    CHECK(std::string(shown.items[0].label)=="03:00");   // under a second gone: rounded up
+    // About 1.4s gone (the A+B hold and the clock coming in): rounded up.
+    CHECK(std::string(shown.items[0].label)=="02:59");
     CHECK(shown.items[0].icon==appIcon(IconId::Timer) && shown.items[0].suggestedColor==TimerColors.background);
     CHECK(shown.items[0].nextChangeAt>hal.time && shown.items[0].nextChangeAt<=hal.time+Second);
     CHECK((end-shown.items[0].nextChangeAt)%Second==0);
@@ -555,11 +563,11 @@ void homeShowsTheTimeLeft() {
             last=render.watch.background.items[0].label; ++changes;
         }
     }
-    CHECK(changes==5 && last=="02:55");
+    CHECK(changes==5 && last=="02:54");
     // Setting the wall clock moves neither the label nor its deadline.
     CHECK(time.save({2026,1,1,0,0,0})==SaveResult::Saved);
     runtime.dataChanged(); hal.time+=10000; runtime.step();
-    CHECK(std::string(render.watch.background.items[0].label)=="02:55");
+    CHECK(std::string(render.watch.background.items[0].label)=="02:54");
     CHECK((end-render.watch.background.items[0].nextChangeAt)%Second==0);
     // Paused from its screen: home shows nothing for it.
     openTimer();

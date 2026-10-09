@@ -21,13 +21,16 @@ struct Element { Rect box{}; uint32_t fingerprint=0; bool valid=false; };
 class FramePlan {
 public:
     // Current maximum: 8 watch elements + 8 list slots (ListVisibleSlots,
-    // registered even while hidden so they erase) + toast + the open app
-    // screen (11 settings editor elements or the settings menu's 8 list
-    // slots, 7 stopwatch, 6 external app detail) = 28. A closed screen, and
-    // the half of settings that is not shown, registers nothing, so they
+    // registered even while hidden so they erase) + toast + the home
+    // gesture's band + the open app screen (17 for the timer's setup, 11
+    // settings editor elements or the settings menu's 8 list slots, 7
+    // stopwatch, 6 external app detail, 4 pedometer) = 35. A closed screen,
+    // and the half of settings that is not shown, registers nothing, so they
     // never add up. Backgrounds declare damage instead of registering.
     // Extra room is for future faces; overflow is handled, never truncated.
-    static constexpr int Capacity=32;
+    // (At 32 the timer's setup overflowed from task 12 on, and every frame
+    // of it was a full repaint; work 14-2 found it with the band over it.)
+    static constexpr int Capacity=40;
     // `bounds` is the screen: a full repaint covers it, and damage is kept inside it.
     void begin(bool full,Rect bounds,int limit=Capacity) {
         count_=0; full_=full; overflow_=false; limit_=std::clamp(limit,0,Capacity);

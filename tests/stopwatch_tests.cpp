@@ -213,7 +213,10 @@ void homeKeepsMeasuringAndTheListOpensIt() {
     CHECK(s.handle(home(),now));
     CHECK(s.model().screen==ScreenId::Home);
     CHECK(s.stopwatch.state()==StopwatchState::Running);
-    // A static clock asks for no frames of its own.
+    // A static clock asks for no frames of its own, once it has come in
+    // (docs/task14/plan.md 2.5).
+    CHECK(s.revealing());
+    now+=HomeRevealUs; s.update(now);
     CHECK(s.nextUpdate()==INT64_MAX);
     now+=5*Second;
     s.handle(press(true),now); now+=200000; s.update(now);

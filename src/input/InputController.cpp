@@ -9,8 +9,12 @@ Events InputController::update(TimeUs now, const InputSnapshot& in, bool consume
     if (in.a && in.b) {
         chordGroup_ = true;
         if (!timing_) { timing_ = true; chordSince_ = now; }
-        if (!spent_ && !homeSent_ && now - chordSince_ >= 600000) out.home = homeSent_ = true;
+        if (!spent_ && !homeSent_ && now - chordSince_ >= HomeHoldUs) out.home = homeSent_ = true;
     } else timing_ = false;
+    out.chord = timing_ && !spent_ && !homeSent_;
+    out.chordSince = chordSince_;
+    out.chordChanged = out.chord != chord_;
+    chord_ = out.chord;
     if (!chordGroup_ && !spent_) {
         out.next = previous_.a && !in.a;
         out.decide = previous_.b && !in.b;

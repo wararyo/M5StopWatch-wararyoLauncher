@@ -425,6 +425,13 @@ void forestPalettes() {
     CHECK(forestListBackground(17)==forest::rgb565(forest::mix(forest::Day.groundBottom,forest::Dusk.groundBottom,0.5f)));
     CHECK(forestListBackground(forestHour(d))==forestListBackground(-1));
     d.localTime.tm_hour=19; CHECK(forestListBackground(forestHour(d))==forestListBackground(19));
+    // The home gesture's band is the hour's sky at the top of the panel, where
+    // it gives way to the scenery (docs/task14/plan.md 2.3).
+    for (int hour:{-1,2,6,12,17,19,22}) {
+        CHECK(forestHomeGestureBackground(hour)==forest::rgb565(forestPalette(hour).skyTop));
+        CHECK(forestHomeGestureBackground(hour)==forest::rgb565(forest::sky(l,forestPalette(hour),0.5f)));
+    }
+    CHECK(forestHomeGestureBackground(12)!=forestHomeGestureBackground(22));
 }
 namespace {
 WatchData clockAt(int hour,int minute,int second,int day=20,TimeUs subsecond=0) {
@@ -715,6 +722,20 @@ void noonishBackgroundRules() {
     const auto rest=noonishSplit(l,timeAt(10,7));
     CHECK(noonishColour(rest,233,80)==NoonishPalette[NoonishTop] && noonishColour(rest,420,200)==NoonishPalette[NoonishRight]);
     CHECK(noonishColour(rest,233,420)==NoonishPalette[NoonishBottom] && noonishColour(rest,40,250)==NoonishPalette[NoonishLeft]);
+    // The home gesture's band is the region at the middle of the top edge,
+    // the colour that shows there once the band goes (docs/task14/plan.md 2.3).
+    {
+        CHECK(noonishTopColour(l,timeAt(10,7))==NoonishPalette[NoonishTop]);
+        int seen=0;
+        for (int step=0;step<4320;step+=7) {
+            const auto t=timeAt(step/360,(step%360)/6,(step%6)*10);
+            const auto s=noonishSplit(l,t);
+            const uint16_t top=noonishTopColour(l,t);
+            CHECK(top==noonishColour(s,int(l.centre.x),0));
+            for (int i=0;i<4;++i) if (top==NoonishPalette[i]) seen|=1<<i;
+        }
+        CHECK(seen==0xf); // Every region reaches the top some time of the day.
+    }
     // The split is the hands' step: the seconds do not move it, and an unknown
     // time rests at 10:07.
     const auto a=noonishSplit(l,timeAt(12,34,10)),b=noonishSplit(l,timeAt(12,34,19));

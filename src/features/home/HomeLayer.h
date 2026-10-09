@@ -47,11 +47,16 @@ public:
     }
     // The next frame is a full repaint (a wake, another screen before it).
     void resume() { resumed_=true; }
+    // Rows that show the clock this frame for the first time although nothing
+    // of it changed: the edge of the clock coming in moved over them.
+    void uncover(Rect rows) { uncovered_=unite(uncovered_,rows); }
     HomeOutcome handle(const HomeEvent& event) { return face_ ? face_->handle(event) : HomeOutcome{}; }
     BackgroundInterest backgroundInterest(const WatchData& data) const {
         return face_ ? face_->backgroundInterest(data.background) : BackgroundInterest{};
     }
     uint16_t listBackground() const { return face_ ? face_->listBackground(data_) : 0; }
+    uint16_t homeGestureBackground() const { return face_ ? face_->homeGestureBackground(data_) : 0x0000; }
+    uint16_t homeGestureForeground() const { return face_ ? face_->homeGestureForeground(data_) : 0xffff; }
     const DigitalWatchFace& digital() const { return digital_; }
     const ForestWatchFace& forest() const { return forest_; }
     const AnalogWatchFace& analog() const { return analog_; }
@@ -74,6 +79,7 @@ private:
     WatchEnvironment environment_{};
     WatchData data_{},previous_{};
     float previousProgress_=0;
+    Rect uncovered_{};
     bool resumed_=true;
 };
 }

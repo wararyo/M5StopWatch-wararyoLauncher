@@ -6,6 +6,7 @@
 #include "features/timer/TimerScreen.h"
 #include "features/pedometer/PedometerScreen.h"
 #include "host/FrameModel.h"
+#include "host/HomeGesture.h"
 #include "host/EffectiveSettings.h"
 #include "features/launcher/AppListRows.h"
 #include "features/launcher/LauncherController.h"
@@ -19,7 +20,7 @@ namespace launcher {
 class ScreenManager {
 public:
     ScreenManager(StopwatchService& stopwatch,RuntimeSettings& runtime,int width=468,int height=468)
-        :runtime_(runtime),viewport_{width,height},launcher_(viewport_) {
+        :runtime_(runtime),viewport_{width,height},launcher_(viewport_),gesture_(viewport_) {
         settings_.resize(width,height); external_.resize(width,height);
         stopwatchScreen_.resize(width,height); stopwatchScreen_.bind(&stopwatch);
         timerScreen_.resize(width,height); pedometerScreen_.resize(width,height);
@@ -41,7 +42,11 @@ public:
     // the swipe up, and settings offers no face to choose.
     void bindHome(HomeControlPort* home) { home_=home; settings_.bindFaces(home); }
     // Whether a touch starting now may become a long press on the clock.
-    bool homeAtRest() const { return !active_ && launcher_.atRest(); }
+    bool homeAtRest() const { return !active_ && launcher_.atRest() && !gesture_.revealing(); }
+    // Home was reached and the clock is still coming in over what the screen
+    // left (docs/task14/plan.md 2.5): no input reaches anything meanwhile,
+    // and the runtime spends whatever is pressed during it.
+    bool revealing() const { return gesture_.revealing(); }
     void setInfo(const char* name,const char* version,const char* idf) {
         settings_.setInfo(name,version,idf);
     }
@@ -55,6 +60,10 @@ public:
     // let go. Only the built-in screens that need no choice of their own can
     // be presented; false for the rest, which leaves everything as it was.
     bool present(ScreenId id,TimeUs now);
+    // Whatever was held has been spent (InputController::discardHeld), so no
+    // end of it will come: the home gesture's band goes at once, and the
+    // touch it followed is forgotten.
+    void inputDiscarded() { gesture_.reset(); }
     bool update(TimeUs now);
     // The open screen re-samples what it measures (host/Screen.h). A hidden
     // one samples afresh when it is entered.
@@ -73,7 +82,7 @@ public:
     // answers for itself, and the launcher only while it is showing, so a
     // hidden list's motion never keeps settings awake or drawing.
     TimeUs nextUpdate() const;
-    bool active() const { return active_ ? active_->active() : launcher_.active(); }
+    bool active() const { return gesture_.active() || (active_ ? active_->active() : launcher_.active()); }
     // Whether the open screen is in a stretch nothing may interrupt (a boot
     // commit, plan.md 8.2).
     bool exclusive() const { return active_ && active_->exclusive(); }
@@ -89,6 +98,9 @@ private:
     bool open(Screen& screen,ScreenId id,TimeUs now);
     // Every screen left and the launcher back at rest on the clock.
     void leaveAll();
+    // Home by A+B or by the swipe: everything left, and over a screen or the
+    // list the clock comes in from where the band was.
+    void goHome(TimeUs now);
     void notify(const char* notice,TimeUs now) { toast_=notice; toastUntil_=now+1400000; }
     RuntimeSettings& runtime_;
     SettingsScreen settings_;
@@ -100,6 +112,9 @@ private:
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.
     LauncherController launcher_;
+    // The swipe down from the top edge and the band of home on its way
+    // (docs/task14/plan.md), asked before any screen.
+    HomeGesture gesture_;
     HomeControlPort* home_=nullptr;
     Screen* active_=nullptr;
     ScreenId activeId_=ScreenId::Home;

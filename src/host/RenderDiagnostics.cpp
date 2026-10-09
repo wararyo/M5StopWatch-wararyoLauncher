@@ -16,6 +16,7 @@
 #include "ui/graphics/Shapes.h"
 #include "features/launcher/LauncherController.h"
 #include "host/LaunchRegistry.h"
+#include "input/InputController.h"
 #include "i18n/Strings.h"
 #include <cstring>
 #endif
@@ -43,7 +44,7 @@ struct Distribution {
 // A frame is classified by the activity the app composed into its model, so
 // one window can mix scenarios and still report each of them separately.
 // `scroll` keeps its name for the launcher so earlier records stay comparable.
-enum Mode { ModeTransition, ModeScroll, ModeSettingsScroll, ModeStopwatch,
+enum Mode { ModeTransition, ModeScroll, ModeSettingsScroll, ModeStopwatch, ModeHomeGesture,
             ModeSettingsSingle, ModeSingle, ModeCount };
 constexpr int IntervalModes=ModeSettingsSingle; // Continuous by nature; single frames are not.
 Mode modeOf(FrameActivity activity) {
@@ -52,6 +53,7 @@ Mode modeOf(FrameActivity activity) {
     case FrameActivity::LauncherScroll: return ModeScroll;
     case FrameActivity::SettingsScroll: return ModeSettingsScroll;
     case FrameActivity::Stopwatch: return ModeStopwatch;
+    case FrameActivity::HomeGesture: return ModeHomeGesture;
     case FrameActivity::SettingsSingle: return ModeSettingsSingle;
     default: return ModeSingle;
     }
@@ -262,9 +264,9 @@ void reportRenderDiagnostics(const HostRenderer& renderer,TimeUs now) {
     if(!windowStart) { windowStart=now; lastLayouts=renderer.layouts(); lastPaints=renderer.paints(); loops=0; return; }
     if(now-windowStart<60000000) return;
     const char* drawNames[]={"transition-draw","scroll-draw","settings-scroll-draw","stopwatch-draw",
-                             "settings-single-draw","single-draw"};
+                             "home-gesture-draw","settings-single-draw","single-draw"};
     const char* gapNames[]={"transition-interval","scroll-interval","settings-scroll-interval",
-                            "stopwatch-interval"};
+                            "stopwatch-interval","home-gesture-interval"};
     for(int i=0;i<ModeCount;++i) drawTime[i].print(drawNames[i]);
     for(int i=0;i<IntervalModes;++i) {
         interval[i].print(gapNames[i]);
@@ -1424,6 +1426,186 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 if(renderer.noonishSeconds()) renderer.handle(hold);
                 renderer.selectFace("digital"); check("noonish-to-digital",nm,d);
             }
+            // Work 14-2: the home gesture's band on every face, over an app
+            // screen and over the list, growing past the icon and back down to
+            // nothing (docs/task14/plan.md 2.2). Each height is drawn over the
+            // last, so the rows the band leaves have to come back as a full
+            // repaint draws them; Noonish's colour follows its hands.
+            {
+                FrameModel bm; bm.viewport={w,h};
+                static WatchData bd; bd=d;
+                char name[48];
+                for(const char* face:{"digital","forest","analog","noonish"}) {
+                    if(!renderer.selectFace(face)) { ++failures; std::printf("[Verify] FAIL %s did not begin\n",face); continue; }
+                    for(const ScreenId screen:{ScreenId::Timer,ScreenId::Pedometer,ScreenId::AppList}) {
+                        bm.screen=screen; bm.timer=TimerModel{}; bm.timer.fields[1]=3; bm.pedometer={true,12345};
+                        bm.launcher=AppListModel{}; bm.launcher.transition=screen==ScreenId::AppList ? 1 : 0;
+                        bm.homeGesture={}; renderer.invalidate(); renderer.draw(bm,bd);
+                        for(const int band:{6,21,22,23,44,45,63,80,103,120,52,17,3,0}) {
+                            bm.homeGesture.band=band;
+                            std::snprintf(name,sizeof(name),"home-band-%s-%d-%d",face,int(screen),band);
+                            check(name,bm,bd);
+                        }
+                        // Its frame times over this screen, as an A+B hold
+                        // draws it out to home and as it shrinks away.
+                        TimeUs total=0,longest=0; uint64_t area=0; int frames=0;
+                        auto timed=[&](float band) {
+                            bm.homeGesture.band=int(std::lround(band));
+                            const TimeUs begun=esp_timer_get_time();
+                            renderer.draw(bm,bd);
+                            const TimeUs spent=esp_timer_get_time()-begun;
+                            total+=spent; longest=std::max(longest,spent);
+                            const Rect dirty=renderer.lastDirty(); area+=uint64_t(dirty.w)*dirty.h;
+                            if(++frames%8==0) vTaskDelay(1);
+                        };
+                        const TimeUs hold=InputController::HomeHoldUs;
+                        for(TimeUs t=HomeGestureFrameUs;t<=hold;t+=HomeGestureFrameUs) timed(homeChordBand(bm.viewport,t,hold));
+                        const float from=homeChordBand(bm.viewport,hold,hold);
+                        for(TimeUs t=HomeGestureFrameUs;t<=HomeBandShrinkUs;t+=HomeGestureFrameUs) timed(homeBandShrinking(from,t));
+                        timed(0);
+                        std::printf("[Perf] band-%s-%d frames=%d avg_us=%lld max_us=%lld avg_dirty_px=%llu\n",face,int(screen),frames,
+                            (long long)(total/frames),(long long)longest,(unsigned long long)(area/frames));
+                        std::snprintf(name,sizeof(name),"home-band-%s-%d-timed",face,int(screen));
+                        check(name,bm,bd);
+                        vTaskDelay(1);
+                    }
+                    // The colour changing under a shown band (Forest's hour,
+                    // Noonish's hands) repaints it alone.
+                    bm.screen=ScreenId::Timer; bm.homeGesture.band=60; check("home-band-colour-before",bm,bd);
+                    bd.localTime.tm_hour=(bd.localTime.tm_hour+6)%24; bd.localTime.tm_min=(bd.localTime.tm_min+23)%60;
+                    std::snprintf(name,sizeof(name),"home-band-colour-%s",face); check(name,bm,bd);
+                    bm.homeGesture.band=0; check("home-band-colour-gone",bm,bd);
+                    bd=d;
+                }
+                renderer.selectFace("digital"); bm=FrameModel{}; bm.viewport={w,h}; check("home-band-done",bm,d);
+            }
+            // Work 14-3: the clock coming in after home (docs/task14/plan.md
+            // 2.6). Every frame, the rows above the edge must be the clock at
+            // rest as a full repaint draws it, and the rows below exactly what
+            // the screen left; the last frame must be the full repaint. Each
+            // frame's time and flush are recorded as it goes.
+            if(auto* left=static_cast<uint16_t*>(heap_caps_malloc(bytes,MALLOC_CAP_SPIRAM))) {
+                const Viewport rv{w,h};
+                static WatchData rd,late;
+                rd=d; late=d; late.localTime.tm_min=(late.localTime.tm_min+1)%60;
+                char name[64];
+                auto split=[&](const char* label,int edge) {
+                    ++checks; size_t count=0; int y0=h,y1=-1;
+                    for(int y=0;y<h;++y) {
+                        const uint16_t* want=(y<edge ? reference : left)+size_t(y)*w;
+                        const uint16_t* got=incremental+size_t(y)*w;
+                        if(std::memcmp(want,got,size_t(w)*2)==0) continue;
+                        for(int x=0;x<w;++x) if(want[x]!=got[x]) ++count;
+                        y0=std::min(y0,y); y1=std::max(y1,y);
+                    }
+                    if(count) { ++failures; std::printf("[Verify] FAIL %s pixels=%u rows=%d-%d\n",label,unsigned(count),y0,y1); }
+                };
+                auto screenOf=[&](ScreenId from) {
+                    FrameModel s; s.viewport=rv; s.screen=from;
+                    s.timer.fields[1]=3;
+                    s.settings.savedBrightness=Settings{}.brightness; s.settings.savedScreenOffSec=Settings{}.screenOffSec;
+                    if(from==ScreenId::AppList) s.launcher.transition=1;
+                    return s;
+                };
+                // From the screen with the band at 70px, as a swipe lets go:
+                // `atRest` draws the clock the reveal must end on, `during`
+                // changes what it may (the data, the capacity) part way.
+                auto run=[&](const char* label,ScreenId from,const WatchData& atRest,bool compareEach,auto&& during) {
+                    FrameModel home; home.viewport=rv;
+                    renderer.invalidate(); renderer.draw(home,atRest); display.readRect(0,0,w,h,reference);
+                    FrameModel start=screenOf(from);
+                    renderer.invalidate(); renderer.draw(start,rd);
+                    start.homeGesture.band=70; renderer.draw(start,rd);
+                    display.readRect(0,0,w,h,left);
+                    FrameModel r=home; r.homeGesture.revealing=true;
+                    TimeUs total=0,longest=0; uint64_t area=0; int frames=0,shown=0;
+                    const WatchData* data=&rd;
+                    for(TimeUs t=0;t<HomeRevealUs;t+=HomeGestureFrameUs,++frames) {
+                        during(t,data);
+                        r.homeGesture.edge=homeRevealEdge(rv,70,t);
+                        const TimeUs begun=esp_timer_get_time();
+                        renderer.draw(r,*data);
+                        const TimeUs spent=esp_timer_get_time()-begun;
+                        total+=spent; longest=std::max(longest,spent);
+                        const Rect dirty=renderer.lastDirty(); area+=uint64_t(dirty.w)*dirty.h;
+                        if(compareEach && (frames<4 || frames%6==0)) {
+                            display.readRect(0,0,w,h,incremental);
+                            std::snprintf(name,sizeof(name),"%s-frame-%d",label,frames); split(name,r.homeGesture.edge);
+                            ++shown;
+                        }
+                        if(frames%8==7) vTaskDelay(1);
+                    }
+                    // Home: the rest of the panel, unconfined, and nothing else.
+                    r.homeGesture={}; renderer.draw(r,*data);
+                    const Rect last=renderer.lastDirty();
+                    display.readRect(0,0,w,h,incremental);
+                    std::snprintf(name,sizeof(name),"%s-done",label); compare(name);
+                    std::printf("[Perf] reveal-%s frames=%d avg_us=%lld max_us=%lld avg_dirty_px=%llu last_dirty=%d,%d,%dx%d compared=%d\n",
+                        label,frames,(long long)(total/frames),(long long)longest,(unsigned long long)(area/frames),
+                        last.x,last.y,last.w,last.h,shown);
+                };
+                auto still=[](TimeUs,const WatchData*&) {};
+                for(const char* face:{"digital","forest","analog","noonish"}) {
+                    if(!renderer.selectFace(face)) { ++failures; std::printf("[Verify] FAIL %s did not begin\n",face); continue; }
+                    const char* names[]={"timer","settings","list"};
+                    int i=0;
+                    for(const ScreenId from:{ScreenId::Timer,ScreenId::Settings,ScreenId::AppList}) {
+                        char label[40]; std::snprintf(label,sizeof(label),"%s-%s",face,names[i++]);
+                        run(label,from,rd,true,still);
+                    }
+                    // The minute turning while it comes in: the last frame is
+                    // the new minute's clock.
+                    char label[40]; std::snprintf(label,sizeof(label),"%s-minute",face);
+                    run(label,ScreenId::Timer,late,false,[&](TimeUs t,const WatchData*& data) { if(t>=HomeRevealUs/3) data=&late; });
+                }
+                // Too many elements for a few frames: full repaints inside the
+                // edge, and still the screen untouched below it.
+                renderer.selectFace("digital");
+                run("digital-overflow",ScreenId::Timer,rd,true,[&](TimeUs t,const WatchData*&) {
+                    renderer.capacityForTest(t>=HomeRevealUs/4 && t<HomeRevealUs/2 ? 4 : FramePlan::Capacity);
+                });
+                renderer.capacityForTest(FramePlan::Capacity);
+                // An alert while it comes in: the timer, drawn as any screen is.
+                {
+                    FrameModel home; home.viewport=rv;
+                    FrameModel start=screenOf(ScreenId::Timer);
+                    renderer.invalidate(); renderer.draw(start,rd);
+                    FrameModel r=home; r.homeGesture.revealing=true;
+                    for(TimeUs t=0;t<HomeRevealUs/2;t+=HomeGestureFrameUs) { r.homeGesture.edge=homeRevealEdge(rv,70,t); renderer.draw(r,rd); }
+                    start.timer.view=TimerView::Ringing; start.timer.seconds=1;
+                    check("reveal-interrupted",start,rd);
+                    check("reveal-interrupted-home",home,rd);
+                }
+                // The statistics chip on, drawn straight to the panel as when
+                // its cache cannot be had: its new reading every frame stays
+                // above the edge too (docs/review-home-gesture). Only the rows
+                // below the edge are compared; above it the chip's clock differs.
+                {
+                    renderer.suppressStatsForTest(false); renderer.statsCacheForTest(false);
+                    FrameModel start=screenOf(ScreenId::Timer); start.stats=true;
+                    renderer.invalidate(); renderer.draw(start,rd);
+                    start.homeGesture.band=70; renderer.draw(start,rd);
+                    display.readRect(0,0,w,h,left);
+                    FrameModel r; r.viewport=rv; r.stats=true; r.homeGesture.revealing=true;
+                    int frames=0;
+                    for(TimeUs t=0;t<HomeRevealUs;t+=HomeGestureFrameUs,++frames) {
+                        r.homeGesture.edge=homeRevealEdge(rv,70,t);
+                        // A new reading every frame (its window turns only once
+                        // a second), so the chip's pixels change each time.
+                        renderer.statsReadingForTest(frames%2 ? "  11fps" : "  88fps");
+                        renderer.draw(r,rd);
+                        if(frames>=12) continue; // Past the chip by then.
+                        display.readRect(0,0,w,h,incremental);
+                        ++checks; size_t count=0;
+                        for(int y=std::max(0,r.homeGesture.edge);y<h;++y)
+                            for(int x=0;x<w;++x) if(incremental[size_t(y)*w+x]!=left[size_t(y)*w+x]) ++count;
+                        if(count) { ++failures; std::printf("[Verify] FAIL reveal-stats-direct-frame-%d pixels=%u\n",frames,unsigned(count)); }
+                    }
+                    r.homeGesture={}; renderer.draw(r,rd);
+                    renderer.statsCacheForTest(true); renderer.suppressStatsForTest(true);
+                }
+                heap_caps_free(left);
+            } else { ++failures; std::printf("[Verify] FAIL reveal comparison allocation\n"); }
             // Repeated cache release/recreation gives before/after heap evidence.
             const auto before=heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
             for(int i=0;i<16;++i) { renderer.selectFace("test-overlap"); renderer.selectFace("digital"); vTaskDelay(1); }
@@ -1738,6 +1920,21 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                 sm.launcher.list.selection=2; sm.launcher.list.scroll=2*rowSpacing(sm.viewport);
                 shoot("pedometer-row",sm,scene);
                 sm.screen=ScreenId::Home; sm.launcher=AppListModel{};
+                // Work 14-2: the home gesture's band on each face, over the
+                // timer: full, and lower than its icon.
+                sm.screen=ScreenId::Timer; sm.timer=TimerModel{}; sm.timer.fields[1]=3; scene=sampleData();
+                for(const char* face:{"digital","forest","analog","noonish"}) {
+                    renderer.selectFace(face);
+                    char name[40];
+                    for(const int band:{80,30}) {
+                        sm.homeGesture.band=band;
+                        std::snprintf(name,sizeof(name),"home-band-%s-%d",face,band); shoot(name,sm,scene);
+                    }
+                }
+                sm.homeGesture.band=80; sm.screen=ScreenId::AppList; sm.launcher.transition=1;
+                shoot("home-band-list",sm,scene);
+                renderer.selectFace("digital");
+                sm=FrameModel{}; sm.viewport={w,h};
             }
 #endif
         }

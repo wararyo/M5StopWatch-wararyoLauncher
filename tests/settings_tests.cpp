@@ -252,7 +252,10 @@ void holdInEditors() {
     // Leaving drops a hold: nothing keeps a deadline behind the clock.
     screens.handle(holdB(true),now);
     Events home{}; home.home=true; screens.handle(home,now);
-    CHECK(screens.model().screen==ScreenId::Home && screens.nextUpdate()==INT64_MAX);
+    // Only the clock coming in keeps frames (docs/task14/plan.md 2.5).
+    CHECK(screens.model().screen==ScreenId::Home && screens.revealing());
+    screens.update(now+HomeRevealUs);
+    CHECK(screens.nextUpdate()==INT64_MAX);
 }
 // The same through the real input: B held on a field, sampled every input
 // period, steps it without the runtime polling the screen.
@@ -505,8 +508,10 @@ void statisticsRequest() {
 }
 namespace {
 bool near(float a,float b) { return std::abs(a-b)<0.001f; }
+// A finger in the middle of the panel: a touch that lands at the top edge is
+// the system's way home, not the screen's (docs/task14/plan.md 2.1).
 Events gesture(Gesture kind,int totalY=0,float velocityY=0) {
-    Events e{}; e.gesture=kind; e.totalY=totalY; e.velocityY=velocityY; return e;
+    Events e{}; e.gesture=kind; e.x=234; e.y=234; e.totalY=totalY; e.velocityY=velocityY; return e;
 }
 // Where the menu draws row `index` this frame: input and drawing share it.
 RowLayout menuRow(const ScreenManager& s,int index) {
@@ -681,7 +686,10 @@ void menuList() {
     screens.handle(press(true),now);
     CHECK(screens.active());
     Events home{}; home.home=true; screens.handle(home,now);
-    CHECK(screens.model().screen==ScreenId::Home && !screens.active() && screens.nextUpdate()==INT64_MAX);
+    // Only the clock coming in moves (docs/task14/plan.md 2.5), then nothing.
+    CHECK(screens.model().screen==ScreenId::Home && screens.revealing());
+    screens.update(now+HomeRevealUs);
+    CHECK(!screens.active() && screens.nextUpdate()==INT64_MAX);
     now+=1000000; CHECK(!screens.update(now));
     // So does 戻る, decided while A is still scrolling to it; the launcher
     // is back on its settings row, where it was left.

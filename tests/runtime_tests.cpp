@@ -248,9 +248,12 @@ void screens() {
     e={}; e.gesture=Gesture::DragStart; e.totalY=-40;
     s.handle(e,1900000); CHECK(s.active());
     e.home=e.next=e.decide=true;
-    s.handle(e,2000000); CHECK(s.model().screen==ScreenId::Home && !s.active() && s.model().homeCount==1);
+    s.handle(e,2000000); CHECK(s.model().screen==ScreenId::Home && s.model().homeCount==1);
+    // Over the list, the clock comes in first (docs/task14/plan.md 2.5).
+    CHECK(s.revealing() && s.active());
+    s.update(2800000); CHECK(!s.revealing() && !s.active());
     e={}; e.gesture=Gesture::Tap; e.x=234; e.y=390;
-    s.handle(e,2100000); CHECK(s.model().screen==ScreenId::AppList && s.model().launcher.list.selection==0);
+    s.handle(e,2900000); CHECK(s.model().screen==ScreenId::AppList && s.model().launcher.list.selection==0);
 }
 void runtime() {
     FakeHal h;
@@ -290,6 +293,55 @@ void runtime() {
     CHECK(LaunchRegistry.size() == 7 && LaunchRegistry[1].id == LaunchTargetId::Timer &&
           LaunchRegistry[2].id == LaunchTargetId::Pedometer && LaunchRegistry[4].slot == 1 && LaunchRegistry[6].slot == 3);
     for (const auto& entry : LaunchRegistry) CHECK(entry.name && entry.name[0]);
+}
+// The A+B band reaches the frames through the runtime, which samples the
+// chord's start and end and draws the band's frames (docs/task14/plan.md 2.4).
+void homeBand() {
+    FakeHal h;
+    HostApplication application(h, h, h, 468, 468); auto& r = application.runtime(); r.begin(); r.step();
+    h.input.a = true; r.wait(); r.step();
+    h.input.a = false; r.wait(); r.step();
+    h.time += 200000; r.step();
+    CHECK(r.model().screen == ScreenId::AppList);
+    // Held: the band grows frame by frame and is full as home fires.
+    h.time += 10000; h.input = {true, true}; r.step();
+    const TimeUs since = h.time;
+    int last = 0;
+    while (h.time - since < 590000) {
+        r.wait(); r.step();
+        CHECK(h.waited <= 16000 && h.rendered.homeGesture.band >= last);
+        last = h.rendered.homeGesture.band;
+    }
+    CHECK(last > 100 && r.model().screen == ScreenId::AppList);
+    while (r.model().screen != ScreenId::Home) { r.wait(); r.step(); }
+    CHECK(h.time - since >= 600000 && h.rendered.homeGesture.band == 0 && r.model().homeCount == 1);
+    // The clock comes in from the band as it was last drawn, frame by frame,
+    // for 600ms.
+    const TimeUs home = h.time;
+    CHECK(h.rendered.homeGesture.revealing && h.rendered.homeGesture.edge >= last);
+    int edge = h.rendered.homeGesture.edge;
+    h.input = {}; r.wait(); r.step();
+    while (r.model().homeGesture.revealing) {
+        r.wait(); CHECK(h.waited <= 16000); r.step();
+        CHECK(h.rendered.homeGesture.edge >= edge || !h.rendered.homeGesture.revealing);
+        edge = h.rendered.homeGesture.edge;
+    }
+    CHECK(h.time - home >= 600000 && h.time - home < 620000 && !h.rendered.homeGesture.revealing);
+    // Let go early over the list: the band shrinks away, and the runtime
+    // goes back to waiting for its interrupts.
+    h.input.b = true; r.wait(); r.step();
+    h.input.b = false; r.wait(); r.step();
+    h.time += 200000; r.step();
+    CHECK(r.model().screen == ScreenId::AppList);
+    h.time += 10000; h.input = {true, true}; r.step();
+    h.time += 300000; r.step();
+    CHECK(h.rendered.homeGesture.band == 80);
+    h.time += 10000; h.input = {true}; r.step();
+    h.time += 20000; h.input = {}; r.step();
+    CHECK(h.rendered.homeGesture.band > 0 && h.rendered.homeGesture.band < 80);
+    h.time += 100000; r.step();
+    CHECK(h.rendered.homeGesture.band == 0 && r.model().screen == ScreenId::AppList);
+    r.wait(); CHECK(h.waited > 16000);
 }
 void lightSleep() {
     // Work 8-5: light sleep only with the panel asleep and a VBUS reading that
@@ -599,6 +651,10 @@ void homeGestures() {
     h.time += 600000; r.step();
     h.time += 10000; h.input = {}; r.step();
     CHECK(r.model().screen == ScreenId::Home);
+    // The clock comes in over the list first; a touch then would be spent.
+    CHECK(r.model().homeGesture.revealing);
+    h.time += 800000; r.step();
+    CHECK(!r.model().homeGesture.revealing);
     h.time += 10000; h.input = {false, false, true, 100, 234}; r.step();
     for (int i = 0; i < 70; ++i) { h.time += 10000; r.step(); }
     h.time += 10000; h.input = {}; r.step();
@@ -629,8 +685,8 @@ void simultaneousHomeInputs() {
     }
 }
 int main() {
-    buttons(); holds(); discardHeld(); touch(); releaseVelocity(); power(); screens(); runtime(); interrupts(); lightSleep(); wristWake(); usbEvents(); statusLed();
+    buttons(); holds(); discardHeld(); touch(); releaseVelocity(); power(); screens(); runtime(); homeBand(); interrupts(); lightSleep(); wristWake(); usbEvents(); statusLed();
     overload(); longPress(); homeGestures(); simultaneousHomeInputs();
-    std::cout << "PASS: buttons, holds, discard, touch, power, screens, runtime/registry, interrupts, light sleep, wrist wake, usb events, status led, overload/early-wake, "
+    std::cout << "PASS: buttons, holds, discard, touch, power, screens, runtime/registry, home band, interrupts, light sleep, wrist wake, usb events, status led, overload/early-wake, "
                  "long press, home gestures\n";
 }

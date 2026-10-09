@@ -38,7 +38,9 @@ Events home() { Events e{}; e.home=true; return e; }
 
 // Drives the manager from the clock to the given app list row and opens it.
 void openRow(ScreenManager& s,TimeUs& now,LaunchTargetId id) {
-    s.handle(home(),now); now+=1000;
+    // Home over a screen or the list lets the clock come in first
+    // (docs/task14/plan.md 2.5); input waits for it.
+    s.handle(home(),now); now+=HomeRevealUs; s.update(now);
     const Events next=press(true);
     s.handle(next,now); now+=200000; s.update(now);        // clock -> list
     while (LaunchRegistry[s.model().launcher.list.selection].id!=id) { s.handle(next,now); now+=200000; s.update(now); }

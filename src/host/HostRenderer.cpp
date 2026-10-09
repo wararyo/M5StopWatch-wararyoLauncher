@@ -1,4 +1,5 @@
 #include "HostRenderer.h"
+#include "assets/AppIcons.h"
 #include "ui/graphics/VlwFont.h"
 #include "ui/graphics/WatchFonts.h"
 #include <esp_timer.h>
@@ -30,6 +31,7 @@ RenderLayer* HostRenderer::layer(FrameLayer id) {
     case FrameLayer::Stopwatch: return &stopwatch_;
     case FrameLayer::Timer: return &timer_;
     case FrameLayer::Pedometer: return &pedometer_;
+    case FrameLayer::HomeGesture: return &homeGesture_;
     case FrameLayer::Toast: return &toast_;
     }
     return nullptr;
@@ -38,6 +40,13 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     const TimeUs start=esp_timer_get_time();
     const auto c=composer_.compose(m);
     if(c.changed) { renderer_.invalidate(); home_.resume(); }
+    // Home by the gesture: the clock comes in from the top, each frame
+    // drawing only the rows it uncovers, and the screen's pixels under the
+    // edge are left alone (docs/task14/plan.md 2.6). The change of screen
+    // above repaints in full inside the first frame's range. The clock is
+    // composed at rest, so none of its elements moves as the edge passes them.
+    const auto reveal=reveal_.next(m.homeGesture,c.viewport);
+    if(!reveal.strip.empty()) home_.uncover(reveal.strip);
     // Every layer's input is fixed here, before anything plans, and stays
     // untouched until the frame has been painted.
     home_.prepare(c.home,watch);
@@ -59,12 +68,14 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     stopwatch_.prepare(c.viewport,m.stopwatch,c.stopwatch);
     timer_.prepare(c.viewport,m.timer,c.timer);
     pedometer_.prepare(c.viewport,m.pedometer,c.pedometer);
+    homeGesture_.prepare(c.viewport,m.homeGesture.band,home_.homeGestureBackground(),
+                         home_.homeGestureForeground(),appIcon(IconId::WatchFace));
     toast_.prepare(c.viewport,m.toast);
     RenderLayer* layers[FrameLayerCount];
     for(int i=0;i<FrameLayerCount;++i) layers[i]=layer(FrameOrder[i]);
     // Only when the overlay is on: an unused build pays nothing for it.
     const bool stats=m.stats && !statsSuppressed_;
-    const bool painted=renderer_.draw(layers,FrameLayerCount,stats ? &stats_ : nullptr);
+    const bool painted=renderer_.draw(layers,FrameLayerCount,stats ? &stats_ : nullptr,reveal.within);
     // After endWrite, which is where this panel flushes the modified region
     // over QSPI. The chip and [RenderDiag] measure the same span.
     const TimeUs end=esp_timer_get_time();

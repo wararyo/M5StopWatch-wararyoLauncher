@@ -49,5 +49,10 @@ public:
     // leaving the screen lets go of both. Changes are timed by nextUpdate().
     virtual TimeUs holdPanelUntil() const { return 0; }
     virtual uint8_t vibration() const { return 0; }
+    // The screen is being closed by home, the A+B hold or the swipe from the
+    // top edge, and exit() follows. Neither an attention request bringing
+    // another screen forward nor the screen's own leaving calls it. Only the
+    // tutorial, which home finishes, uses it (docs/task15/plan.md 2.3).
+    virtual void wentHome() {}
 };
 }

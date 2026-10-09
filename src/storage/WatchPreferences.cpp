@@ -31,10 +31,11 @@ bool validWatchFaceId(const char* id) {
 }
 bool reservedRecordKey(const char* key) {
     // The selection, the settings record of storage/NvsBackend.cpp, the
-    // timer's last length (storage/TimerPreferences.h) and the pedometer's day
-    // (storage/PedometerRecord.h).
+    // timer's last length (storage/TimerPreferences.h), the pedometer's day
+    // (storage/PedometerRecord.h) and the tutorial's (storage/TutorialRecord.h).
     return key && (std::strcmp(key,WatchPreferences::SelectionKey)==0 || std::strcmp(key,"config")==0 ||
-                   std::strcmp(key,"timer")==0 || std::strcmp(key,"pedometer")==0);
+                   std::strcmp(key,"timer")==0 || std::strcmp(key,"pedometer")==0 ||
+                   std::strcmp(key,"tutorial")==0);
 }
 size_t WatchPreferences::encode(const uint8_t* body,size_t size,uint8_t* out) {
     out[0]=Format; out[1]=uint8_t(size);

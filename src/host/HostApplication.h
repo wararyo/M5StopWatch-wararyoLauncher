@@ -9,6 +9,7 @@
 #include "services/PedometerService.h"
 #include "storage/TimerPreferences.h"
 #include "storage/PedometerRecord.h"
+#include "storage/TutorialRecord.h"
 #include "features/background/BackgroundInfoHub.h"
 #include "features/stopwatch/StopwatchBackgroundInfo.h"
 #include "features/timer/TimerAttention.h"
@@ -52,7 +53,7 @@ private:
 class HostApplication {
 public:
     HostApplication(Hal& hal,RenderPort& renderer,DisplayDataSource& data,int width,int height)
-        :pedometer_(hal),pedometerRoutine_(pedometer_,pedometerRecord_),
+        :hal_(hal),pedometer_(hal),pedometerRoutine_(pedometer_,pedometerRecord_),
          stopwatchInfo_(stopwatch_),timerInfo_(timer_),pedometerInfo_(pedometer_),timerAttention_(timer_),
          shutdown_(stopwatch_,timer_,pedometerRoutine_,hal),
          screens_(stopwatch_,runtimeSettings_,width,height),
@@ -85,9 +86,20 @@ public:
     // The records beside the settings: the timer's last length and the
     // pedometer's day are read now. Unbound, the timer starts from its default
     // and remembers in RAM only, and the pedometer starts each run from 0.
+    // The tutorial's record is read too, and decides at begin() whether the
+    // tutorial opens. Unbound (the render check), it never does.
     void bindRecords(RecordBackend& records) {
         timerPreferences_.bind(&records); timerPreferences_.load();
         pedometerRecord_.bind(&records); pedometerRecord_.load();
+        tutorialRecord_.bind(&records); tutorialRecord_.load();
+        screens_.bindTutorial(&tutorialRecord_);
+    }
+    // The runtime begins, and the first-boot tutorial opens over the clock
+    // while its record is missing (docs/task15/plan.md 2.5). All the rest of
+    // it is the tutorial's own.
+    void begin() {
+        runtime_.begin();
+        if (tutorialRecord_.due()) screens_.present(ScreenId::Tutorial,hal_.now());
     }
     HostRuntime& runtime() { return runtime_; }
     ScreenManager& screens() { return screens_; }
@@ -99,12 +111,15 @@ public:
     BackgroundInfoHub& background() { return background_; }
     const RuntimeSettings& runtimeSettings() const { return runtimeSettings_; }
 private:
+    Hal& hal_;
     StopwatchService stopwatch_;
     TimerService timer_;
     TimerPreferences timerPreferences_;
     PedometerService pedometer_;
     PedometerRecord pedometerRecord_;
     PedometerRoutine pedometerRoutine_;
+    // Lent to the screens in bindRecords().
+    TutorialRecord tutorialRecord_;
     // Service, then the providers that read it, then the hub that collects
     // them, all before the runtime that is lent the hub.
     StopwatchBackgroundInfo stopwatchInfo_;

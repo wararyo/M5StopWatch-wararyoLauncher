@@ -21,6 +21,7 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 | [features/timer/](../src/features/timer/) | タイマーの画面（入力・カウントダウン・満了）、注意の要求、振動パターン |
 | [features/settings/](../src/features/settings/) | 設定トップのリスト、各編集画面、輝度プレビュー。編集画面の入力（`SettingsEditor`）と描画（`SettingsEditorView`）はチュートリアルも使う部品 |
 | [features/external/](../src/features/external/) | 外部スロットの詳細と起動確認 |
+| [features/tutorial/](../src/features/tutorial/) | 初回起動時のチュートリアル（日時の設定とホームへの戻り方）。一覧には出ない |
 | [ui/list/](../src/ui/list/) | 機能を知らないリスト操作・配置・描画・キャッシュ |
 | [ui/rendering/](../src/ui/rendering/) | `Renderer`、`FramePlan`、矩形・表示領域などの共通描画基盤 |
 | [ui/graphics/](../src/ui/graphics/)、[ui/overlays/](../src/ui/overlays/) | フォント・文字整形・画像型、トースト・統計表示 |
@@ -38,7 +39,7 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 
 ### 所有権と寿命
 
-[HostApplication](../src/host/HostApplication.h) は `StopwatchService`、`TimerService`、`TimerPreferences`、`PedometerService`、`PedometerRecord`、`PedometerRoutine`、`RuntimeSettings`、`HostShutdown`、
+[HostApplication](../src/host/HostApplication.h) は `StopwatchService`、`TimerService`、`TimerPreferences`、`PedometerService`、`PedometerRecord`、`PedometerRoutine`、`TutorialRecord`、`RuntimeSettings`、`HostShutdown`、
 `ScreenManager`、`HostRuntime` を所有する。宣言順に構築し、借用側のRuntime・画面が先に破棄される。
 `ScreenManager` は具体的な画面と `LauncherController`、ホームジェスチャー（`HomeGesture`、3章）を所有するが、計測サービスは借りる。
 `TimerAttention` もここで所有し、`HostRuntime` に注意の要求元として登録する（2.1）。
@@ -165,6 +166,7 @@ OK・A・Bのどれでも一覧へ戻る（Aで移る先がないため）。IMU
 | `nextUpdate()` / `tick(now)` | 自発的な表示更新の絶対期限。静止時は `INT64_MAX` |
 | `active()` | ドラッグや整定など、表示内容が動いているかを返す。消灯禁止を意味しない |
 | `exclusive()` | ホームを含む入力を一時的に禁止する。現在は取り消せない外部起動確定中だけ |
+| `wentHome()` | A+B かスワイプでホームへ戻るとき、`exit()` より前に呼ばれる。注意の要求で別の画面が出るとき・画面自身の退場では呼ばれない。現在はチュートリアルだけが使う |
 
 A/Bは `next` / `decide` として届くが、ストップウォッチでは左/右操作など画面が意味を決める。
 リリースには押していた長さ（`pressUs`、タップは `touchUs`）が付き、単独で押されている間は `hold` と押し始めた時刻が届く。
@@ -189,6 +191,14 @@ A+B を押している間も、ホームが時計以外を閉じるとき（ア�
 入力は同時押しの始まりの時刻（`chordSince`）と、始まり・終わりのサンプル（`chord` / `chordChanged`）を報告し、ホストはその印でも `handle()` を呼ぶ。
 600ms未満で離すか押下が捨てられると、帯は縮む。注意の要求が画面を前に出したとき（`ScreenManager::present()`・`inputDiscarded()`）は、帯をすぐ消す。
 寸法・曲線・時間は [HomeGestureLayout.h](../src/host/HomeGestureLayout.h) の純関数にまとめている。帯の高さは `FrameModel::homeGesture` で描画へ渡す。
+
+### チュートリアル
+
+初回起動時に、日時の設定とホームへの戻り方を案内する内蔵の画面（[作業15](task15/plan.md)）。一覧には出さず、起動先（`LaunchTargetId`）も持たない。
+ホストが受け持つのは開くことだけで、`HostApplication::begin()` が Runtime を始めた後、`TutorialRecord` の記録がなければ `ScreenManager::present(ScreenId::Tutorial)` で開く。
+流れは [TutorialScreen](../src/features/tutorial/TutorialScreen.h) の中で閉じる。時刻が未設定なら日時の段階（設定と同じ `SettingsEditor`。保存かキャンセルで次へ）から、設定済みなら案内の段階から始まる。
+案内の段階には押せるものがなく、A+B かスワイプでホームへ戻ったとき（`wentHome()`）に完了の記録を書く。
+日時の段階でのホーム、注意の要求による打ち切り、記録の書き込みの失敗では完了とせず、次の起動でもう一度出る。
 
 ### 内蔵機能を追加する手順
 
@@ -364,6 +374,8 @@ Forestのグラデーションは縦方向に限り、各行の色は行の位�
   開始時に、最後に保存できた値と違うときだけ書く。キー `timer` は `reservedRecordKey()` で文字盤から使えない。
 - **今日の歩数:** `PedometerRecord` が同じ名前空間のキー `pedometer` に、日の番号と歩数を版付きで保存する（2.3）。
   消灯時と外部起動の確定時に、最後に保存できた値と違うときだけ書く。時刻が未設定の間は書かない。キー `pedometer` も予約キーである。
+- **チュートリアルの完了:** `TutorialRecord` が同じ名前空間のキー `tutorial` に、形式の1バイトだけを書く（3章）。
+  記録がない（`Missing`）ときだけチュートリアルを出し、未知の形式や読めないときは出さない。描画検証版は記録を渡さないので出さない。キー `tutorial` も予約キーである。
 - **設定:** `SettingsStore` は値の検証とレコード化、`NvsBackend` は保存を担当する。
   保存成功後に現在値を更新し、失敗時は前の値を維持する。未知のスキーマは勝手に上書きしない。
 - **輝度プレビュー:** 編集中の値から実効値を返し、Runtimeが適用する。キャンセル・ホームで編集を終了すると保存値へ戻る。

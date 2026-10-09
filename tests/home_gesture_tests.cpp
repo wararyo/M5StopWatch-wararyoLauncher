@@ -390,6 +390,8 @@ void topEdgeHasNoTargets() {
         ExternalModel external; external.phase=phase;
         CHECK(clear([&](int x,int y) { return hitExternal(View,external,x,y).kind!=ExternalHit::None; }));
     }
+    // The tutorial's date step is this same date editor (features/settings/
+    // SettingsEditor.h), and its way home has nothing to tap at all.
     for (auto view:{SettingsView::DateTime,SettingsView::Brightness,SettingsView::ScreenOff,SettingsView::Info}) {
         SettingsGeometry geometry; static_cast<Viewport&>(geometry)=View; geometry.view=view;
         CHECK(clear([&](int x,int y) { return hitSettings(geometry,x,y).kind!=SettingsHit::None; }));

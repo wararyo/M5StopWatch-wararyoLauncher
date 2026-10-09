@@ -6,6 +6,7 @@
 #include "features/stopwatch/StopwatchModel.h"
 #include "features/timer/TimerModel.h"
 #include "features/pedometer/PedometerModel.h"
+#include "features/tutorial/TutorialModel.h"
 #include "host/HomeGestureLayout.h"
 #include "ui/rendering/Viewport.h"
 namespace launcher {
@@ -34,6 +35,7 @@ struct FrameModel {
     StopwatchModel stopwatch{};
     TimerModel timer{};
     PedometerModel pedometer{};
+    TutorialModel tutorial{};
     const char* toast=nullptr;
     // The band of the home gesture over whatever is shown.
     HomeGestureModel homeGesture{};

@@ -381,6 +381,12 @@ light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、�
 CO5300はSleep In中もコマンドを受け付けるので、CSをHighに保ち、他のSPI線が浮いている間の誤選択を防ぐ。
 この設定は通常動作中のSPI出力には適用されない。
 
+消灯時のパネルのsleepは、`M5Hal::setScreenOff()` がCO5300へSleep In/Outを直接送る（M5GFXのフレームバッファパネルの `sleep()` は輝度0にするだけ）。
+起動時は `main.cpp` が `M5.begin()` の直後に `resetPanel()` を呼び、パネルをリセットし直す。
+M5GFXはRESXの解除から数msでSleep Outを送るが、表示中（Sleep Out状態）のパネルをリセットした場合、データシートでは完了とSleep Outの送信に120msかかる。
+外部アプリからのA+Bでの復帰など、点灯中のESP32の再起動でこの規定を外すと、以後の消灯からの復帰で画面が点かなくなっていた。
+`resetPanel()` はSleep In→120ms→RESX（M5IOE1 IO5）→120msの順で待ってから、M5GFXの初期化コマンドを送り直す。起動はこの待ちの分（250ms強）遅くなる。
+
 振動モーターはM5IOE1のPWM1（IO9）で駆動する。M5IOE1はI2Cが1秒静かだと眠り、眠っている間の自身へのアクセスは失敗して起こすだけになる。
 そのため `M5Hal::setVibration()` はM5Unifiedの `setVibration()` を使わず、デューティを書いて読み戻し、合わなければ3ms待って最大3回まで書き直す。
 実機では、弱い振動の長い休止の後の書き込みが1回目で失敗し、2回目で成功することを確認した（作業12-2）。

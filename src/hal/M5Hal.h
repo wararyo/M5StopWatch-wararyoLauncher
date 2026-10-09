@@ -48,6 +48,10 @@ void beginPowerManagement(int maxMhz, int minMhz);
 // writes the chip after it, so nothing has to wake it; the next boot's M5GFX
 // probe retries for 200ms, and turns the sleep off again.
 void beginIoe1IdleSleep();
+// Resets the panel again with the datasheet's waits, which M5GFX's start-up
+// keeps only from power-on. Call right after M5.begin(), before
+// beginIoe1IdleSleep(). False when the reset line could not be driven.
+bool resetPanel();
 void beginRuntimeDiagnostics();
 void runtimeDiagnostics();
 }

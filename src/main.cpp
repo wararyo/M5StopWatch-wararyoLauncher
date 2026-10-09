@@ -81,6 +81,7 @@ extern "C" void app_main() {
     cfg.output_power = false;
     cfg.clear_display = true;
     M5.begin(cfg);
+    launcher::resetPanel();
     declareReadableFramebuffer(M5.Display);
     launcher::beginPowerManagement(240, LAUNCHER_CPU_MIN_MHZ);
     launcher::beginIoe1IdleSleep();

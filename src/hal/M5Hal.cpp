@@ -14,6 +14,7 @@
 #include <freertos/task.h>
 #include <sys/time.h>
 #include <cstdio>
+#include <vector>
 #ifdef LAUNCHER_RUNTIME_DIAGNOSTICS
 #include <esp_freertos_hooks.h>
 #include <esp_rom_sys.h>
@@ -120,6 +121,60 @@ TimeUs sleepPanel(bool sleep) {
     panel->command_list(Out);
     return sleepOut + ShowsUs;
 }
+}
+namespace {
+// M5GFX's own init list for the panel, which is protected.
+struct PanelInit : lgfx::Panel_AMOLED {
+    static const uint8_t* commands(const lgfx::Panel_AMOLED& panel, uint8_t list) {
+        return (panel.*(&PanelInit::getInitCommands))(list);
+    }
+};
+}
+bool resetPanel() {
+    // M5GFX releases RESX and sends Sleep Out a few ms later. From power-on
+    // the panel is in Sleep In and that is in time, but a restart from a
+    // running image (a guest, a serial reset) resets a panel in Sleep Out,
+    // where the reset takes 120ms and Sleep Out must wait as long (CO5300
+    // datasheet, Reset Input Timing). The panel is reset again here by the
+    // book: Sleep In, 120ms, RESX (M5IOE1 IO5), 120ms, then M5GFX's list with
+    // the level at zero and Display On held until the cleared frame is in.
+    auto* panel = PanelAccess::co5300();
+    if (!panel) return false;
+    static constexpr uint8_t In[] = {0x10, 0, 0xFF, 0xFF}, On[] = {0x29, 0, 0xFF, 0xFF};
+    constexpr uint8_t Ioe1 = 0x4F, GpioOutL = 0x05, OledRst = 0x10;
+    std::vector<uint8_t> init;
+    for (uint8_t n = 0; const uint8_t* c = PanelInit::commands(*panel, n); ++n) {
+        for (;;) {
+            const uint8_t cmd = *c++, num = *c++;
+            if (cmd == 0xFF && num == 0xFF) break;
+            const uint8_t args = num & 0x7F; // 0x80: a delay byte follows
+            const size_t size = args + ((num & 0x80) ? 1 : 0);
+            if (cmd != 0x29) {
+                init.push_back(cmd); init.push_back(num);
+                for (size_t i = 0; i < size; ++i) init.push_back(cmd == 0x51 && i < args ? 0 : c[i]);
+            }
+            c += size;
+        }
+    }
+    init.push_back(0xFF); init.push_back(0xFF);
+    const auto start = esp_timer_get_time();
+    M5.Display.waitDisplay();
+    panel->command_list(In);
+    vTaskDelay(pdMS_TO_TICKS(121));
+    bool ok = M5.In_I2C.bitOff(Ioe1, GpioOutL, OledRst, 100000);
+    vTaskDelay(pdMS_TO_TICKS(11));
+    ok = M5.In_I2C.bitOn(Ioe1, GpioOutL, OledRst, 100000) && ok;
+    vTaskDelay(pdMS_TO_TICKS(121));
+    panel->command_list(init.data());
+    panel->setColorDepth(lgfx::rgb565_2Byte);
+    panel->setRotation(panel->getRotation());
+    // Rows 466 and 467 are left out, as HostRenderer does.
+    M5.Display.display(0, 0, M5.Display.width(), 466);
+    M5.Display.waitDisplay();
+    panel->command_list(On);
+    std::printf("[Display] panel reset=%s took=%lldms\n", ok ? "ok" : "FAILED",
+                (long long)((esp_timer_get_time() - start) / 1000));
+    return ok;
 }
 void M5Hal::setScreenOff(bool off) {
     // Waking only powers the panel: the level is the runtime's to decide, since

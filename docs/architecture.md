@@ -376,6 +376,11 @@ light sleepは `ESP_PM_NO_LIGHT_SLEEP` のロックで既定では禁止し、�
 `HostRuntime` が `Hal::setLightSleepAllowed()` で許す。パネルのsleep後に許可し、パネルを起こす前に取り消す。
 起床は入力の割り込み（A・B・タッチINT）、M5PM1のIRQ（手首・USB給電の変化）と期限による。
 
+`CONFIG_PM_SLP_DISABLE_GPIO` によってlight sleep中はGPIOの出力とプルが無効になるため、
+`beginPowerManagement()` はStopWatchの画面CS（GPIO 39）にsleep用プルアップを設定する。
+CO5300はSleep In中もコマンドを受け付けるので、CSをHighに保ち、他のSPI線が浮いている間の誤選択を防ぐ。
+この設定は通常動作中のSPI出力には適用されない。
+
 振動モーターはM5IOE1のPWM1（IO9）で駆動する。M5IOE1はI2Cが1秒静かだと眠り、眠っている間の自身へのアクセスは失敗して起こすだけになる。
 そのため `M5Hal::setVibration()` はM5Unifiedの `setVibration()` を使わず、デューティを書いて読み戻し、合わなければ3ms待って最大3回まで書き直す。
 実機では、弱い振動の長い休止の後の書き込みが1回目で失敗し、2回目で成功することを確認した（作業12-2）。

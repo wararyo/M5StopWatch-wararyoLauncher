@@ -2,7 +2,9 @@
 #include <M5Unified.h>
 #include <lgfx/v1/panel/Panel_AMOLED.hpp>
 #include <esp_timer.h>
+#include <driver/gpio.h>
 #include <driver/usb_serial_jtag.h>
+#include <esp_err.h>
 #include <esp_pm.h>
 #include "InputWake.h"
 #include "ImuWake.h"
@@ -173,6 +175,11 @@ esp_pm_lock_handle_t sleepLock = nullptr;
 bool sleepAllowed = false;
 }
 void beginPowerManagement(int maxMhz, int minMhz) {
+    // IDF isolates GPIOs in light sleep. Keep CO5300 deselected while its
+    // clock/data pins float; Sleep In still accepts commands over SPI.
+    // Set this after IDF's sleep GPIO initialization, before enabling sleep.
+    if (M5.getBoard() == m5::board_t::board_M5StopWatch)
+        ESP_ERROR_CHECK(gpio_sleep_set_pull_mode(GPIO_NUM_39, GPIO_PULLUP_ONLY));
     // No frequency lock of our own: IDF holds CPU_FREQ_MAX on each core
     // whenever it runs anything but the idle task, so every frame is drawn at
     // the maximum and only the waits between them drop to the minimum.

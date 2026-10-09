@@ -19,7 +19,7 @@ UIの状態更新と描画はCPU1の単一UIタスクで行い、外部ファー
 | [features/launcher/](../src/features/launcher/) | ホーム↔一覧の遷移、起動先をリスト行へ変換、一覧固有の資産 |
 | [features/stopwatch/](../src/features/stopwatch/) | 計測操作、表示モデル、配置、描画 |
 | [features/timer/](../src/features/timer/) | タイマーの画面（入力・カウントダウン・満了）、注意の要求、振動パターン |
-| [features/settings/](../src/features/settings/) | 設定トップのリスト、各編集画面、輝度プレビュー |
+| [features/settings/](../src/features/settings/) | 設定トップのリスト、各編集画面、輝度プレビュー。編集画面の入力（`SettingsEditor`）と描画（`SettingsEditorView`）はチュートリアルも使う部品 |
 | [features/external/](../src/features/external/) | 外部スロットの詳細と起動確認 |
 | [ui/list/](../src/ui/list/) | 機能を知らないリスト操作・配置・描画・キャッシュ |
 | [ui/rendering/](../src/ui/rendering/) | `Renderer`、`FramePlan`、矩形・表示領域などの共通描画基盤 |
@@ -301,7 +301,9 @@ Forestのグラデーションは縦方向に限り、各行の色は行の位�
 [ListView](../src/ui/list/ListView.h) が可視行の描画・文字整形・文字スプライトを担当する。
 行は `RowId`、文字列、任意のアイコン、選択可能性などで表し、何を起動するかは所有画面が判断する。
 
-一覧と設定トップは別々のController/Viewを持ち、同じ実装を使う。編集画面は従来の個別Layerである。
+一覧と設定トップは別々のController/Viewを持ち、同じ実装を使う。編集画面（日時・輝度・消灯・情報）は、入力を [SettingsEditor](../src/features/settings/SettingsEditor.h)、
+要素の組み立てと描画を [SettingsEditorView](../src/features/settings/SettingsEditorView.h) が受け持つ部品である。
+保存と戻り先は持ち主が決める（設定は `SettingsScreen::confirm()`）。`SettingsLayer` はリストと `SettingsEditorView` を持ち、どちらか一方を計画する（作業15）。
 リストは表示スロット8個を保持し、全件分の描画キャッシュを作らない。可視行がスロット数を超える場合は
 全面再描画・直接描画へ切り替え、行を欠落させない。文字スプライトはPSRAMを使用し、確保失敗時は直接描画へ戻る。
 退場時はアニメーション期限を止める。一覧は戻り位置を保持し、設定は編集画面との往復では保持、設定への新規入場では先頭へ戻す。

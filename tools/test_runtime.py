@@ -23,7 +23,7 @@ def main():
                            "src/host/ScreenManager.cpp", "src/host/HomeGesture.cpp", "src/host/HostRuntime.cpp", "src/ui/rendering/Element.cpp",
                            "src/ui/list/ListController.cpp", "src/features/launcher/LauncherController.cpp",
                            "src/services/TimeService.cpp", "src/features/home/HomeDataSource.cpp",
-                           "src/storage/SettingsStore.cpp", "src/storage/WatchPreferences.cpp", "src/features/settings/SettingsScreen.cpp",
+                           "src/storage/SettingsStore.cpp", "src/storage/WatchPreferences.cpp", "src/features/settings/SettingsScreen.cpp", "src/features/settings/SettingsEditor.cpp",
                            "src/features/external/ExternalAppScreen.cpp",
                            "src/services/StopwatchService.cpp", "src/services/TimerService.cpp", "src/features/timer/TimerScreen.cpp", "src/features/timer/TimerBackgroundInfo.cpp", "src/storage/TimerPreferences.cpp",
                            "src/services/PedometerService.cpp", "src/storage/PedometerRecord.cpp", "src/features/pedometer/PedometerRoutine.cpp",

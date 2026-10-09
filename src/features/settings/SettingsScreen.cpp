@@ -2,19 +2,12 @@
 #include "i18n/Strings.h"
 #include <cstdlib>
 namespace launcher {
-namespace {
-int wrap(int value,int low,int high,int delta,int step=1) {
-    const int next=value+delta*step;
-    if (next>high) return low;
-    if (next<low) return high;
-    return next;
-}
-}
 int SettingsScreen::brightness() const {
     if (!store_) return Settings{}.brightness;
     // The preview is simply the open editor's field, so cancelling, going home
     // or saving all restore the stored value without a separate undo path.
-    return model_.view==SettingsView::Brightness ? model_.fields[0] : store_->get().brightness;
+    const auto& m=editor_.model();
+    return m.view==SettingsView::Brightness ? m.fields[0] : store_->get().brightness;
 }
 int SettingsScreen::screenOffSec() const {
     return store_ ? store_->get().screenOffSec : Settings{}.screenOffSec;
@@ -22,56 +15,26 @@ int SettingsScreen::screenOffSec() const {
 void SettingsScreen::openView(SettingsView view) {
     // The menu's row and scroll are the list controller's and are not touched
     // here, so saving and cancelling both return where the eye already is.
-    model_.view=view;
-    model_.cursor=0;
-    // A press held across the change belongs to the view it began in: its
-    // release must not decide anything in this one.
-    hold_.follow(-1);
+    editor_.open(view);
     if (!available()) return;
+    auto& m=editor_.model();
     if (view==SettingsView::DateTime) {
-        std::tm jst{}; TimeUs subsecond=0;
-        CivilTime start{TimeService::MinYear,1,1,0,0,0};
-        if (time_->now(jst,subsecond))
-            start={jst.tm_year+1900,jst.tm_mon+1,jst.tm_mday,jst.tm_hour,jst.tm_min,0};
-        model_.fields[0]=start.year; model_.fields[1]=start.month; model_.fields[2]=start.day;
-        model_.fields[3]=start.hour; model_.fields[4]=start.minute;
+        dateTimeFields(*time_,m.fields);
     } else if (view==SettingsView::Brightness) {
-        model_.fields[0]=store_->get().brightness;
+        m.fields[0]=store_->get().brightness;
     } else if (view==SettingsView::ScreenOff) {
-        model_.fields[0]=screenOffIndex(store_->get().screenOffSec);
+        m.fields[0]=screenOffIndex(store_->get().screenOffSec);
     } else if (view==SettingsView::WatchFace) {
         // A new visit starts at the top: the faces, then back.
         faceList_.setRows(buildSettingsFaceRows(faceRows_,faceCount()));
         faceList_.reset();
     }
 }
-void SettingsScreen::step(int delta) {
-    int& value=model_.fields[model_.cursor];
-    switch (model_.view) {
-    case SettingsView::DateTime:
-        switch (model_.cursor) {
-        // The day is not folded into the month here: an impossible date is
-        // rejected on save, so passing through 31 while picking a month works.
-        case 0: value=wrap(value,TimeService::MinYear,TimeService::MaxYear,delta); break;
-        case 1: value=wrap(value,1,12,delta); break;
-        case 2: value=wrap(value,1,31,delta); break;
-        case 3: value=wrap(value,0,23,delta); break;
-        default: value=wrap(value,0,59,delta); break;
-        }
-        break;
-    // Wrapping, not clamping: B only ever steps forward, so every level has to
-    // be reachable without a second button.
-    case SettingsView::Brightness:
-        value=wrap(value,BrightnessMin,BrightnessMax,delta,BrightnessStep); break;
-    case SettingsView::ScreenOff:
-        value=wrap(value,0,ScreenOffChoiceCount-1,delta); break;
-    default: break;
-    }
-}
 const char* SettingsScreen::confirm(ScreenOutcome& out) {
-    const int fields=settingsFieldCount(model_.view);
-    const int actions=settingsActionCount(model_.view);
-    const int action=model_.cursor-fields;
+    const auto& m=editor_.model();
+    const int fields=settingsFieldCount(m.view);
+    const int actions=settingsActionCount(m.view);
+    const int action=m.cursor-fields;
     // An action stays where it is: the view does not close, and there is
     // nothing to save, so it never reaches the notice paths below. Action 0 is
     // the statistics overlay, which only ever turns on (docs/plan.md 5.4): one
@@ -81,21 +44,16 @@ const char* SettingsScreen::confirm(ScreenOutcome& out) {
         if (action==0) out.enableStats=true;
         return nullptr;
     }
-    const bool cancel=settingsButtonCount(model_.view)==2 && model_.cursor==fields+actions+1;
-    if (model_.view==SettingsView::Info || cancel) { openView(SettingsView::Menu); return nullptr; }
-    if (model_.view==SettingsView::DateTime) {
-        const CivilTime jst{model_.fields[0],model_.fields[1],model_.fields[2],
-                            model_.fields[3],model_.fields[4],0};
-        switch (time_->save(jst)) {
-        case SaveResult::Saved: openView(SettingsView::Menu); return text::TimeSaved;
-        case SaveResult::Invalid: return text::InvalidDate;
-        case SaveResult::RtcWriteFailed: return text::SaveFailed;
-        default: return text::ClockUnavailable;
-        }
+    const bool cancel=settingsButtonCount(m.view)==2 && m.cursor==fields+actions+1;
+    if (m.view==SettingsView::Info || cancel) { openView(SettingsView::Menu); return nullptr; }
+    if (m.view==SettingsView::DateTime) {
+        const SaveResult result=saveDateTime(*time_,m.fields);
+        if (result==SaveResult::Saved) openView(SettingsView::Menu);
+        return dateTimeNotice(result);
     }
     Settings next=store_->get();
-    if (model_.view==SettingsView::Brightness) next.brightness=uint8_t(model_.fields[0]);
-    else next.screenOffSec=ScreenOffChoices[model_.fields[0]];
+    if (m.view==SettingsView::Brightness) next.brightness=uint8_t(m.fields[0]);
+    else next.screenOffSec=ScreenOffChoices[m.fields[0]];
     if (!store_->save(next)) return text::SaveFailed;
     openView(SettingsView::Menu);
     return text::Saved;
@@ -157,10 +115,11 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs now) {
         // editor that closed under it (save tapped while B was down), so its
         // release decides nothing in the list either.
         Events in=e;
-        if (in.decide && hold_.following()) in.decide=hold_.release(-1);
-        else if (in.holdChanged && in.hold!=Hold::B) hold_.end();
+        auto& hold=editor_.hold();
+        if (in.decide && hold.following()) in.decide=hold.release(-1);
+        else if (in.holdChanged && in.hold!=Hold::B) hold.end();
         ListDecision decision;
-        if (model_.view==SettingsView::Menu) {
+        if (editor_.model().view==SettingsView::Menu) {
             out=handleList(menu_,in,now,decision);
             if (decision.decided) openItem(decision.id,out);
             return out;
@@ -169,55 +128,12 @@ ScreenOutcome SettingsScreen::handle(const Events& e,TimeUs now) {
         if (decision.decided) out.notice=chooseFace(decision.id);
         return out;
     }
-    // The editors (docs/task12/plan.md 1.5): A moves the focus over the
-    // fields and buttons; B steps a field, repeating while held, and carries
-    // out a button. There is no separate editing state to enter.
-    const int fields=settingsFieldCount(model_.view);
-    // B on a field steps it as it goes down (input/HoldRepeat.h).
-    if (e.holdChanged && e.hold==Hold::B && hold_.begin(e.holdSince,model_.cursor,model_.cursor<fields)) {
-        step(1); out.changed=true;
-    }
-    if (e.gesture==Gesture::Tap) {
-        const auto hit=hitSettings({{width_,height_},model_.view,model_.cursor},e.x,e.y);
-        switch (hit.kind) {
-        case SettingsHit::Field:
-            model_.cursor=hit.index; out.changed=true; break;
-        case SettingsHit::Up:
-        case SettingsHit::Down:
-            model_.cursor=hit.index;
-            step(hit.kind==SettingsHit::Up ? 1 : -1); out.changed=true; break;
-        case SettingsHit::Action:
-            model_.cursor=fields+hit.index;
-            out.changed=true; out.notice=confirm(out); break;
-        case SettingsHit::Button:
-            model_.cursor=fields+settingsActionCount(model_.view)+hit.index;
-            out.changed=true; out.notice=confirm(out); break;
-        case SettingsHit::None: break;
-        }
-        hold_.follow(model_.cursor);
-        // B let go in this same sample: the tap decided it, but the hold ends
-        // here all the same, or its repeats would run on with nothing held.
-        if (e.decide || (e.holdChanged && e.hold!=Hold::B)) hold_.end();
-        return out;
-    }
-    if (e.next) {
-        model_.cursor=(model_.cursor+1)%settingsSlotCount(model_.view);
-        hold_.follow(model_.cursor);
-        out.changed=true;
-    }
-    if (e.decide) {
-        if (hold_.release(model_.cursor)) {
-            if (model_.cursor<fields) step(1);
-            else out.notice=confirm(out);
-        }
-        out.changed=true;
-    } else if (e.holdChanged && e.hold!=Hold::B) hold_.end();
-    return out;
+    // The editors (docs/task12/plan.md 1.5), whose buttons settings carries
+    // out itself.
+    return editor_.handle(e,[this](ScreenOutcome& out) { return confirm(out); });
 }
 bool SettingsScreen::tick(TimeUs now) {
     if (auto* l=shownList()) return l->update(now);
-    if (!hold_.take(now)) return false;
-    step(1);
-    return true;
+    return editor_.tick(now);
 }
 }

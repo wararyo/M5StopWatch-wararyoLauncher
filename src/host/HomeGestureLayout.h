@@ -13,14 +13,14 @@ namespace launcher {
 // Lengths are those of the 466px panel, scaled like every other layout.
 inline constexpr TimeUs HomeGestureFrameUs=16000;
 inline constexpr TimeUs HomeBandShrinkUs=100000;
-inline constexpr TimeUs HomeRevealUs=800000;
+inline constexpr TimeUs HomeRevealUs=600000;
 // A touch that starts this close to the top belongs to the system.
 inline int homeGestureEdge(Viewport v) { return scaled(v,40); }
 inline bool homeGestureStarts(Viewport v,int y) { return y<=homeGestureEdge(v); }
 // The band never grows past this.
 inline int homeBandMax(Viewport v) { return scaled(v,80); }
 // Let go this far down, the swipe goes home. Only y counts.
-inline int homeGestureCommitY(Viewport v) { return scaled(v,120); }
+inline int homeGestureCommitY(Viewport v) { return scaled(v,180); }
 inline bool homeGestureCommits(Viewport v,int y) { return y>=homeGestureCommitY(v); }
 // The band under a finger at `y`: its edge follows the finger near the top (a
 // slope of 1) and slows down further down, never reaching the maximum.
@@ -32,15 +32,17 @@ inline float easeOutQuint(float t) {
     const float u=1-std::clamp(t,0.0f,1.0f);
     return 1-u*u*u*u*u;
 }
-inline float easeInOutCubic(float t) {
+// Out, a pause two thirds of the way there half way through, then in.
+inline float easeOutInCubic(float t) {
+    constexpr float rest=2.0f/3;
     t=std::clamp(t,0.0f,1.0f);
-    if (t<0.5f) return 4*t*t*t;
-    const float u=-2*t+2;
-    return 1-u*u*u/2;
+    const float u=2*t-1,c=u*u*u;
+    return u<0 ? rest*(1+c) : rest+(1-rest)*c;
 }
-// The band while A and B are held: it reaches the maximum as home fires.
+// The band while A and B are held: out to a swipe's maximum, a pause there,
+// then on with gathering speed into the clock coming in as home fires.
 inline float homeChordBand(Viewport v,TimeUs held,TimeUs homeHoldUs) {
-    return homeBandMax(v)*easeInOutCubic(float(held)/float(homeHoldUs));
+    return scaled(v,120)*easeOutInCubic(float(held)/float(homeHoldUs));
 }
 // A band let go short of home, `elapsed` after it started to shrink.
 inline float homeBandShrinking(float from,TimeUs elapsed) {

@@ -21,7 +21,7 @@ Rect rect(int x,int y,int w,int h) { return {x,y,w,h}; }
 // docs/task14/plan.md 2.1, 2.2, 2.4, 2.5: the numbers themselves.
 void layout() {
     CHECK(homeGestureEdge(View)==40 && homeGestureStarts(View,40) && !homeGestureStarts(View,41));
-    CHECK(homeGestureCommitY(View)==120 && homeGestureCommits(View,120) && !homeGestureCommits(View,119));
+    CHECK(homeGestureCommitY(View)==180 && homeGestureCommits(View,180) && !homeGestureCommits(View,179));
     CHECK(homeBandMax(View)==80);
     // Stuck to the finger at the top, slower further down, never the maximum.
     CHECK(homeBandHeight(View,0)==0 && homeBandHeight(View,-5)==0);
@@ -32,21 +32,21 @@ void layout() {
     for (int y=1;y<=468;++y) { const float h=homeBandHeight(View,y); CHECK(h>last && h<80); last=h; }
     // Easings.
     CHECK(easeOutQuint(0)==0 && easeOutQuint(1)==1 && easeOutQuint(2)==1 && near(easeOutQuint(0.5f),0.96875f,1e-5f));
-    CHECK(easeInOutCubic(0)==0 && easeInOutCubic(1)==1 && near(easeInOutCubic(0.5f),0.5f,1e-6f));
-    CHECK(near(easeInOutCubic(0.25f),0.0625f,1e-6f) && near(easeInOutCubic(0.75f),0.9375f,1e-6f));
-    // A+B: 0, half, full over the 600ms of the hold.
-    CHECK(homeChordBand(View,0,600000)==0 && near(homeChordBand(View,300000,600000),40,1e-3f) &&
-          homeChordBand(View,600000,600000)==80 && homeChordBand(View,900000,600000)==80);
+    CHECK(easeOutInCubic(0)==0 && easeOutInCubic(1)==1 && near(easeOutInCubic(0.5f),2/3.0f,1e-6f));
+    CHECK(near(easeOutInCubic(0.25f),7/12.0f,1e-6f) && near(easeOutInCubic(0.75f),17/24.0f,1e-6f));
+    // A+B: out to 80, a pause there half way, then on to 120 as home fires.
+    CHECK(homeChordBand(View,0,600000)==0 && near(homeChordBand(View,300000,600000),80,1e-3f) &&
+          homeChordBand(View,600000,600000)==120 && homeChordBand(View,900000,600000)==120);
     // Shrinking: from where it was let go to nothing in 100ms, quickly at first.
     CHECK(homeBandShrinking(60,0)==60 && homeBandShrinking(60,HomeBandShrinkUs)==0);
     CHECK(homeBandShrinking(60,16000)<40);
-    // The clock coming in: from the band to the bottom in 800ms.
+    // The clock coming in: from the band to the bottom in 600ms.
     CHECK(homeRevealEdge(View,80,0)==80 && homeRevealEdge(View,80,HomeRevealUs)==468);
     CHECK(homeRevealEdge(View,80,HomeRevealUs/2)>450);
     int edge=80;
     for (TimeUs t=HomeGestureFrameUs;t<=HomeRevealUs;t+=HomeGestureFrameUs) {
         const int next=homeRevealEdge(View,80,t);
-        CHECK(next>=edge && next-edge<=40); // The largest step is the first.
+        CHECK(next>=edge && next-edge<=50); // The largest step is the first.
         edge=next;
     }
 }
@@ -98,11 +98,11 @@ void swipe() {
     out=g.handle(touchEvent(Gesture::DragMove,80,400),120000,true,true);
     CHECK(out.consumed && g.model().band==51 && g.nextUpdate()==INT64_MAX);
     // Let go above the line: no home, the band shrinks in 100ms.
-    out=g.handle(touchEvent(Gesture::DragEnd,119),130000,true,true);
+    out=g.handle(touchEvent(Gesture::DragEnd,179),130000,true,true);
     CHECK(out.consumed && out.changed && !out.home);
     CHECK(g.active() && g.nextUpdate()==130000+HomeGestureFrameUs);
     CHECK(!g.update(140000));
-    CHECK(g.update(146000) && g.model().band<62 && g.model().band>0);
+    CHECK(g.update(146000) && g.model().band<int(std::lround(homeBandHeight(View,179))) && g.model().band>0);
     CHECK(g.update(230000) && g.model().band==0 && !g.active() && g.nextUpdate()==INT64_MAX);
     // A tap at the edge: kept, and nothing at all happens.
     g.handle(touchEvent(Gesture::TouchStart,5),300000,true,true);
@@ -111,7 +111,7 @@ void swipe() {
     // Let go at the line: home.
     g.handle(touchEvent(Gesture::TouchStart,20),400000,true,true);
     g.handle(touchEvent(Gesture::DragStart,40),410000,true,true);
-    out=g.handle(touchEvent(Gesture::DragEnd,120),420000,true,true);
+    out=g.handle(touchEvent(Gesture::DragEnd,180),420000,true,true);
     CHECK(out.consumed && out.home);
     g.reset();
     CHECK(!g.active() && g.model().band==0);
@@ -137,14 +137,14 @@ void chord() {
     // Grows with the hold, at a frame rate, until it is full.
     auto out=g.handle(chordEvent(true,1000000),1000000,false,true);
     CHECK(out.changed && g.active() && g.model().band==0 && g.nextUpdate()==1016000);
-    CHECK(g.update(1300000) && g.model().band==40);
-    CHECK(g.update(1600000) && g.model().band==80 && g.nextUpdate()==INT64_MAX);
+    CHECK(g.update(1300000) && g.model().band==80);
+    CHECK(g.update(1600000) && g.model().band==120 && g.nextUpdate()==INT64_MAX);
     g.reset(); // Home: the manager leaves everything, and the band goes.
     // Let go early: the band shrinks from where it got to.
     g.handle(chordEvent(true,2000000),2000000,false,true);
     g.update(2300000);
     out=g.handle(chordEvent(false,2000000),2310000,false,true);
-    CHECK(out.changed && g.model().band==40 && g.nextUpdate()==2326000);
+    CHECK(out.changed && g.model().band==80 && g.nextUpdate()==2326000);
     g.update(2410000);
     CHECK(!g.active() && g.model().band==0);
     // The hold takes over a swipe; that touch stays the system's and moves nothing.
@@ -156,7 +156,7 @@ void chord() {
     CHECK(out.consumed && !out.changed && g.model().band==0);
     out=g.handle(touchEvent(Gesture::DragEnd,300),3040000,true,true);
     CHECK(out.consumed && !out.home);
-    CHECK(g.update(3320000) && g.model().band==40);
+    CHECK(g.update(3320000) && g.model().band==80);
     // Nor does a touch that lands at the edge while the hold shows.
     g.handle(touchEvent(Gesture::TouchStart,10),3330000,true,true);
     out=g.handle(touchEvent(Gesture::DragStart,200),3340000,true,true);
@@ -202,7 +202,7 @@ void manager() {
     s.present(ScreenId::Timer,1300000);
     s.handle(chordEvent(true,1400000),1400000);
     s.update(1700000);
-    CHECK(s.model().homeGesture.band==40);
+    CHECK(s.model().homeGesture.band==80);
     CHECK(s.present(ScreenId::Timer,1710000) && s.model().homeGesture.band==0 && !s.active());
     // A+B home closes it the usual way, band and all.
     s.handle(chordEvent(true,1800000),1800000);
@@ -229,7 +229,7 @@ void reveal() {
         CHECK(m.edge>=edge && m.edge<=468 && g.nextUpdate()==now+HomeGestureFrameUs);
         edge=m.edge;
     }
-    // Over at 800ms, no sooner, and then nothing more to draw.
+    // Over at 600ms, no sooner, and then nothing more to draw.
     CHECK(now-1000000>=HomeRevealUs && now-1000000<HomeRevealUs+HomeGestureFrameUs);
     CHECK(!g.active() && !g.model().revealing && g.nextUpdate()==INT64_MAX && !g.update(now+100000));
     // An attention request ends it at once.
@@ -363,7 +363,7 @@ void revealInput() {
     s.update(2600000);
     home=Events{}; home.home=true; home.chordChanged=true;
     s.handle(home,2600000);
-    CHECK(s.revealing() && s.model().homeGesture.edge==80);
+    CHECK(s.revealing() && s.model().homeGesture.edge==120);
     // An attention request while it comes in: the timer, as usual.
     CHECK(s.present(ScreenId::Timer,2700000) && !s.revealing() && s.model().screen==ScreenId::Timer);
     // A+B on the clock itself: nothing to come in over.

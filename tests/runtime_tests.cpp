@@ -312,20 +312,21 @@ void homeBand() {
         CHECK(h.waited <= 16000 && h.rendered.homeGesture.band >= last);
         last = h.rendered.homeGesture.band;
     }
-    CHECK(last > 70 && r.model().screen == ScreenId::AppList);
+    CHECK(last > 100 && r.model().screen == ScreenId::AppList);
     while (r.model().screen != ScreenId::Home) { r.wait(); r.step(); }
     CHECK(h.time - since >= 600000 && h.rendered.homeGesture.band == 0 && r.model().homeCount == 1);
-    // The clock comes in from the full band, frame by frame, for 800ms.
+    // The clock comes in from the band as it was last drawn, frame by frame,
+    // for 600ms.
     const TimeUs home = h.time;
-    CHECK(h.rendered.homeGesture.revealing && h.rendered.homeGesture.edge == 80);
+    CHECK(h.rendered.homeGesture.revealing && h.rendered.homeGesture.edge >= last);
+    int edge = h.rendered.homeGesture.edge;
     h.input = {}; r.wait(); r.step();
-    int edge = 80;
     while (r.model().homeGesture.revealing) {
         r.wait(); CHECK(h.waited <= 16000); r.step();
         CHECK(h.rendered.homeGesture.edge >= edge || !h.rendered.homeGesture.revealing);
         edge = h.rendered.homeGesture.edge;
     }
-    CHECK(h.time - home >= 800000 && h.time - home < 820000 && !h.rendered.homeGesture.revealing);
+    CHECK(h.time - home >= 600000 && h.time - home < 620000 && !h.rendered.homeGesture.revealing);
     // Let go early over the list: the band shrinks away, and the runtime
     // goes back to waiting for its interrupts.
     h.input.b = true; r.wait(); r.step();
@@ -334,10 +335,10 @@ void homeBand() {
     CHECK(r.model().screen == ScreenId::AppList);
     h.time += 10000; h.input = {true, true}; r.step();
     h.time += 300000; r.step();
-    CHECK(h.rendered.homeGesture.band == 40);
+    CHECK(h.rendered.homeGesture.band == 80);
     h.time += 10000; h.input = {true}; r.step();
     h.time += 20000; h.input = {}; r.step();
-    CHECK(h.rendered.homeGesture.band > 0 && h.rendered.homeGesture.band < 40);
+    CHECK(h.rendered.homeGesture.band > 0 && h.rendered.homeGesture.band < 80);
     h.time += 100000; r.step();
     CHECK(h.rendered.homeGesture.band == 0 && r.model().screen == ScreenId::AppList);
     r.wait(); CHECK(h.waited > 16000);

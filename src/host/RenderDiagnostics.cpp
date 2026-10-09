@@ -16,6 +16,7 @@
 #include "ui/graphics/Shapes.h"
 #include "features/launcher/LauncherController.h"
 #include "host/LaunchRegistry.h"
+#include "input/InputController.h"
 #include "i18n/Strings.h"
 #include <cstring>
 #endif
@@ -1440,11 +1441,32 @@ void runRepaintCheck(HostRenderer& renderer,M5GFX& display,const SlotCatalog& ca
                         bm.screen=screen; bm.timer=TimerModel{}; bm.timer.fields[1]=3; bm.pedometer={true,12345};
                         bm.launcher=AppListModel{}; bm.launcher.transition=screen==ScreenId::AppList ? 1 : 0;
                         bm.homeGesture={}; renderer.invalidate(); renderer.draw(bm,bd);
-                        for(const int band:{6,21,22,23,44,45,63,80,52,17,3,0}) {
+                        for(const int band:{6,21,22,23,44,45,63,80,103,120,52,17,3,0}) {
                             bm.homeGesture.band=band;
                             std::snprintf(name,sizeof(name),"home-band-%s-%d-%d",face,int(screen),band);
                             check(name,bm,bd);
                         }
+                        // Its frame times over this screen, as an A+B hold
+                        // draws it out to home and as it shrinks away.
+                        TimeUs total=0,longest=0; uint64_t area=0; int frames=0;
+                        auto timed=[&](float band) {
+                            bm.homeGesture.band=int(std::lround(band));
+                            const TimeUs begun=esp_timer_get_time();
+                            renderer.draw(bm,bd);
+                            const TimeUs spent=esp_timer_get_time()-begun;
+                            total+=spent; longest=std::max(longest,spent);
+                            const Rect dirty=renderer.lastDirty(); area+=uint64_t(dirty.w)*dirty.h;
+                            if(++frames%8==0) vTaskDelay(1);
+                        };
+                        const TimeUs hold=InputController::HomeHoldUs;
+                        for(TimeUs t=HomeGestureFrameUs;t<=hold;t+=HomeGestureFrameUs) timed(homeChordBand(bm.viewport,t,hold));
+                        const float from=homeChordBand(bm.viewport,hold,hold);
+                        for(TimeUs t=HomeGestureFrameUs;t<=HomeBandShrinkUs;t+=HomeGestureFrameUs) timed(homeBandShrinking(from,t));
+                        timed(0);
+                        std::printf("[Perf] band-%s-%d frames=%d avg_us=%lld max_us=%lld avg_dirty_px=%llu\n",face,int(screen),frames,
+                            (long long)(total/frames),(long long)longest,(unsigned long long)(area/frames));
+                        std::snprintf(name,sizeof(name),"home-band-%s-%d-timed",face,int(screen));
+                        check(name,bm,bd);
                         vTaskDelay(1);
                     }
                     // The colour changing under a shown band (Forest's hour,

@@ -3,6 +3,7 @@
 #include "features/settings/SettingsLayout.h"
 #include "features/tutorial/TutorialScreen.h"
 #include "i18n/Strings.h"
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -32,9 +33,11 @@ struct MemoryRecords : RecordBackend {
         return PrefResult::Ok;
     }
 };
-// An RTC that holds the time, or one never set (year 2000 reads as unset).
+// An RTC that holds the time, or one never set (year 2000 reads as unset),
+// and one that takes no writes.
 struct StubHal : Hal {
     CivilTime rtc{2000,1,1,0,0,0};
+    bool rtcWritable=true;
     int64_t clockUs=0;
     TimeUs time=0;
     InputSnapshot input{};
@@ -44,7 +47,7 @@ struct StubHal : Hal {
     void waitUs(TimeUs) override {}
     bool inputPending() override { return input.a || input.b || input.touching; }
     bool readRtc(CivilTime& utc) override { utc=rtc; return true; }
-    bool writeRtc(const CivilTime& utc) override { rtc=utc; return true; }
+    bool writeRtc(const CivilTime& utc) override { if (!rtcWritable) return false; rtc=utc; return true; }
     void setUtcClock(int64_t seconds) override { clockUs=seconds*1000000; }
     int64_t utcClockUs() override { return clockUs; }
     BatteryState sampleBattery() override { return {}; }
@@ -159,6 +162,88 @@ void steps() {
     TestScreens w; bindTutorial(w,&time,nullptr);
     CHECK(!w.present(ScreenId::Tutorial,0) && w.model().screen==ScreenId::Home);
 }
+// docs/task15/plan.md 1.2: only a saved date goes on to the way home. A
+// write that fails keeps the entry where it was, to be saved again.
+void saveFailure() {
+    StubHal hal; hal.rtcWritable=false; MemoryRecords records; TutorialRecord record; record.bind(&records); record.load();
+    TimeService time; time.begin(hal);
+    TestScreens s; bindTutorial(s,&time,&record);
+    TimeUs now=0;
+    s.present(ScreenId::Tutorial,now);
+    s.handle(press(false),now+=10000);  // The year,
+    s.handle(press(true),now+=10000);   // on to the month,
+    s.handle(press(false),now+=10000);  // February.
+    const auto entered=s.model().tutorial.editor;
+    const Rect save=button(0);
+    s.handle(tap(save.x+save.w/2,save.y+save.h/2),now+=10000);
+    auto m=s.model();
+    CHECK(m.screen==ScreenId::Tutorial && m.tutorial.step==TutorialStep::DateTime);
+    CHECK(m.tutorial.editor.cursor==5); // Save, which the tap focused, as in settings.
+    CHECK(std::equal(std::begin(entered.fields),std::end(entered.fields),std::begin(m.tutorial.editor.fields)));
+    // The RTC never held a time, so there is nothing to fall back on.
+    CHECK(m.toast && std::strcmp(m.toast,text::ClockUnavailable)==0);
+    CHECK(!time.valid() && hal.rtc.year==2000 && records.writes==0 && record.due());
+    // B saves again once the RTC takes it.
+    hal.rtcWritable=true;
+    s.handle(press(false),now+=10000);
+    m=s.model();
+    CHECK(m.tutorial.step==TutorialStep::Guide && time.valid());
+    CHECK(m.toast && std::strcmp(m.toast,text::TimeSaved)==0);
+    CHECK(hal.rtc.year==TimeService::MinYear+1 && hal.rtc.month==1 && hal.rtc.day==31 && records.writes==0);
+}
+// The panel going dark leaves the tutorial as it was, through the runtime:
+// the step, the entry and the focus. The touch that wakes it is spent, so it
+// presses nothing (docs/architecture.md, input and waking).
+void screenOff() {
+    StubHal hal; StubRender render; DisplayDataSource data; TimeService time; time.begin(hal);
+    SettingsStore store; MemoryRecords records;
+    HostApplication application(hal,render,data,468,468);
+    application.bindSettings(store,time);
+    application.bindRecords(records);
+    application.begin();
+    auto& runtime=application.runtime();
+    const auto tutorial=[&] { return application.screens().model().tutorial; };
+    const auto click=[&](bool next) {
+        hal.input={next,!next,false,0,0}; hal.time+=10000; runtime.step();
+        hal.input={}; hal.time+=10000; runtime.step();
+    };
+    const auto touch=[&](Rect box) {
+        hal.input={false,false,true,box.x+box.w/2,box.y+box.h/2}; hal.time+=10000; runtime.step();
+        hal.input={}; hal.time+=10000; runtime.step();
+    };
+    const auto sleep=[&] {
+        for (int i=0;i<31 && !runtime.power().screenOff();++i) { hal.time+=1000000; runtime.step(); }
+        return runtime.power().screenOff();
+    };
+    runtime.step();
+    click(false);                       // B: the year,
+    click(true);                        // A: on to the month,
+    click(false);                       // B: February.
+    const auto entered=tutorial().editor;
+    CHECK(tutorial().step==TutorialStep::DateTime && entered.cursor==1 && entered.fields[1]==2);
+    // Dark, then woken by a touch on Save: nothing saved, nothing moved.
+    CHECK(sleep());
+    touch(button(0));
+    CHECK(!runtime.power().screenOff());
+    auto m=application.screens().model();
+    CHECK(m.screen==ScreenId::Tutorial && m.tutorial.step==TutorialStep::DateTime && m.toast==nullptr);
+    CHECK(m.tutorial.editor.cursor==entered.cursor);
+    CHECK(std::equal(std::begin(entered.fields),std::end(entered.fields),std::begin(m.tutorial.editor.fields)));
+    CHECK(!time.valid() && hal.rtc.year==2000);
+    // Awake, the same touch saves, and the way home follows.
+    touch(button(0));
+    CHECK(tutorial().step==TutorialStep::Guide && time.valid());
+    // The way home survives the dark too, and waking does not finish it.
+    CHECK(sleep());
+    touch({0,0,468,40});
+    CHECK(!runtime.power().screenOff() && application.screens().model().screen==ScreenId::Tutorial);
+    // (The pedometer saves its day as the panel goes dark, so only the key tells.)
+    CHECK(tutorial().step==TutorialStep::Guide && records.records.count(TutorialRecord::Key)==0);
+    // A+B, held, still finishes it.
+    hal.input={true,true,false,0,0}; hal.time+=10000; runtime.step();
+    hal.time+=600000; runtime.step();
+    CHECK(application.screens().model().screen==ScreenId::Home && finished(records));
+}
 // docs/task15/plan.md 1.3, 2.3: finished only by going home from the way home.
 void finishing() {
     StubHal hal; MemoryRecords records; TutorialRecord record; record.bind(&records); record.load();
@@ -241,6 +326,6 @@ void startup() {
     }
 }
 int main() {
-    record(); steps(); finishing(); startup();
-    std::cout << "PASS: tutorial record, steps, finishing, startup\n";
+    record(); steps(); saveFailure(); screenOff(); finishing(); startup();
+    std::cout << "PASS: tutorial record, steps, save failure, screen off, finishing, startup\n";
 }

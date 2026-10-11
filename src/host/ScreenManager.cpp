@@ -14,6 +14,7 @@ FrameModel ScreenManager::model() const {
     m.stopwatch=stopwatchScreen_.model();
     m.timer=timerScreen_.model();
     m.pedometer=pedometerScreen_.model();
+    m.tutorial=tutorial_.model();
     m.homeGesture=gesture_.model();
     m.activity=activity();
     return m;
@@ -60,12 +61,15 @@ void ScreenManager::leaveAll() {
     launcher_.home();
     gesture_.cancel();
     settings_.exit(); external_.exit(); stopwatchScreen_.exit(); timerScreen_.exit(); pedometerScreen_.exit();
+    tutorial_.exit();
     active_=nullptr;
 }
 void ScreenManager::goHome(TimeUs now) {
     ++homeCount_;
     const bool covered=screen()!=ScreenId::Home;
     const float from=gesture_.band();
+    // Told before it exits, so it still knows what it was showing.
+    if (active_) active_->wentHome();
     leaveAll();
     if (covered) gesture_.reveal(from,now);
 }
@@ -75,6 +79,7 @@ bool ScreenManager::present(ScreenId id,TimeUs now) {
     case ScreenId::Settings: target=&settings_; break;
     case ScreenId::Stopwatch: target=&stopwatchScreen_; break;
     case ScreenId::Timer: target=&timerScreen_; break;
+    case ScreenId::Tutorial: target=&tutorial_; break;
     case ScreenId::Home: break;
     // The list and the external detail show a choice the request cannot make.
     default: return false;

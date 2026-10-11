@@ -23,8 +23,9 @@ public:
     // Current maximum: 8 watch elements + 8 list slots (ListVisibleSlots,
     // registered even while hidden so they erase) + toast + the home
     // gesture's band + the open app screen (17 for the timer's setup, 11
-    // settings editor elements or the settings menu's 8 list slots, 7
-    // stopwatch, 6 external app detail, 4 pedometer) = 35. A closed screen,
+    // settings editor elements (the tutorial's date step too) or the settings
+    // menu's 8 list slots, 7 stopwatch, 6 external app detail, 5 the
+    // tutorial's way home, 4 pedometer) = 35. A closed screen,
     // and the half of settings that is not shown, registers nothing, so they
     // never add up. Backgrounds declare damage instead of registering.
     // Extra room is for future faces; overflow is handled, never truncated.

@@ -2,6 +2,7 @@
 #include "TestScreens.h"
 #include "host/LaunchRegistry.h"
 #include "features/settings/SettingsMenu.h"
+#include "features/settings/SettingsEditor.h"
 #include "i18n/Strings.h"
 #include <array>
 #include <cmath>
@@ -347,6 +348,45 @@ void dateSaving() {
     screens.handle(tap(save.x+save.w/2,save.y+save.h/2),now);
     CHECK(screens.model().settings.view==SettingsView::DateTime);
     CHECK(screens.model().toast && std::strcmp(screens.model().toast,text::SaveFailed)==0);
+}
+// The date editor on its own, as the tutorial uses it (docs/task15/plan.md
+// 2.2): the owner is asked to carry out a button with the focus on it, and
+// the date helpers start from the clock or from its first trusted moment.
+void editorAlone() {
+    StubHal hal; TimeService unset; // Never begun: the clock is unset.
+    SettingsEditor editor; editor.open(SettingsView::DateTime);
+    dateTimeFields(unset,editor.model().fields);
+    CHECK(editor.model().fields[0]==TimeService::MinYear && editor.model().fields[1]==1 &&
+          editor.model().fields[2]==1 && editor.model().fields[3]==0 && editor.model().fields[4]==0);
+    TimeService time; time.begin(hal);
+    dateTimeFields(time,editor.model().fields);
+    CHECK(editor.model().fields[0]==2026 && editor.model().fields[1]==9 && editor.model().fields[2]==21 &&
+          editor.model().fields[3]==0 && editor.model().fields[4]==0); // 15:00 UTC is 00:00 JST.
+    // B steps the focused field; A walks to the buttons.
+    editor.handle(press(false),[](ScreenOutcome&) -> const char* { CHECK(false); return nullptr; });
+    CHECK(editor.model().fields[0]==2027);
+    for (int i=0;i<6;++i) editor.handle(press(true),[](ScreenOutcome&) -> const char* { return nullptr; });
+    CHECK(editor.model().cursor==6); // Cancel.
+    int asked=-1;
+    const auto out=editor.handle(press(false),[&](ScreenOutcome&) { asked=editor.model().cursor; return text::Saved; });
+    CHECK(asked==6 && out.notice==text::Saved && out.changed);
+    CHECK(editor.model().view==SettingsView::DateTime); // Where it goes is the owner's.
+    // A tapped button is focused before the owner is asked.
+    SettingsGeometry probe{{468,468},SettingsView::DateTime,0};
+    const Rect save=settingsButtonBox(probe,0);
+    asked=-1;
+    editor.handle(tap(save.x+save.w/2,save.y+save.h/2),[&](ScreenOutcome&) { asked=editor.model().cursor; return nullptr; });
+    CHECK(asked==5);
+    // Saving, and what each result says.
+    editor.model().fields[0]=2026;
+    CHECK(saveDateTime(time,editor.model().fields)==SaveResult::Saved);
+    CHECK(hal.rtc.year==2026 && hal.rtc.month==9 && hal.rtc.day==20 && hal.rtc.hour==15);
+    editor.model().fields[1]=2; editor.model().fields[2]=30;
+    CHECK(saveDateTime(time,editor.model().fields)==SaveResult::Invalid);
+    CHECK(std::strcmp(dateTimeNotice(SaveResult::Saved),text::TimeSaved)==0);
+    CHECK(std::strcmp(dateTimeNotice(SaveResult::Invalid),text::InvalidDate)==0);
+    CHECK(std::strcmp(dateTimeNotice(SaveResult::RtcWriteFailed),text::SaveFailed)==0);
+    CHECK(std::strcmp(dateTimeNotice(SaveResult::Unrecoverable),text::ClockUnavailable)==0);
 }
 void runtimeApplies() {
     MemoryBackend backend; SettingsStore store; store.begin(backend);
@@ -821,9 +861,9 @@ void runtimeMenuScroll() {
     CHECK(quietWait()==1000000);
 }
 int main() {
-    storeRecord(); menuAndEditors(); holdInEditors(); heldInput(); saveAndCancel(); dateSaving(); runtimeApplies(); fadeWaitsForPanel();
+    storeRecord(); menuAndEditors(); holdInEditors(); heldInput(); saveAndCancel(); dateSaving(); editorAlone(); runtimeApplies(); fadeWaitsForPanel();
     statisticsAction(); statisticsRequest(); menuRows(); menuList(); menuLabels(); runtimeMenuScroll();
-    std::cout << "PASS: settings record, menu/editors, held B, save/cancel, date saving, "
+    std::cout << "PASS: settings record, menu/editors, held B, save/cancel, date saving, editor alone, "
                  "runtime apply, fade after panel shows, statistics action/request, menu rows/list/labels, "
                  "runtime menu scroll\n";
 }

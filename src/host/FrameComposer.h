@@ -8,10 +8,10 @@ namespace launcher {
 // it is painted after all of them, outside the plan (ui/overlays/StatsOverlay.h).
 // The list's background is no layer: it is the frame's base (HostRenderer::draw).
 // The home gesture's band lies over every screen and the list, under the notice.
-enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Timer, Pedometer, HomeGesture, Toast };
+enum class FrameLayer : uint8_t { Home, AppList, Settings, External, Stopwatch, Timer, Pedometer, Tutorial, HomeGesture, Toast };
 inline constexpr FrameLayer FrameOrder[]={
     FrameLayer::Home,FrameLayer::AppList,FrameLayer::Settings,
-    FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Timer,FrameLayer::Pedometer,
+    FrameLayer::External,FrameLayer::Stopwatch,FrameLayer::Timer,FrameLayer::Pedometer,FrameLayer::Tutorial,
     FrameLayer::HomeGesture,FrameLayer::Toast};
 inline constexpr int FrameLayerCount=int(sizeof(FrameOrder)/sizeof(FrameOrder[0]));
 // Where each part of a frame goes, derived from the frame model alone. The
@@ -26,7 +26,7 @@ struct FrameComposition {
     WatchEnvironment home{};
     // Which layers show. A hidden list still registers its slots empty, so it
     // erases what it drew; a closed screen registers nothing at all.
-    bool list=false,settings=false,external=false,stopwatch=false,timer=false,pedometer=false;
+    bool list=false,settings=false,external=false,stopwatch=false,timer=false,pedometer=false,tutorial=false;
     // A different screen than the frame before, set by FrameComposer. Layers
     // that planned nothing then have no history to erase with, and layers that
     // stop planning leave boxes nobody registers: the frame is repainted in
@@ -48,6 +48,7 @@ inline FrameComposition composeFrame(const FrameModel& m) {
     c.stopwatch=m.screen==ScreenId::Stopwatch;
     c.timer=m.screen==ScreenId::Timer;
     c.pedometer=m.screen==ScreenId::Pedometer;
+    c.tutorial=m.screen==ScreenId::Tutorial;
     return c;
 }
 inline bool clockVisible(const FrameModel& m) { return composeFrame(m).clockVisible(); }

@@ -1,4 +1,4 @@
 #pragma once
 namespace launcher {
-enum class ScreenId { Home, AppList, Settings, External, Stopwatch, Timer, Pedometer };
+enum class ScreenId { Home, AppList, Settings, External, Stopwatch, Timer, Pedometer, Tutorial };
 }

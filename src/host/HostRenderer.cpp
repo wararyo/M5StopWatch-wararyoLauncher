@@ -14,6 +14,7 @@ bool HostRenderer::begin(bool disableCache,WatchPreferences* store) {
     stopwatch_.begin(nameFont_); toast_.begin(nameFont_);
     timer_.begin(nameFont_,watchTextFont(),timerDigitGlyphs());
     pedometer_.begin(nameFont_,watchTextFont(),timerDigitGlyphs());
+    tutorial_.begin(nameFont_);
     // M5GFX addresses this panel as 468 rows, but a transfer whose window
     // reaches rows 466 and 467 has its first two rows spoiled on the panel
     // (black lines left by the list's edge, docs/task10/10-5-validation.md).
@@ -31,6 +32,7 @@ RenderLayer* HostRenderer::layer(FrameLayer id) {
     case FrameLayer::Stopwatch: return &stopwatch_;
     case FrameLayer::Timer: return &timer_;
     case FrameLayer::Pedometer: return &pedometer_;
+    case FrameLayer::Tutorial: return &tutorial_;
     case FrameLayer::HomeGesture: return &homeGesture_;
     case FrameLayer::Toast: return &toast_;
     }
@@ -61,6 +63,7 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     else if(c.stopwatch) base=stopwatch_.background();
     else if(c.timer) base=timer_.background();
     else if(c.pedometer) base=pedometer_.background();
+    else if(c.tutorial) base=tutorial_.background();
     renderer_.setBase(base);
     appList_.prepare(c.viewport,m.launcher,c.list,listBackground);
     settings_.prepare(c.viewport,m.settings,c.settings,m.stats);
@@ -68,6 +71,7 @@ void HostRenderer::draw(const FrameModel& m,const WatchData& watch) {
     stopwatch_.prepare(c.viewport,m.stopwatch,c.stopwatch);
     timer_.prepare(c.viewport,m.timer,c.timer);
     pedometer_.prepare(c.viewport,m.pedometer,c.pedometer);
+    tutorial_.prepare(c.viewport,m.tutorial,c.tutorial);
     homeGesture_.prepare(c.viewport,m.homeGesture.band,home_.homeGestureBackground(),
                          home_.homeGestureForeground(),appIcon(IconId::WatchFace));
     toast_.prepare(c.viewport,m.toast);

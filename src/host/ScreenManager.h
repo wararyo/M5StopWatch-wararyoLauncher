@@ -5,6 +5,7 @@
 #include "features/stopwatch/StopwatchScreen.h"
 #include "features/timer/TimerScreen.h"
 #include "features/pedometer/PedometerScreen.h"
+#include "features/tutorial/TutorialScreen.h"
 #include "host/FrameModel.h"
 #include "host/HomeGesture.h"
 #include "host/EffectiveSettings.h"
@@ -24,12 +25,17 @@ public:
         settings_.resize(width,height); external_.resize(width,height);
         stopwatchScreen_.resize(width,height); stopwatchScreen_.bind(&stopwatch);
         timerScreen_.resize(width,height); pedometerScreen_.resize(width,height);
+        tutorial_.resize(width,height);
     }
     ScreenManager(const ScreenManager&)=delete;
     ScreenManager& operator=(const ScreenManager&)=delete;
     // Without a store and a clock the settings entry stays unavailable, exactly
     // as the unimplemented entries do. Nothing else in the launcher changes.
-    void bind(SettingsStore* store,TimeService* time) { settings_.bind(store,time); }
+    // Without the clock the tutorial skips its date step.
+    void bind(SettingsStore* store,TimeService* time) { settings_.bind(store,time); tutorial_.bindTime(time); }
+    // The record the tutorial writes when it is finished. Without it the
+    // tutorial cannot be presented.
+    void bindTutorial(TutorialRecord* record) { tutorial_.bindRecord(record); }
     void bindSlots(SlotService* slots) { external_.bind(slots,&slots_); }
     // The timer and its last length. Without them the timer entry is
     // unavailable, as an unimplemented one is.
@@ -58,7 +64,8 @@ public:
     // (host/AttentionSource.h). What was shown is left as home leaves it: an
     // open screen exits, dropping its unsaved edit, and a list or a drag is
     // let go. Only the built-in screens that need no choice of their own can
-    // be presented; false for the rest, which leaves everything as it was.
+    // be presented (the tutorial at start among them, docs/task15/plan.md
+    // 2.5); false for the rest, which leaves everything as it was.
     bool present(ScreenId id,TimeUs now);
     // Whatever was held has been spent (InputController::discardHeld), so no
     // end of it will come: the home gesture's band goes at once, and the
@@ -108,6 +115,8 @@ private:
     StopwatchScreen stopwatchScreen_;
     TimerScreen timerScreen_;
     PedometerScreen pedometerScreen_;
+    // In no list: only ever presented, when the host finds it due.
+    TutorialScreen tutorial_;
     SlotCatalog slots_{};
     Viewport viewport_{};
     // The clock and the app list, shown whenever no screen is open.

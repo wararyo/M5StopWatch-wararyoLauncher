@@ -173,7 +173,8 @@ extern "C" void app_main() {
     logHeap("ui-internal", MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     logHeap("ui-psram", MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     hal.beginInputWake();
-    runtime.begin();
+    // The runtime, and the first-boot tutorial if it is due.
+    application.begin();
     launcher::beginRuntimeDiagnostics();
 #ifdef LAUNCHER_DRAIN_LOG
     launcher::beginDrainLog(); // After nvs.begin(): the record lives in NVS.

@@ -316,18 +316,19 @@ void composition() {
     // An open screen covers the clock and the list whatever the slide says,
     // and only its own layer shows.
     for (const auto screen:{ScreenId::Settings,ScreenId::External,ScreenId::Stopwatch,ScreenId::Timer,
-                              ScreenId::Pedometer}) {
+                              ScreenId::Pedometer,ScreenId::Tutorial}) {
         m.screen=screen; m.launcher.transition=0.5f;
         c=composeFrame(m);
         CHECK(!c.clockVisible() && !clockVisible(m) && !c.list);
-        CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)+int(c.timer)+int(c.pedometer)==1);
+        CHECK(int(c.settings)+int(c.external)+int(c.stopwatch)+int(c.timer)+int(c.pedometer)+int(c.tutorial)==1);
+        CHECK(c.tutorial==(screen==ScreenId::Tutorial));
         CHECK(c.timer==(screen==ScreenId::Timer) && c.pedometer==(screen==ScreenId::Pedometer));
         CHECK(c.settings==(screen==ScreenId::Settings) && c.external==(screen==ScreenId::External));
     }
     // Back to front: the clock, the list's rows on the frame's base, the
     // screens that cover it, the home gesture's band over them, and the
     // notice over everything. Each layer exactly once.
-    CHECK(FrameLayerCount==9);
+    CHECK(FrameLayerCount==10);
     CHECK(FrameOrder[0]==FrameLayer::Home && FrameOrder[1]==FrameLayer::AppList);
     CHECK(FrameOrder[FrameLayerCount-2]==FrameLayer::HomeGesture && FrameOrder[FrameLayerCount-1]==FrameLayer::Toast);
     for (int i=0;i<FrameLayerCount;++i) for (int j=0;j<i;++j) CHECK(FrameOrder[i]!=FrameOrder[j]);

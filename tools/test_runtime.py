@@ -17,16 +17,16 @@ def main():
         for language, flags in LANGUAGES.items():
             for suite in ("runtime_tests", "ui_tests", "time_tests", "settings_tests",
                           "multifirm_tests", "stopwatch_tests", "timer_tests", "pedometer_tests", "background_tests", "home_gesture_tests",
-                          "watchface_tests"):
+                          "watchface_tests", "tutorial_tests"):
                 binary = Path(directory) / f"{suite}-{language}.exe"
                 sources = [f"tests/{suite}.cpp", "src/input/InputController.cpp",
                            "src/host/ScreenManager.cpp", "src/host/HomeGesture.cpp", "src/host/HostRuntime.cpp", "src/ui/rendering/Element.cpp",
                            "src/ui/list/ListController.cpp", "src/features/launcher/LauncherController.cpp",
                            "src/services/TimeService.cpp", "src/features/home/HomeDataSource.cpp",
-                           "src/storage/SettingsStore.cpp", "src/storage/WatchPreferences.cpp", "src/features/settings/SettingsScreen.cpp",
+                           "src/storage/SettingsStore.cpp", "src/storage/WatchPreferences.cpp", "src/features/settings/SettingsScreen.cpp", "src/features/settings/SettingsEditor.cpp",
                            "src/features/external/ExternalAppScreen.cpp",
                            "src/services/StopwatchService.cpp", "src/services/TimerService.cpp", "src/features/timer/TimerScreen.cpp", "src/features/timer/TimerBackgroundInfo.cpp", "src/storage/TimerPreferences.cpp",
-                           "src/services/PedometerService.cpp", "src/storage/PedometerRecord.cpp", "src/features/pedometer/PedometerRoutine.cpp",
+                           "src/services/PedometerService.cpp", "src/storage/PedometerRecord.cpp", "src/storage/TutorialRecord.cpp", "src/features/tutorial/TutorialScreen.cpp", "src/features/pedometer/PedometerRoutine.cpp",
                            "src/features/pedometer/PedometerScreen.cpp", "src/features/pedometer/PedometerBackgroundInfo.cpp",
                            "src/features/stopwatch/StopwatchFormat.cpp", "src/features/stopwatch/StopwatchScreen.cpp",
                            "src/features/stopwatch/StopwatchBackgroundInfo.cpp",

@@ -6,3 +6,4 @@ sdkconfig.*
 __pycache__/
 .multifirm/
 .backup/
+docs/**/*.log
